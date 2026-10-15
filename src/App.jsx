@@ -138,6 +138,8 @@ function AppRoutes() {
             {/* Public routes without sidebar */}
             <Route path="/scanner" element={<Scanner />} />
             <Route path="/espace-membre" element={<MemberPortal />} />
+            <Route path="/espace-adherent" element={<MemberPortal />} />
+            <Route path="/adherent" element={<MemberPortal />} />
             <Route path="/inscription" element={<PublicRegistration />} />
             <Route path="/inscriptions" element={<PublicRegistration />} />
             <Route path="/preinscription" element={<PublicRegistration />} />

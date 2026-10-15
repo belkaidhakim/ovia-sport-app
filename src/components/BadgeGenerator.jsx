@@ -48,24 +48,24 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
 
       {/* Header Bar */}
       <div style={{ 
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%)', 
+        background: 'linear-gradient(135deg, #070d1e 0%, #0f172a 60%, #1e293b 100%)', 
         color: 'white', 
         padding: '0.65rem 1.25rem', 
         display: 'flex', 
         justify: 'space-between', 
         alignItems: 'center', 
-        borderBottom: '2px solid #f59e0b',
+        borderBottom: '2px solid rgba(255, 255, 255, 0.25)',
         zIndex: 1 
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <img 
             src="/logo.jpg" 
-            alt="Logo SCB" 
+            alt="Logo Ovia Sport" 
             style={{ 
               width: '34px', 
               height: '34px', 
               borderRadius: '50%', 
-              border: '2px solid #f59e0b', 
+              border: '2px solid #ffffff', 
               objectFit: 'cover', 
               backgroundColor: 'white',
               boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
@@ -73,18 +73,18 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
           />
           <div>
             <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.04em', color: '#ffffff', lineHeight: 1.1 }}>
-              CSA SPORTING BOUIRA
+              OVIA SPORT
             </h2>
-            <div style={{ fontSize: '0.65rem', color: 'var(--accent-success)', fontWeight: 600 }}>Club Amateur Sportif</div>
+            <div style={{ fontSize: '0.65rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.05em' }}>Club Professionnel</div>
           </div>
         </div>
         <div style={{ 
           fontSize: '0.65rem', 
           fontWeight: 700, 
           letterSpacing: '0.08em', 
-          background: 'rgba(245, 158, 11, 0.15)', 
-          color: '#fbbf24', 
-          border: '1px solid rgba(245, 158, 11, 0.4)',
+          background: 'rgba(255, 255, 255, 0.12)', 
+          color: '#ffffff', 
+          border: '1px solid rgba(255, 255, 255, 0.3)',
           padding: '3px 8px', 
           borderRadius: '20px', 
           whiteSpace: 'nowrap',
@@ -194,7 +194,7 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
             boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
           }}>
             <QRCodeSVG 
-              value={athlete.token_qr || 'SCB-UNKNOWN'} 
+              value={athlete.token_qr || 'OVS-UNKNOWN'} 
               size={85} 
               level={"M"}
               includeMargin={false}
@@ -221,7 +221,7 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
-          Carte officielle de membre · SC Bouira
+          Carte officielle de membre · Ovia Sport
         </div>
         <div>
           {showEndDate && endDateStr ? (

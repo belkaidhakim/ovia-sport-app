@@ -86,7 +86,7 @@ export default function AthletesList() {
   const [selectedAthletes, setSelectedAthletes] = useState([]);
   const [showBulkPrint, setShowBulkPrint] = useState(false);
   const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
-  const [messageSubject, setMessageSubject] = useState("Sporting Club Bouira - Information");
+  const [messageSubject, setMessageSubject] = useState("Ovia Sport - Information");
   const [messageBody, setMessageBody] = useState("");
   const [messageTemplate, setMessageTemplate] = useState("horaire");
   const fileInputRef = useRef(null);
@@ -97,13 +97,13 @@ export default function AthletesList() {
   const handleTemplateChange = (templateType) => {
     setMessageTemplate(templateType);
     if (templateType === "horaire") {
-      setMessageSubject("Sporting Club Bouira - Changement d'horaire d'entraînement");
-      setMessageBody("Bonjour,\n\nNous vous informons qu'un changement d'horaire aura lieu pour les prochains entraînements. Merci de consulter le planning mis à jour auprès du club.\n\nSportivement,\nL'équipe du Sporting Club Bouira");
+      setMessageSubject("Ovia Sport - Changement d'horaire d'entraînement");
+      setMessageBody("Bonjour,\n\nNous vous informons qu'un changement d'horaire aura lieu pour les prochains entraînements. Merci de consulter le planning mis à jour auprès du club.\n\nSportivement,\nL'équipe d'Ovia Sport");
     } else if (templateType === "paiement") {
-      setMessageSubject("Sporting Club Bouira - Rappel de cotisation mensuelle");
+      setMessageSubject("Ovia Sport - Rappel de cotisation mensuelle");
       setMessageBody("Bonjour,\n\nCeci est un rappel concernant votre cotisation du mois. Merci de régulariser votre paiement auprès du secrétariat du club.\n\nCordialement,\nL'administration");
     } else if (templateType === "convocation") {
-      setMessageSubject("Sporting Club Bouira - Convocation Compétition");
+      setMessageSubject("Ovia Sport - Convocation Compétition");
       setMessageBody("Bonjour,\n\nVous êtes convoqué(e) à la prochaine rencontre sportive du club. Merci de valider votre présence auprès de votre entraîneur.\n\nSportivement,\nLe Staff Technique");
     }
   };
@@ -162,7 +162,7 @@ export default function AthletesList() {
     }
     const toastId = toast.loading(`Génération de la planche PDF (${list.length} badges CR80)...`);
     try {
-      await generateBadgeSheetPDF(list, `Planche_Badges_SCB_${list.length}_membres.pdf`);
+      await generateBadgeSheetPDF(list, `Planche_Badges_OVS_${list.length}_membres.pdf`);
       toast.success('Planche de badges générée avec succès ! 🖨️', { id: toastId });
     } catch (err) {
       console.error('Error generating badge sheet PDF:', err);

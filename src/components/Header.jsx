@@ -172,7 +172,7 @@ export default function Header({ toggleMobileMenu }) {
               Bienvenue, <span style={{ color: 'var(--accent-primary-hover)' }}>{displayName}</span>
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-              {displayRole} · Sporting Club Bouira
+              {displayRole} · Ovia Sport
             </div>
           </div>
         </div>

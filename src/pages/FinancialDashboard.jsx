@@ -35,8 +35,8 @@ export default function FinancialDashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const { cotisations, loading: cotisLoading, fetchCotisations } = useCotisations();
-  const { depenses, loading: depensesLoading, fetchDepenses } = useDepenses();
+  const { cotisations, loading: cotisLoading, fetchCotisations, deleteCotisation, addCotisation } = useCotisations();
+  const { depenses, loading: depensesLoading, fetchDepenses, deleteDepense, addDepense } = useDepenses();
   const { user } = useAuth();
   const { fraisInscription, cotisationAdhesion, totalAdhesion, updatePricing } = useClubPricing();
   
@@ -46,7 +46,50 @@ export default function FinancialDashboard() {
   const [activeTab, setActiveTab] = useState('revenus'); // 'revenus' or 'depenses' or 'impayes'
   const [filterRevenueType, setFilterRevenueType] = useState('all'); // 'all', 'inscriptions', 'cotisations'
 
-  // Modale Configuration
+  // Modale Confirmation de Suppression
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    type: null, // 'cotisation' | 'depense'
+    item: null,
+    isSubmitting: false,
+  });
+
+  const handleDeleteClick = (type, item) => {
+    setDeleteModal({
+      isOpen: true,
+      type,
+      item,
+      isSubmitting: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.item) return;
+    setDeleteModal(prev => ({ ...prev, isSubmitting: true }));
+    try {
+      if (deleteModal.type === 'cotisation') {
+        const success = await deleteCotisation(deleteModal.item.id);
+        if (success) {
+          setDeleteModal({ isOpen: false, type: null, item: null, isSubmitting: false });
+        } else {
+          setDeleteModal(prev => ({ ...prev, isSubmitting: false }));
+        }
+      } else if (deleteModal.type === 'depense') {
+        const success = await deleteDepense(deleteModal.item.id);
+        if (success) {
+          setDeleteModal({ isOpen: false, type: null, item: null, isSubmitting: false });
+        } else {
+          setDeleteModal(prev => ({ ...prev, isSubmitting: false }));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Erreur lors de la suppression');
+      setDeleteModal(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  // Modale Configuration Tarifs
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [pricingFormData, setPricingFormData] = useState({ frais_inscription: 300, cotisation_adhesion: 3000 });
 
@@ -60,7 +103,7 @@ export default function FinancialDashboard() {
     setShowPricingModal(false);
   };
   
-  // Forms
+  // Forms (Encaisser & Dépense)
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const initialFormState = { athlete_id: '', montant_paye: '', mode_paiement: 'Espèces', periode_couverte_fin: '' };
@@ -70,6 +113,71 @@ export default function FinancialDashboard() {
   const [editingDepenseId, setEditingDepenseId] = useState(null);
   const initialDepenseState = { montant: '', description: '', categorie: 'Location Couloirs', date_depense: new Date().toISOString().split('T')[0] };
   const [depenseData, setDepenseData] = useState(initialDepenseState);
+
+  const siblingMap = useMemo(() => detectSiblingGroups(athletes), [athletes]);
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      paymentSchema.parse(formData);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0]?.message || 'Données invalides');
+        return;
+      }
+    }
+    try {
+      setLoading(true);
+      if (editingPaymentId) {
+        const { error } = await supabase.from('cotisations').update(formData).eq('id', editingPaymentId);
+        if (error) throw error;
+        toast.success('Paiement modifié avec succès !');
+        await fetchCotisations();
+      } else {
+        await addCotisation(formData);
+      }
+      setShowPaymentForm(false);
+      setEditingPaymentId(null);
+      setFormData(initialFormState);
+    } catch (error) {
+      toast.error('Erreur : ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDepenseSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      depenseSchema.parse(depenseData);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        toast.error(err.errors[0]?.message || 'Données invalides');
+        return;
+      }
+    }
+    try {
+      setLoading(true);
+      if (editingDepenseId) {
+        const { error } = await supabase.from('depenses').update(depenseData).eq('id', editingDepenseId);
+        if (error) throw error;
+        toast.success('Dépense modifiée avec succès !');
+        await fetchDepenses();
+      } else {
+        await addDepense({
+          ...depenseData,
+          created_by: user?.id
+        });
+      }
+      setShowDepenseForm(false);
+      setEditingDepenseId(null);
+      setDepenseData(initialDepenseState);
+    } catch (error) {
+      toast.error('Erreur : ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Filters
   const [searchName, setSearchName] = useState('');
@@ -250,7 +358,7 @@ export default function FinancialDashboard() {
       try { logoBase64 = await loadClubLogoBase64(); } catch(e){}
       
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const receiptNumber = `SCB-REC-${cotisation.id ? cotisation.id.substring(0, 8).toUpperCase() : Date.now().toString().slice(-6)}`;
+      const receiptNumber = `OVS-REC-${cotisation.id ? cotisation.id.substring(0, 8).toUpperCase() : Date.now().toString().slice(-6)}`;
       const datePaiementStr = new Date(cotisation.date_paiement).toLocaleDateString('fr-FR');
       const endDateStr = new Date(cotisation.periode_couverte_fin).toLocaleDateString('fr-FR');
       const athleteFullName = `${(cotisation.athletes?.nom || 'NOM').toUpperCase()} ${cotisation.athletes?.prenom || ''}`;
@@ -260,7 +368,7 @@ export default function FinancialDashboard() {
       if (logoBase64) doc.addImage(logoBase64, 'JPEG', 18, 12, 22, 22);
       
       doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(15, 23, 42);
-      doc.text('SPORTING CLUB BOUIRA', 45, 18);
+      doc.text('OVIA SPORT', 45, 18);
       doc.setFontSize(8.5); doc.setTextColor(16, 185, 129);
       doc.text('REÇU DE PAIEMENT', 45, 23.5);
 
@@ -286,7 +394,7 @@ export default function FinancialDashboard() {
 
       doc.setFillColor(255, 255, 255); doc.roundedRect(110, 120, 82, 40, 3, 3, 'F');
       doc.setDrawColor(203, 213, 225); doc.roundedRect(110, 120, 82, 40, 3, 3, 'S');
-      doc.setFontSize(8); doc.text("Cachet & Signature SCB :", 116, 127);
+      doc.setFontSize(8); doc.text("Cachet & Signature Ovia Sport :", 116, 127);
 
       doc.setDrawColor(226, 232, 240); doc.line(18, 275, 192, 275);
       doc.setFontSize(7); doc.setTextColor(148, 163, 184);
@@ -323,13 +431,20 @@ export default function FinancialDashboard() {
           <h1>Gestion Financière</h1>
           <p className="text-muted">Revenus, Dépenses et Clôture Mensuelle</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {/* Phase 5 : Bouton Tarifs du Club */}
+          <Button variant="secondary" onClick={() => setShowPricingModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Paramètres des tarifs">
+            <Settings size={16} /> Tarifs
+          </Button>
           {/* Phase 5 : Bouton Clôture Mensuelle */}
           <Button variant="secondary" onClick={handleMonthlyReport} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <FileOutput size={16} /> Clôturer le mois (PDF)
           </Button>
-          <Button variant="primary" onClick={() => { setActiveTab('revenus'); setShowPaymentForm(true); setEditingPaymentId(null); setFormData(initialFormState); }}>
-            + Encaisser
+          <Button variant="danger" onClick={() => { setActiveTab('depenses'); setShowDepenseForm(true); setEditingDepenseId(null); setDepenseData(initialDepenseState); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <TrendingDown size={16} /> + Dépense
+          </Button>
+          <Button variant="primary" onClick={() => { setActiveTab('revenus'); setShowPaymentForm(true); setEditingPaymentId(null); setFormData(initialFormState); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <TrendingUp size={16} /> + Encaisser
           </Button>
         </div>
       </div>
@@ -518,14 +633,21 @@ export default function FinancialDashboard() {
                           <td className="text-xs">Jusqu'au {new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}</td>
                           <td style={{ textAlign: 'right' }}>
                             <div className="flex justify-end items-center gap-1.5">
-                              <button onClick={() => generatePDFReceipt(cotis, true)} className="btn-secondary flex items-center justify-center p-1.5 rounded text-indigo-500 hover:bg-indigo-500/10" title="Télécharger Reçu PDF">
+                              <button onClick={() => generatePDFReceipt(cotis, true)} className="btn-secondary flex items-center justify-center p-1.5 rounded text-indigo-500 hover:bg-indigo-500/10 cursor-pointer" title="Télécharger Reçu PDF">
                                 <Download size={14} />
                               </button>
                               {wpPhone && (
-                                <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, voici la confirmation de votre paiement de ${formatDA(cotis.montant_paye)} DA pour la cotisation SC Bouira (valable jusqu'au ${new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}). Merci !`)}`} target="_blank" rel="noreferrer" className="btn-secondary flex items-center justify-center p-1.5 rounded text-[#25D366] hover:bg-[#25D366]/10" title="Envoyer Reçu WhatsApp">
+                                <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, voici la confirmation de votre paiement de ${formatDA(cotis.montant_paye)} DA pour la cotisation Ovia Sport (valable jusqu'au ${new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}). Merci !`)}`} target="_blank" rel="noreferrer" className="btn-secondary flex items-center justify-center p-1.5 rounded text-[#25D366] hover:bg-[#25D366]/10" title="Envoyer Reçu WhatsApp">
                                   <MessageCircle size={14} />
                                 </a>
                               )}
+                              <button 
+                                onClick={() => handleDeleteClick('cotisation', cotis)} 
+                                className="btn-secondary flex items-center justify-center p-1.5 rounded text-red-500 hover:text-red-600 hover:bg-red-500/10 cursor-pointer" 
+                                title="Supprimer cet encaissement"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -546,11 +668,12 @@ export default function FinancialDashboard() {
                     <th>Catégorie</th>
                     <th>Description</th>
                     <th>Montant</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedList.length === 0 ? (
-                    <tr><td colSpan="4" className="text-center py-6 text-muted">Aucune dépense trouvée.</td></tr>
+                    <tr><td colSpan="5" className="text-center py-6 text-muted">Aucune dépense trouvée.</td></tr>
                   ) : (
                     paginatedList.map(dep => (
                       <tr key={dep.id}>
@@ -558,6 +681,17 @@ export default function FinancialDashboard() {
                         <td><Badge style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{dep.categorie}</Badge></td>
                         <td className="text-sm">{dep.description}</td>
                         <td className="font-bold text-red-500">- {formatDA(dep.montant)} DA</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="flex justify-end items-center gap-1.5">
+                            <button 
+                              onClick={() => handleDeleteClick('depense', dep)} 
+                              className="btn-secondary flex items-center justify-center p-1.5 rounded text-red-500 hover:text-red-600 hover:bg-red-500/10 cursor-pointer" 
+                              title="Supprimer cette dépense"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -598,7 +732,7 @@ export default function FinancialDashboard() {
                           <td className="text-xs font-bold text-red-500">{retardDays} jour(s)</td>
                           <td style={{ textAlign: 'right' }}>
                             {wpPhone ? (
-                              <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, sauf erreur de notre part, votre cotisation SC Bouira de ${formatDA(tarif)} DA a expiré le ${cotis.endDateStr}. Merci de régulariser la situation à la réception. Sportivement.`)}`} target="_blank" rel="noreferrer">
+                              <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, sauf erreur de notre part, votre cotisation Ovia Sport de ${formatDA(tarif)} DA a expiré le ${cotis.endDateStr}. Merci de régulariser la situation à la réception. Sportivement.`)}`} target="_blank" rel="noreferrer">
                                 <Button variant="secondary" style={{ backgroundColor: 'rgba(37, 211, 102, 0.1)', color: '#25D366', borderColor: 'transparent', padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>
                                   <MessageCircle size={14} style={{ marginRight: '6px' }} /> Relancer
                                 </Button>
@@ -628,6 +762,545 @@ export default function FinancialDashboard() {
           )}
         </div>
       </Card>
+
+      {/* MODALE CONFIRMATION DE SUPPRESSION (ENCAISSEMENT OU DÉPENSE) */}
+      {deleteModal.isOpen && deleteModal.item && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          zIndex: 120,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div className="glass-panel" style={{
+            width: '480px',
+            maxWidth: '96vw',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            border: '1px solid rgba(239, 68, 68, 0.35)',
+            backgroundColor: 'var(--bg-secondary)'
+          }}>
+            <div className="flex justify-between items-center p-4 border-b border-[var(--border-color)]" style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+              <div className="flex items-center gap-3">
+                <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                  <Trash2 size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {deleteModal.type === 'cotisation' ? "Supprimer l'encaissement" : "Supprimer la dépense"}
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Confirmation définitive de suppression
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setDeleteModal({ isOpen: false, type: null, item: null, isSubmitting: false })}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl mb-4" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+                <AlertTriangle size={20} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-red-400 m-0 leading-relaxed">
+                  Attention : cette suppression est <strong>immédiate et irréversible</strong>. Les totaux de revenus, dépenses et le solde net seront automatiquement recalculés.
+                </p>
+              </div>
+
+              {deleteModal.type === 'cotisation' ? (
+                <div className="p-4 rounded-xl mb-6 text-sm flex flex-col gap-2.5" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Adhérent :</span>
+                    <strong className="text-sm text-[var(--text-primary)]">
+                      {deleteModal.item.athletes ? `${deleteModal.item.athletes.nom} ${deleteModal.item.athletes.prenom}` : 'Inconnu'}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Montant encaissé :</span>
+                    <strong className="text-sm font-bold text-emerald-500">
+                      + {formatDA(deleteModal.item.montant_paye)} DA
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Date de règlement :</span>
+                    <span className="text-xs">{new Date(deleteModal.item.date_paiement).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Période couverte :</span>
+                    <span className="text-xs">Jusqu'au {new Date(deleteModal.item.periode_couverte_fin).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  {deleteModal.item.mode_paiement && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted text-xs font-semibold">Mode de paiement :</span>
+                      <span className="text-xs">{deleteModal.item.mode_paiement}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl mb-6 text-sm flex flex-col gap-2.5" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Description :</span>
+                    <strong className="text-sm text-[var(--text-primary)]">{deleteModal.item.description}</strong>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Catégorie :</span>
+                    <Badge style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                      {deleteModal.item.categorie}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Montant décaissé :</span>
+                    <strong className="text-sm font-bold text-red-500">
+                      - {formatDA(deleteModal.item.montant)} DA
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted text-xs font-semibold">Date de dépense :</span>
+                    <span className="text-xs">{new Date(deleteModal.item.date_depense).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => setDeleteModal({ isOpen: false, type: null, item: null, isSubmitting: false })}
+                  disabled={deleteModal.isSubmitting}
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  type="button" 
+                  style={{ backgroundColor: '#ef4444', color: 'white', borderColor: 'transparent', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  onClick={handleConfirmDelete}
+                  disabled={deleteModal.isSubmitting}
+                >
+                  {deleteModal.isSubmitting ? 'Suppression en cours...' : (
+                    <>
+                      <Trash2 size={16} /> Confirmer la suppression
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE ENCAISSER / NOUVEAU PAIEMENT */}
+      {showPaymentForm && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          zIndex: 110,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div className="glass-panel" style={{
+            width: '560px',
+            maxWidth: '96vw',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            backgroundColor: 'var(--bg-secondary)'
+          }}>
+            <div className="flex justify-between items-center p-4 border-b border-[var(--border-color)]" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <div className="flex items-center gap-3">
+                <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+                  <TrendingUp size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {editingPaymentId ? 'Modifier un Encaissement' : 'Nouvel Encaissement'}
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Enregistrer une cotisation ou des frais d'adhésion
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPaymentForm(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePaymentSubmit} className="p-6">
+              {/* Presets rapides de montant */}
+              <div className="mb-4">
+                <span className="text-xs font-bold text-muted uppercase tracking-wider block mb-2">Montants prédéfinis :</span>
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    type="button"
+                    style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', cursor: 'pointer' }}
+                    onClick={() => setFormData(prev => ({ ...prev, montant_paye: fraisInscription }))}
+                  >
+                    📄 Frais Dossier ({formatDA(fraisInscription)})
+                  </button>
+                  <button 
+                    type="button"
+                    style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', cursor: 'pointer' }}
+                    onClick={() => setFormData(prev => ({ ...prev, montant_paye: cotisationAdhesion }))}
+                  >
+                    🏅 Cotisation ({formatDA(cotisationAdhesion)})
+                  </button>
+                  <button 
+                    type="button"
+                    style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', cursor: 'pointer' }}
+                    onClick={() => setFormData(prev => ({ ...prev, montant_paye: totalAdhesion }))}
+                  >
+                    🌟 Inscription Totale ({formatDA(totalAdhesion)})
+                  </button>
+                </div>
+              </div>
+
+              {/* Suggestion réduction fratrie */}
+              {formData.athlete_id && siblingMap.has(formData.athlete_id) && (() => {
+                const sib = siblingMap.get(formData.athlete_id);
+                const discountRate = sib.discountPercent;
+                const discountedCotis = Math.round(cotisationAdhesion * (1 - discountRate / 100));
+                return (
+                  <div className="p-3 rounded-lg mb-4 flex flex-wrap items-center justify-between gap-2" style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontSize: '1.2rem' }}>👨‍👩‍👧‍👦</span>
+                      <div>
+                        <strong style={{ color: '#818cf8', fontSize: '0.85rem' }}>Fratrie Détectée ({sib.familyCount} enfants)</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {sib.siblingIndex}e enfant · Réduction : <strong style={{ color: 'var(--accent-success)' }}>{discountRate > 0 ? `-${discountRate}%` : 'Plein tarif (1er)'}</strong>
+                        </div>
+                      </div>
+                    </div>
+                    {discountRate > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, montant_paye: discountedCotis }))}
+                        style={{ padding: '5px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: 'rgba(16, 185, 129, 0.2)', color: 'var(--accent-success)', border: '1px solid rgba(16, 185, 129, 0.4)', cursor: 'pointer' }}
+                      >
+                        Appliquer -{discountRate}% ({formatDA(discountedCotis)})
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Adhérent *</label>
+                  <select 
+                    className="form-select w-full" 
+                    value={formData.athlete_id} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, athlete_id: e.target.value }))}
+                    required
+                  >
+                    <option value="">Sélectionner un athlète</option>
+                    {athletes.map(a => <option key={a.id} value={a.id}>{formatName(a.nom, a.prenom)}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Montant encaissé (DA) *</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="100" 
+                    className="form-input w-full" 
+                    value={formData.montant_paye} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, montant_paye: e.target.value }))}
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Mode de paiement *</label>
+                  <select 
+                    className="form-select w-full" 
+                    value={formData.mode_paiement} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, mode_paiement: e.target.value }))}
+                    required
+                  >
+                    <option value="Espèces">Espèces</option>
+                    <option value="Virement CCP">Virement CCP</option>
+                    <option value="BaridiMob">BaridiMob</option>
+                    <option value="Chèque">Chèque</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Couvre jusqu'au (Fin de validité) *</label>
+                  <input 
+                    type="date" 
+                    className="form-input w-full" 
+                    value={formData.periode_couverte_fin} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, periode_couverte_fin: e.target.value }))}
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="secondary" onClick={() => setShowPaymentForm(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit" variant="primary">
+                  {editingPaymentId ? 'Mettre à jour' : 'Enregistrer le paiement'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE DÉPENSE / NOUVELLE DÉPENSE */}
+      {showDepenseForm && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          zIndex: 110,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div className="glass-panel" style={{
+            width: '540px',
+            maxWidth: '96vw',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            backgroundColor: 'var(--bg-secondary)'
+          }}>
+            <div className="flex justify-between items-center p-4 border-b border-[var(--border-color)]" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <div className="flex items-center gap-3">
+                <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                  <TrendingDown size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {editingDepenseId ? 'Modifier une Dépense' : 'Enregistrer une Dépense'}
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Décaissement opérationnel du club
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowDepenseForm(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleDepenseSubmit} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Description *</label>
+                  <input 
+                    type="text" 
+                    placeholder="Ex: Achat matériel, Location couloir..." 
+                    className="form-input w-full" 
+                    value={depenseData.description} 
+                    onChange={(e) => setDepenseData(prev => ({ ...prev, description: e.target.value }))}
+                    required 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Montant (DA) *</label>
+                  <input 
+                    type="number" 
+                    min="1" 
+                    step="100" 
+                    className="form-input w-full" 
+                    value={depenseData.montant} 
+                    onChange={(e) => setDepenseData(prev => ({ ...prev, montant: e.target.value }))}
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Catégorie *</label>
+                  <select 
+                    className="form-select w-full" 
+                    value={depenseData.categorie} 
+                    onChange={(e) => setDepenseData(prev => ({ ...prev, categorie: e.target.value }))}
+                    required
+                  >
+                    <option value="Location Couloirs">Location Couloirs</option>
+                    <option value="Salaires Entraîneurs">Salaires Entraîneurs</option>
+                    <option value="Achat de Matériel">Achat de Matériel</option>
+                    <option value="Frais Compétition">Frais Compétition</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label font-bold text-xs mb-1">Date de la dépense *</label>
+                  <input 
+                    type="date" 
+                    className="form-input w-full" 
+                    value={depenseData.date_depense} 
+                    onChange={(e) => setDepenseData(prev => ({ ...prev, date_depense: e.target.value }))}
+                    required 
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="secondary" onClick={() => setShowDepenseForm(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit" style={{ backgroundColor: '#ef4444', color: 'white', borderColor: 'transparent' }}>
+                  {editingDepenseId ? 'Mettre à jour' : 'Enregistrer la dépense'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE DE CONFIGURATION DES TARIFS DU CLUB (ADMIN) */}
+      {showPricingModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          zIndex: 110,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div className="glass-panel" style={{
+            width: '540px',
+            maxWidth: '96vw',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            backgroundColor: 'var(--bg-secondary)'
+          }}>
+            <div className="flex justify-between items-center p-4 border-b border-[var(--border-color)]" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+              <div className="flex items-center gap-3">
+                <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+                  <Settings size={22} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Paramètres des Tarifs du Club
+                  </h3>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Définissez les frais d'inscription et cotisations appliqués
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPricingModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePricing} className="p-6">
+              <div className="flex flex-col gap-4 mb-6">
+                <div>
+                  <label className="form-label font-bold text-sm mb-1.5 flex items-center justify-between">
+                    <span>📄 Frais d'Inscription (Dossier & Badge QR)</span>
+                    <span style={{ color: '#818cf8', fontWeight: 800 }}>{formatDA(pricingFormData.frais_inscription)}</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number"
+                      min="0"
+                      step="50"
+                      value={pricingFormData.frais_inscription}
+                      onChange={(e) => setPricingFormData(prev => ({ ...prev, frais_inscription: Number(e.target.value) || 0 }))}
+                      className="form-input w-full"
+                      style={{ fontSize: '1rem', fontWeight: 700, paddingRight: '3rem' }}
+                      required
+                    />
+                    <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                      DA
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted mt-1 block">
+                    Frais administratifs dus lors de la première inscription de l'adhérent.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="form-label font-bold text-sm mb-1.5 flex items-center justify-between">
+                    <span>🏅 Droits d'Adhésion / Cotisation Club</span>
+                    <span style={{ color: 'var(--accent-success)', fontWeight: 800 }}>{formatDA(pricingFormData.cotisation_adhesion)}</span>
+                  </label>
+                  <div className="relative">
+                    <input 
+                      type="number"
+                      min="0"
+                      step="100"
+                      value={pricingFormData.cotisation_adhesion}
+                      onChange={(e) => setPricingFormData(prev => ({ ...prev, cotisation_adhesion: Number(e.target.value) || 0 }))}
+                      className="form-input w-full"
+                      style={{ fontSize: '1rem', fontWeight: 700, paddingRight: '3rem' }}
+                      required
+                    />
+                    <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                      DA
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted mt-1 block">
+                    Tarif standard de la cotisation d'entraînement ou d'adhésion sportive.
+                  </span>
+                </div>
+              </div>
+
+              {/* Aperçu du total pour nouvel adhérent */}
+              <div className="p-4 rounded-xl mb-6" style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1.5px solid rgba(16, 185, 129, 0.3)' }}>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block' }}>Total exigible à la première inscription :</span>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--accent-success)' }}>
+                      {formatDA(Number(pricingFormData.frais_inscription) + Number(pricingFormData.cotisation_adhesion))}
+                    </strong>
+                  </div>
+                  <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Frais : {formatDA(pricingFormData.frais_inscription)} + Adhésion : {formatDA(pricingFormData.cotisation_adhesion)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="secondary" onClick={() => setShowPricingModal(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit" variant="primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <CheckCircle2 size={16} /> Enregistrer & Appliquer
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

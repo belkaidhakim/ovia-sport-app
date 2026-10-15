@@ -87,7 +87,7 @@ export const generateMonthlyReportPDF = async (stats, filterMonth, filterYear) =
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(15, 23, 42);
-  doc.text('SPORTING CLUB BOUIRA', headerTextX, 18);
+  doc.text('OVIA SPORT', headerTextX, 18);
   doc.setFontSize(8.5);
   doc.setTextColor(16, 185, 129);
   doc.text('RAPPORT FINANCIER OFFICIEL', headerTextX, 23.5);
@@ -203,8 +203,8 @@ export const generateMonthlyReportPDF = async (stats, filterMonth, filterYear) =
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184);
-  doc.text(`Sporting Club Bouira · Rapport Financier Généré automatiquement le ${new Date().toLocaleDateString('fr-FR')}`, 105, 280, { align: 'center' });
+  doc.text(`Ovia Sport · Rapport Financier Généré automatiquement le ${new Date().toLocaleDateString('fr-FR')}`, 105, 280, { align: 'center' });
 
-  doc.save(`Rapport_Financier_SCB_${monthName}_${yearName}.pdf`);
+  doc.save(`Rapport_Financier_OVS_${monthName}_${yearName}.pdf`);
 };
 

@@ -251,7 +251,7 @@ export default function PublicRegistration() {
     const toastId = toast.loading('Enregistrement de votre pré-inscription et génération de votre fiche...');
 
     try {
-      const numeroDossier = `SCB-PRE-${Date.now().toString().slice(-6)}`;
+      const numeroDossier = `OVS-PRE-${Date.now().toString().slice(-6)}`;
       const selectedGroupeName = groupes.find(g => g.id === formData.groupe_id)?.nom || null;
 
       const payload = {
@@ -344,7 +344,7 @@ export default function PublicRegistration() {
             marginBottom: '1rem',
             backgroundColor: '#ffffff'
           }}>
-            <img src="/logo.jpg" alt="Logo Sporting Club Bouira" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/logo.jpg" alt="Logo Ovia Sport" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
 
           <h1 style={{ 
@@ -352,20 +352,20 @@ export default function PublicRegistration() {
             fontWeight: 900, 
             margin: '0 0 0.25rem', 
             letterSpacing: '-0.03em', 
-            color: '#0f172a' // BLEU MARINE FONCÉ - LISIBILITÉ PARFAITE
+            color: '#070d1e' // BLEU NUIT PROFOND
           }}>
-            SPORTING CLUB BOUIRA
+            OVIA SPORT
           </h1>
 
           <p style={{ 
             fontSize: '0.95rem', 
-            color: '#059669', // VERT EMERAUDE CLUB
+            color: '#1d4ed8', // BLEU ROI / NUIT
             fontWeight: 800, 
             textTransform: 'uppercase', 
             letterSpacing: '0.08em', 
             margin: '0 0 0.75rem' 
           }}>
-            Club Amateur Sportif Sporting Bouira
+            Club Professionnel Ovia Sport
           </p>
 
           <div style={{ 
@@ -443,7 +443,7 @@ export default function PublicRegistration() {
                 Inscriptions en Ligne Actuellement Fermées
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '580px', margin: '0 auto 1.75rem', lineHeight: '1.6' }}>
-                Les pré-inscriptions en ligne pour le <strong>Sporting Club Bouira</strong> sont temporairement suspendues par l'administration du club (période de clôture des sessions ou quotas atteints).
+                Les pré-inscriptions en ligne pour <strong>Ovia Sport</strong> sont temporairement suspendues par l'administration du club (période de clôture des sessions ou quotas atteints).
               </p>
 
               {/* Encadré d'information et contact */}
@@ -459,8 +459,8 @@ export default function PublicRegistration() {
                 </ul>
               </div>
 
-              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                Sporting Club Bouira · Club Amateur Sportif
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Ovia Sport · Club Professionnel
               </div>
             </div>
           </motion.div>
@@ -481,7 +481,7 @@ export default function PublicRegistration() {
                 Demande de Pré-Inscription Transmise !
               </h2>
               <p style={{ color: '#64748b', fontSize: '0.95rem', maxWidth: '580px', margin: '0 auto 1.5rem', lineHeight: '1.5' }}>
-                Votre dossier a été enregistré avec succès par le <strong>Sporting Club Bouira</strong>. Votre fiche officielle au format PDF a été générée et téléchargée sur votre appareil.
+                Votre dossier a été enregistré avec succès par <strong>Ovia Sport</strong>. Votre fiche officielle au format PDF a été générée et téléchargée sur votre appareil.
               </p>
 
               <div style={{ display: 'inline-block', padding: '14px 28px', borderRadius: '14px', backgroundColor: '#f8fafc', border: '1.5px solid #e2e8f0', marginBottom: '2rem' }}>
@@ -499,7 +499,7 @@ export default function PublicRegistration() {
                 </h4>
                 <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.88rem', color: '#475569', lineHeight: '1.7' }}>
                   <li>Conservez ou imprimez votre fiche PDF de pré-inscription.</li>
-                  <li>Présentez-vous au secrétariat du <strong>Sporting Club Bouira</strong> pour régler votre cotisation et finaliser votre adhésion.</li>
+                  <li>Présentez-vous au secrétariat d'<strong>Ovia Sport</strong> pour finaliser votre adhésion et valider votre dossier.</li>
                   <li>Une fois validé, votre <strong>Badge QR Code officiel</strong> sera activé pour vos accès aux entraînements.</li>
                 </ul>
               </div>
@@ -991,35 +991,8 @@ export default function PublicRegistration() {
                 </div>
               </div>
 
-              {/* SECTION 3 : FRAIS D'INSCRIPTION & DROITS D'ADHÉSION */}
-              <div className="mb-8 p-4 rounded-xl" style={{ backgroundColor: '#ecfdf5', border: '1.5px solid #a7f3d0' }}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>
-                      <Sparkles size={22} />
-                    </div>
-                    <div>
-                      <h4 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 800, color: '#065f46' }}>
-                        Détail des Frais & Droits d'Adhésion : {formatDA(totalAdhesion)}
-                      </h4>
-                      <div style={{ fontSize: '0.82rem', color: '#047857', lineHeight: '1.5' }}>
-                        • <strong>Frais d'inscription (Dossier & Badge QR) :</strong> {formatDA(fraisInscription)}<br />
-                        • <strong>Droits d'adhésion du club :</strong> {formatDA(cotisationAdhesion)} (Licence & entraînements)
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#059669' }}>
-                      Total : {formatDA(totalAdhesion)}
-                    </div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', backgroundColor: '#ffffff', padding: '3px 9px', borderRadius: '20px', border: '1px solid #a7f3d0', display: 'inline-block', marginTop: '3px' }}>
-                      À régler au secrétariat
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              {/* SECTION 4 : CONFORMITÉ LOI 18-07 & RÈGLEMENT */}
+              {/* SECTION 3 : CONFORMITÉ LOI 18-07 & RÈGLEMENT */}
               <div className="mb-8 p-5 rounded-xl" style={{ 
                 backgroundColor: errors.consentement_loi_18_07 ? '#fef2f2' : '#f8fafc', 
                 border: errors.consentement_loi_18_07 ? '1.5px solid #ef4444' : '1.5px solid #e2e8f0' 
@@ -1035,7 +1008,7 @@ export default function PublicRegistration() {
                   />
                   <label htmlFor="consentement_loi_18_07" style={{ fontSize: '0.85rem', color: '#334155', lineHeight: '1.6', cursor: 'pointer' }}>
                     <strong style={{ color: '#0f172a' }}>Conformité Loi 18-07 & Règlement Intérieur :</strong><br />
-                    Je consens expressément au traitement de mes données personnelles et médicales par le <strong>Sporting Club Bouira</strong> dans le cadre strict de mon adhésion sportive et de la sécurité des entraînements, conformément à la loi 18-07. Je déclare avoir pris connaissance et accepter sans réserve le règlement intérieur du club.
+                    Je consens expressément au traitement de mes données personnelles et médicales par <strong>Ovia Sport</strong> dans le cadre strict de mon adhésion sportive et de la sécurité des entraînements, conformément à la loi 18-07. Je déclare avoir pris connaissance et accepter sans réserve le règlement intérieur du club.
                   </label>
                 </div>
                 {errors.consentement_loi_18_07 && (
@@ -1074,7 +1047,7 @@ export default function PublicRegistration() {
 
         {/* PIED DE PAGE */}
         <div className="text-center mt-8 text-xs font-medium" style={{ color: '#64748b' }}>
-          Sporting Club Bouira · Club Amateur Sportif Sporting Bouira · Wilaya de Bouira<br />
+          Ovia Sport · Club Professionnel · Wilaya de Bouira<br />
           Portail conforme à la loi 18-07 relative à la protection des données personnelles © {new Date().getFullYear()}
         </div>
       </div>

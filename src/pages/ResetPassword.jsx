@@ -72,7 +72,7 @@ export default function ResetPassword() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@sportingclub.com"
+                placeholder="admin@oviasport.com"
                 className="form-input"
                 style={{ width: '100%', paddingLeft: '3rem', backgroundColor: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.1)' }}
                 disabled={loading}

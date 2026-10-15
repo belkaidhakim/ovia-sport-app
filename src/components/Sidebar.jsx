@@ -61,7 +61,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           }}>
             <img 
               src="/logo.jpg" 
-              alt="Logo Sporting Club Bouira" 
+              alt="Logo Ovia Sport" 
               style={{ 
                 width: '100%', 
                 height: '100%', 
@@ -81,8 +81,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             }} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.1, letterSpacing: '0.04em' }}>SPORTING CLUB</h2>
-            <span style={{ fontSize: '0.7rem', color: 'var(--accent-secondary)', fontWeight: 600, letterSpacing: '0.15em', fontFamily: 'Outfit' }}>BOUIRA</span>
+            <h2 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', lineHeight: 1.1, letterSpacing: '0.04em' }}>OVIA</h2>
+            <span style={{ fontSize: '0.7rem', color: 'var(--accent-secondary)', fontWeight: 600, letterSpacing: '0.15em', fontFamily: 'Outfit' }}>SPORT</span>
           </div>
         </div>
       

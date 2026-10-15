@@ -1,6 +1,6 @@
 /**
  * Générateur de Fiche Bilan de Progression & Performances en Natation (Format PDF A4)
- * Prêt à imprimer et à remettre aux parents ou athlètes du Sporting Club Bouira
+ * Prêt à imprimer et à remettre aux parents ou athlètes d'Ovia Sport
  */
 
 import jsPDF from 'jspdf';
@@ -43,7 +43,7 @@ export const generateSwimmingReportPDF = async (athlete, performances = []) => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
   doc.setTextColor(15, 23, 42);
-  doc.text('SPORTING CLUB BOUIRA', headerTextX, 18);
+  doc.text('OVIA SPORT', headerTextX, 18);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);

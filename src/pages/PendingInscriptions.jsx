@@ -624,7 +624,7 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                           </a>
                           {waNumber && (
                             <a 
-                              href={`https://wa.me/${waNumber}?text=Bonjour%20${encodeURIComponent(item.prenom || '')},%20concernant%20votre%20pré-inscription%20au%20Sporting%20Club%20Bouira...`} 
+                              href={`https://wa.me/${waNumber}?text=Bonjour%20${encodeURIComponent(item.prenom || '')},%20concernant%20votre%20pré-inscription%20à%20Ovia%20Sport...`} 
                               target="_blank" 
                               rel="noreferrer"
                               style={{ color: '#25D366', display: 'inline-flex', alignItems: 'center', padding: '2px', borderRadius: '4px', backgroundColor: 'rgba(37, 211, 102, 0.1)' }}

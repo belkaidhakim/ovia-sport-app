@@ -490,7 +490,7 @@ export default function UsersManagement() {
                   type="email" 
                   className="form-input" 
                   required 
-                  placeholder="exemple@sportingclub.com"
+                  placeholder="exemple@oviasport.com"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   disabled={createLoading}

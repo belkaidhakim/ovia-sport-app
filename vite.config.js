@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo.jpg'],
       manifest: {
-        name: 'Sporting Club Bouira',
-        short_name: 'SC Bouira',
-        description: 'Application de gestion pour le Sporting Club Bouira',
+        name: 'Ovia Sport',
+        short_name: 'Ovia Sport',
+        description: 'Application de gestion pour Ovia Sport',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

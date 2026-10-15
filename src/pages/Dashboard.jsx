@@ -489,7 +489,7 @@ export default function Dashboard() {
                         <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
                           {athletesWithPhoneToExpire.map(athlete => {
                             const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.telephone_tuteur);
-                            const msg = `Bonjour ${athlete.prenom}, votre adhésion au SC Bouira a expiré le ${athlete.endDateStr}. Merci de bien vouloir régulariser votre cotisation à la réception du club. Cordialement.`;
+                            const msg = `Bonjour ${athlete.prenom}, votre adhésion à Ovia Sport a expiré le ${athlete.endDateStr}. Merci de bien vouloir régulariser votre cotisation à la réception du club. Cordialement.`;
                             return (
                               <a
                                 key={`bulk-${athlete.id}`}

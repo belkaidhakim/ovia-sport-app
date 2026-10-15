@@ -138,7 +138,7 @@ export function useInscriptions() {
     const toastId = toast.loading("Validation et intégration de l'athlète...");
     try {
       // 1. Générer token QR unique
-      const token_qr = `SCB-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const token_qr = `OVS-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       // 2. Préparer le payload athlète
       const athletePayload = {
@@ -246,7 +246,7 @@ export function useInscriptions() {
 
     for (const item of inscriptionsList) {
       try {
-        const token_qr = `SCB-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const token_qr = `OVS-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         const athletePayload = {
           nom: (item.nom || '').trim().toUpperCase(),
           prenom: (item.prenom || '').trim(),

@@ -130,7 +130,7 @@ export default function Login() {
               background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
               boxShadow: '0 0 30px rgba(99, 102, 241, 0.25)'
             }}>
-              <img src="/logo.jpg" alt="Logo Sporting Club Bouira" style={{ 
+              <img src="/logo.jpg" alt="Logo Ovia Sport" style={{ 
                 width: '100%', 
                 height: '100%', 
                 borderRadius: '50%', 
@@ -139,8 +139,8 @@ export default function Login() {
               }} />
             </div>
           </div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.15rem', color: 'white', letterSpacing: '0.04em' }}>SPORTING CLUB</h1>
-          <p style={{ color: 'var(--accent-secondary)', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 0 }}>Bouira</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.15rem', color: 'white', letterSpacing: '0.04em' }}>OVIA</h1>
+          <p style={{ color: 'var(--accent-secondary)', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 0 }}>Sport</p>
         </motion.div>
 
         {/* Login Form */}
@@ -159,7 +159,7 @@ export default function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@sportingclub.com"
+                placeholder="admin@oviasport.com"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}
                 disabled={loading}

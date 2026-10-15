@@ -11,15 +11,15 @@ export default function LandingPage() {
 
   // Theme-aware colors
   const colors = {
-    bgMain: isDark ? '#0f172a' : '#f8fafc',
-    bgAlt: isDark ? '#0b1120' : '#ffffff',
-    textMain: isDark ? '#f8fafc' : '#0f172a',
-    textMuted: isDark ? '#cbd5e1' : '#475569',
-    cardBg: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
-    cardBorder: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
-    cardHover: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-    headerBg: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(248, 250, 252, 0.8)',
-    footerBg: isDark ? '#0b1120' : '#f1f5f9',
+    bgMain: isDark ? '#070d1e' : '#ffffff',
+    bgAlt: isDark ? '#0c1633' : '#f8fafc',
+    textMain: isDark ? '#ffffff' : '#070d1e',
+    textMuted: isDark ? '#94a3b8' : '#475569',
+    cardBg: isDark ? 'rgba(12, 22, 51, 0.7)' : '#ffffff',
+    cardBorder: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(7, 13, 30, 0.08)',
+    cardHover: isDark ? 'rgba(18, 33, 74, 0.8)' : '#f1f5f9',
+    headerBg: isDark ? 'rgba(7, 13, 30, 0.85)' : 'rgba(255, 255, 255, 0.95)',
+    footerBg: isDark ? '#070d1e' : '#f8fafc',
   };
 
   // Animations
@@ -64,8 +64,8 @@ export default function LandingPage() {
         transition: 'background-color 0.3s'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 'bold', fontSize: '1.5rem', background: 'linear-gradient(135deg, #3b82f6, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          <img src="/logo.png" alt="SC Bouira Logo" style={{ height: '40px', width: 'auto', borderRadius: '8px' }} />
-          SC Bouira
+          <img src="/logo.png" alt="Ovia Sport Logo" style={{ height: '40px', width: '40px', objectFit: 'cover', borderRadius: '10px', boxShadow: '0 2px 10px rgba(14, 165, 233, 0.25)' }} />
+          Ovia Sport
         </div>
         <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
           <button onClick={toggleTheme} style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textMuted, display: 'flex', alignItems: 'center' }}>
@@ -98,7 +98,7 @@ export default function LandingPage() {
         }}>
           {/* Background Image & Overlay */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-            <img src="/hero-bg.jpg" alt="Piscine olympique Sporting Club Bouira" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/hero-bg.jpg" alt="Piscine olympique Ovia Sport" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             {/* Overlay is always dark so the white text on hero remains visible! */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to bottom, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.95) 100%)' }} />
           </div>
@@ -115,11 +115,11 @@ export default function LandingPage() {
             </motion.div>
             
             <motion.h1 variants={itemVariants} style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem', letterSpacing: '-0.03em', fontStyle: 'italic', textTransform: 'uppercase', color: '#fff' }}>
-              DÉPASSEZ VOS LIMITES AVEC LE <span style={{ color: '#60a5fa', textShadow: '0 0 30px rgba(96,165,250,0.5)' }}>SPORTING CLUB BOUIRA</span>
+              DÉPASSEZ VOS LIMITES AVEC <span style={{ color: '#60a5fa', textShadow: '0 0 30px rgba(96,165,250,0.5)' }}>OVIA SPORT</span>
             </motion.h1>
             
             <motion.p variants={itemVariants} style={{ fontSize: '1.25rem', color: '#cbd5e1', marginBottom: '3rem', maxWidth: '700px', margin: '0 auto 3rem', lineHeight: 1.6, fontWeight: 400 }}>
-              Le club de natation de référence. Que vous soyez débutant ou compétiteur, rejoignez une équipe passionnée et atteignez vos objectifs dans un cadre exceptionnel.
+              Le club professionnel de natation de référence. Que vous soyez débutant ou compétiteur, rejoignez une équipe d'élite et atteignez vos objectifs dans un cadre d'excellence.
             </motion.p>
             
             <motion.div variants={itemVariants} style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -223,9 +223,9 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer style={{ borderTop: `1px solid ${colors.cardBorder}`, padding: '3rem 5%', background: colors.footerBg, color: colors.textMuted, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', transition: 'background-color 0.3s' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: colors.textMain, fontWeight: 'bold' }}>
-          <img src="/logo.png" alt="SC Bouira Logo" style={{ height: '30px', width: 'auto', borderRadius: '6px' }} /> SC Bouira
+          <img src="/logo.png" alt="Ovia Sport Logo" style={{ height: '32px', width: '32px', objectFit: 'cover', borderRadius: '8px' }} /> Ovia Sport
         </div>
-        <p>© {new Date().getFullYear()} Sporting Club Bouira. Tous droits réservés.</p>
+        <p>© {new Date().getFullYear()} Ovia Sport. Tous droits réservés.</p>
       </footer>
     </div>
   );

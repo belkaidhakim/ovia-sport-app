@@ -48,11 +48,37 @@ export function useCotisations() {
     }
   };
 
+  const addCotisation = async (cotisData) => {
+    try {
+      const { data, error } = await supabase
+        .from('cotisations')
+        .insert([cotisData])
+        .select(`
+          *,
+          athletes(id, nom, prenom, groupe, telephone, date_naissance, token_qr, groupes(nom))
+        `);
+
+      if (error) throw error;
+      if (data && data[0]) {
+        setCotisations(prev => [data[0], ...prev]);
+      } else {
+        await fetchCotisations();
+      }
+      toast.success("Paiement enregistré");
+      return true;
+    } catch (err) {
+      console.error('Erreur addCotisation:', err);
+      toast.error("Erreur lors de l'enregistrement");
+      return false;
+    }
+  };
+
   return {
     cotisations,
     loading,
     error,
     fetchCotisations,
-    deleteCotisation
+    deleteCotisation,
+    addCotisation
   };
 }

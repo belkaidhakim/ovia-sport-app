@@ -14,7 +14,7 @@ import { formatName } from './formatters';
  * @param {Array} athletesList - Liste des athlètes à inclure
  * @param {string} filename - Nom du fichier exporté
  */
-export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planche_Badges_SCB.pdf') => {
+export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planche_Badges_OVS.pdf') => {
   if (!athletesList || athletesList.length === 0) return;
 
   const doc = new jsPDF({
@@ -94,7 +94,7 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(255, 255, 255);
-    doc.text('SPORTING CLUB BOUIRA', x + 14, y + 6.2);
+    doc.text('OVIA SPORT', x + 14, y + 6.2);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
@@ -167,7 +167,7 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.text(validiteStr, infoX, y + 35);
 
     // QR Code Vectoriel (Droite)
-    const tokenQR = athlete.token_qr || athlete.id || `SCB-${Date.now()}`;
+    const tokenQR = athlete.token_qr || athlete.id || `OVS-${Date.now()}`;
     const qrX = x + cardW - 22;
     const qrY = y + 17;
     const qrSize = 18.5;

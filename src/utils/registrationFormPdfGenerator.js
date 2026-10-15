@@ -3,7 +3,7 @@ import { loadClubLogoBase64 } from './pdfHelpers';
 import { formatDA } from './formatters';
 
 /**
- * Génère le Formulaire Officiel d'Inscription Tout-en-Un du Sporting Club Bouira
+ * Génère le Formulaire Officiel d'Inscription Tout-en-Un d'Ovia Sport
  * Regroupe :
  * 1. Informations de l'adhérent
  * 2. Emplacement Photo d'identité (ou photo intégrée)
@@ -14,7 +14,7 @@ import { formatDA } from './formatters';
  * 
  * @param {Object} options
  * @param {Object} [options.data] - Données de l'adhérent (nom, prenom, date_naissance, etc.)
- * @param {string} [options.numeroDossier] - Numéro de dossier généré (ex: SCB-PRE-123456)
+ * @param {string} [options.numeroDossier] - Numéro de dossier généré (ex: OVS-PRE-123456)
  * @param {string|null} [options.photoBase64] - Photo de l'adhérent en Base64
  * @param {boolean} [options.isBlank] - Si true, génère un formulaire vierge à remplir à la main
  * @param {number} [options.fraisInscription] - Montant frais de dossier (défaut 1000 DA)
@@ -42,7 +42,7 @@ export async function generateOfficialRegistrationFormPdf({
     const dateStr = new Date().toLocaleDateString('fr-FR');
     const dossierNumber = isBlank 
       ? 'DOSSIER VIERGE' 
-      : (numeroDossier || `SCB-${Date.now().toString().slice(-6)}`);
+      : (numeroDossier || `OVS-${Date.now().toString().slice(-6)}`);
 
     const birthDateStr = (!isBlank && data.date_naissance) 
       ? new Date(data.date_naissance).toLocaleDateString('fr-FR') 
@@ -65,9 +65,9 @@ export async function generateOfficialRegistrationFormPdf({
     // ==========================================
     // 1. BANDEAUX SUPÉRIEURS
     // ==========================================
-    doc.setFillColor(15, 23, 42); // Bleu Marine Navy (#0f172a)
+    doc.setFillColor(7, 13, 30); // Bleu Nuit (#070d1e)
     doc.rect(0, 0, 210, 4.5, 'F');
-    doc.setFillColor(16, 185, 129); // Vert Emeraude (#10b981)
+    doc.setFillColor(37, 99, 235); // Bleu Royal / Électrique
     doc.rect(0, 4.5, 210, 1.5, 'F');
 
     // ==========================================
@@ -86,18 +86,18 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(15, 23, 42);
-    doc.text('SPORTING CLUB BOUIRA', headerTextX, 14.5);
+    doc.text('OVIA SPORT', headerTextX, 14.5);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(5, 150, 105);
-    doc.text('CLUB SPORTIF AMATEUR · SECTION NATATION & ACTIVITÉS SPORTIVES', headerTextX, 19.5);
+    doc.setTextColor(30, 58, 138);
+    doc.text('CLUB PROFESSIONNEL · SECTION NATATION & ACTIVITÉS SPORTIVES', headerTextX, 19.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(100, 116, 139);
     doc.text('Complexe Sportif, Wilaya de Bouira · Tél : +213 (0) 550 00 00 00', headerTextX, 24);
-    doc.text('Email : contact@sportingclub-bouira.com · Site : sportingclub-bouira.com', headerTextX, 27.5);
+    doc.text('Email : contact@oviasport.com · Site : oviasport.com', headerTextX, 27.5);
 
     // Boîte Numéro de Dossier / Titre Fiche (Haut Droite)
     doc.setFillColor(248, 250, 252);
@@ -265,7 +265,7 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setTextColor(30, 41, 59);
     doc.text("Je soussigné(e), Docteur en médecine : .......................................................................................................................................", 20, s2Y + 12);
     doc.text("Certifie avoir examiné ce jour l'athlète susmentionné et n'avoir constaté à ce jour aucune contre-indication clinique", 20, s2Y + 17.5);
-    doc.text("à la pratique des activités physiques et sportives au sein du Sporting Club Bouira (Natation / Natation de compétition).", 20, s2Y + 22.5);
+    doc.text("à la pratique des activités physiques et sportives au sein d'Ovia Sport (Natation / Natation de compétition).", 20, s2Y + 22.5);
 
     const obsText = (!isBlank && data.observations_medicales) 
       ? data.observations_medicales 
@@ -311,7 +311,7 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFontSize(7);
     doc.setTextColor(30, 41, 59);
     doc.text("Je soussigné(e) M. / Mme : ............................................................................ Qualité : [  ] Père   [  ] Mère   [  ] Tuteur légal", 20, s3Y + 12);
-    doc.text("Autorise mon enfant mineur désigné ci-dessus à adhérer au Sporting Club Bouira et à participer régulièrement", 20, s3Y + 17);
+    doc.text("Autorise mon enfant mineur désigné ci-dessus à adhérer à Ovia Sport et à participer régulièrement", 20, s3Y + 17);
     doc.text("aux séances d'entraînement et compétitions. En cas d'urgence, j'autorise les encadrants à prendre toute mesure médicale utile.", 20, s3Y + 21.5);
 
     doc.setFont('helvetica', 'bold');
@@ -351,7 +351,7 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.6);
     doc.setTextColor(51, 65, 85);
-    doc.text("Le candidat ou son représentant légal déclare avoir pris connaissance du règlement intérieur du Sporting Club Bouira", 20, s4Y + 10.5);
+    doc.text("Le candidat ou son représentant légal déclare avoir pris connaissance du règlement intérieur d'Ovia Sport", 20, s4Y + 10.5);
     doc.text("et s'engage à en respecter les statuts et règles de sécurité. Conformément à la loi 18-07 relative à la protection des données", 20, s4Y + 14.5);
     doc.text("à caractère personnel, les informations collectées sont strictement confidentielles et réservées à la gestion sportive.", 20, s4Y + 18.5);
 
@@ -387,35 +387,25 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(255, 255, 255);
-    doc.text("5. CADRE RÉSERVÉ À L'ADMINISTRATION & CAISSE DU CLUB (Pièces & Règlement)", 20, s5Y + 4.8);
+    doc.text("5. CADRE RÉSERVÉ À L'ADMINISTRATION DU CLUB (Validation & Conformité)", 20, s5Y + 4.8);
 
-    // Colonne Gauche : Pièces fournies & Frais
+    // Colonne Gauche : Pièces fournies & Contrôle administratif
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(15, 23, 42);
-    doc.text("PIÈCES DU DOSSIER REÇUES :", 20, s5Y + 12);
+    doc.text("CONTRÔLE DES PIÈCES DU DOSSIER :", 20, s5Y + 12);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(71, 85, 105);
-    doc.text("[  ] Photo d'identité   [  ] Certificat médical   [  ] Extrait de naissance   [  ] Autorisation parentale", 20, s5Y + 17);
+    doc.text("[  ] Photo d'identité récente   [  ] Certificat médical d'aptitude", 20, s5Y + 18);
+    doc.text("[  ] Extrait d'acte de naissance   [  ] Autorisation parentale (si mineur)", 20, s5Y + 24);
+    doc.text("[  ] Règlement intérieur approuvé   [  ] Dossier complet vérifié", 20, s5Y + 30);
 
-    // Frais & Paiement
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
-    doc.setTextColor(15, 23, 42);
-    doc.text("DÉTAIL FINANCIER :", 20, s5Y + 24);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.8);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`• Frais de dossier & Badge QR : ${formatDA(fraisInscription)}`, 20, s5Y + 29);
-    doc.text(`• Droits d'adhésion & Licence : ${formatDA(cotisationAdhesion)}`, 20, s5Y + 34);
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(5, 150, 105);
-    doc.text(`TOTAL À ENCAISSER : ${formatDA(totalAdhesion)}`, 20, s5Y + 40);
+    doc.setTextColor(30, 58, 138);
+    doc.text("Décision du club : [  ] Dossier Validé   [  ] En attente de pièce(s)", 20, s5Y + 38);
 
     // Colonne Droite : Cachet Club & Visa Secrétariat
     doc.setFillColor(255, 255, 255);
@@ -426,14 +416,14 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(15, 23, 42);
-    doc.text("SPORTING CLUB BOUIRA", 154, s5Y + 14, { align: 'center' });
+    doc.text("OVIA SPORT", 154, s5Y + 14, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
-    doc.text("Secrétariat Général / Caisse", 154, s5Y + 18.5, { align: 'center' });
-    doc.text("Reçu le : ...... / ...... / 202...", 154, s5Y + 23.5, { align: 'center' });
-    doc.text("Badge QR Activé : [  ] OUI   [  ] NON", 154, s5Y + 28, { align: 'center' });
-    doc.text("Cachet et Signature de l'Agent :", 154, s5Y + 33, { align: 'center' });
+    doc.text("Secrétariat Général", 154, s5Y + 18.5, { align: 'center' });
+    doc.text("Dossier enregistré le : ...... / ...... / 202...", 154, s5Y + 23.5, { align: 'center' });
+    doc.text("Badge d'accès actif : [  ] OUI   [  ] NON", 154, s5Y + 28, { align: 'center' });
+    doc.text("Cachet et Visa du Secrétariat :", 154, s5Y + 33, { align: 'center' });
 
     // ==========================================
     // 8. PIED DE PAGE & BANDEAUX INFÉRIEURS (y=245 à 297mm)
@@ -445,16 +435,16 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(148, 163, 184);
-    doc.text("Sporting Club Bouira · Club Amateur Sportif · Formulaire officiel tout-en-un conforme à la loi 18-07", 105, 285, { align: 'center' });
+    doc.text("Ovia Sport · Club Professionnel · Formulaire officiel tout-en-un conforme à la loi 18-07", 105, 285, { align: 'center' });
     doc.text("Ce document complet est à déposer au secrétariat du club pour finaliser l'adhésion et retirer la carte d'accès.", 105, 289, { align: 'center' });
 
-    doc.setFillColor(16, 185, 129);
+    doc.setFillColor(37, 99, 235);
     doc.rect(0, 292, 210, 1.5, 'F');
-    doc.setFillColor(15, 23, 42);
+    doc.setFillColor(7, 13, 30);
     doc.rect(0, 293.5, 210, 3.5, 'F');
 
     const fileName = isBlank
-      ? `Formulaire_Inscription_Vierge_Sporting_Club_Bouira.pdf`
+      ? `Formulaire_Inscription_Vierge_Ovia_Sport.pdf`
       : `Dossier_Inscription_${(data.nom || 'Adherent').replace(/[^a-zA-Z0-9_-]/g, '_')}_${dossierNumber}.pdf`;
 
     doc.save(fileName);

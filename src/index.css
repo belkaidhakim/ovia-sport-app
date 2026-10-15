@@ -1,31 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* Premium Dark Mode Colors (Default) */
-  --bg-primary: #06080f;
-  --bg-secondary: #0c1120;
-  --bg-tertiary: #131b30;
-  --bg-elevated: #182240;
+  /* Thème Bleu Nuit & Blanc Prestigieux */
+  --bg-primary: #070d1e;
+  --bg-secondary: #0c1633;
+  --bg-tertiary: #132147;
+  --bg-elevated: #1a2a56;
   
-  --card-bg: linear-gradient(165deg, rgba(19, 27, 48, 0.7) 0%, rgba(6, 8, 15, 0.6) 100%);
-  --card-border: rgba(255, 255, 255, 0.06);
-  --card-hover-border: rgba(255, 255, 255, 0.12);
+  --card-bg: linear-gradient(165deg, rgba(14, 25, 56, 0.85) 0%, rgba(7, 13, 30, 0.8) 100%);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --card-hover-border: rgba(255, 255, 255, 0.3);
   
-  --sidebar-bg: linear-gradient(180deg, rgba(12, 17, 32, 0.95) 0%, rgba(6, 8, 15, 0.98) 100%);
-  --topbar-bg: rgba(6, 8, 15, 0.75);
-  --input-bg: rgba(6, 8, 15, 0.5);
-  --input-focus-bg: rgba(6, 8, 15, 0.7);
-  --table-row-hover: rgba(255, 255, 255, 0.03);
+  --sidebar-bg: linear-gradient(180deg, rgba(9, 16, 38, 0.98) 0%, rgba(5, 10, 24, 0.99) 100%);
+  --topbar-bg: rgba(7, 13, 30, 0.85);
+  --input-bg: rgba(12, 22, 51, 0.6);
+  --input-focus-bg: rgba(18, 33, 74, 0.8);
+  --table-row-hover: rgba(255, 255, 255, 0.05);
   
-  --aurora-1: rgba(99, 102, 241, 0.08);
-  --aurora-2: rgba(34, 211, 238, 0.06);
-  --aurora-3: rgba(244, 63, 94, 0.04);
+  --aurora-1: rgba(37, 99, 235, 0.14);
+  --aurora-2: rgba(56, 189, 248, 0.08);
+  --aurora-3: rgba(255, 255, 255, 0.04);
   
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #818cf8;
-  --accent-primary-glow: rgba(99, 102, 241, 0.4);
-  --accent-secondary: #0284c7;
-  --accent-secondary-glow: rgba(2, 132, 199, 0.3);
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #3b82f6;
+  --accent-primary-glow: rgba(37, 99, 235, 0.45);
+  --accent-secondary: #38bdf8;
+  --accent-secondary-glow: rgba(56, 189, 248, 0.35);
   
   --accent-success: #10b981;
   --accent-success-glow: rgba(16, 185, 129, 0.25);
@@ -34,18 +34,18 @@
   --accent-warning: #f59e0b;
   --accent-warning-glow: rgba(245, 158, 11, 0.25);
   
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #ffffff;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
   
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
-  --glass-bg: rgba(12, 17, 32, 0.65);
-  --glass-border: rgba(255, 255, 255, 0.04);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --border-hover: rgba(255, 255, 255, 0.25);
+  --glass-bg: rgba(12, 22, 51, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.1);
   
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
   --shadow-glow-primary: 0 0 30px var(--accent-primary-glow);
   --shadow-glow-success: 0 0 20px var(--accent-success-glow);
   --shadow-glow-danger: 0 0 20px var(--accent-danger-glow);
@@ -62,30 +62,30 @@
 }
 
 [data-theme="light"] {
-  --bg-primary: #f1f5f9;
+  --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #e2e8f0;
+  --bg-tertiary: #f1f5f9;
   --bg-elevated: #ffffff;
 
   --card-bg: #ffffff;
-  --card-border: rgba(0, 0, 0, 0.08);
-  --card-hover-border: rgba(99, 102, 241, 0.25);
+  --card-border: rgba(7, 13, 30, 0.08);
+  --card-hover-border: rgba(37, 99, 235, 0.35);
 
   --sidebar-bg: #ffffff;
-  --topbar-bg: rgba(255, 255, 255, 0.9);
+  --topbar-bg: rgba(255, 255, 255, 0.95);
   --input-bg: #f8fafc;
   --input-focus-bg: #ffffff;
-  --table-row-hover: rgba(99, 102, 241, 0.03);
+  --table-row-hover: rgba(37, 99, 235, 0.04);
 
-  --aurora-1: rgba(99, 102, 241, 0.05);
-  --aurora-2: rgba(2, 132, 199, 0.04);
-  --aurora-3: rgba(16, 185, 129, 0.03);
+  --aurora-1: rgba(37, 99, 235, 0.06);
+  --aurora-2: rgba(7, 13, 30, 0.04);
+  --aurora-3: rgba(56, 189, 248, 0.03);
 
-  --accent-primary: #4f46e5;
-  --accent-primary-hover: #4338ca;
-  --accent-primary-glow: rgba(79, 70, 229, 0.15);
-  --accent-secondary: #0284c7;
-  --accent-secondary-glow: rgba(2, 132, 199, 0.12);
+  --accent-primary: #070d1e;
+  --accent-primary-hover: #1e293b;
+  --accent-primary-glow: rgba(7, 13, 30, 0.2);
+  --accent-secondary: #2563eb;
+  --accent-secondary-glow: rgba(37, 99, 235, 0.18);
 
   --accent-success: #059669;
   --accent-success-glow: rgba(5, 150, 105, 0.12);
@@ -94,18 +94,18 @@
   --accent-warning: #d97706;
   --accent-warning-glow: rgba(217, 119, 6, 0.12);
 
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
+  --text-primary: #070d1e;
+  --text-secondary: #1e293b;
   --text-muted: #64748b;
 
-  --border-color: rgba(0, 0, 0, 0.09);
-  --border-hover: rgba(0, 0, 0, 0.18);
-  --glass-bg: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(0, 0, 0, 0.06);
+  --border-color: rgba(7, 13, 30, 0.1);
+  --border-hover: rgba(7, 13, 30, 0.22);
+  --glass-bg: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(7, 13, 30, 0.08);
 
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 20px rgba(15, 23, 42, 0.07);
-  --shadow-lg: 0 12px 36px rgba(15, 23, 42, 0.1);
+  --shadow-sm: 0 1px 3px rgba(7, 13, 30, 0.06);
+  --shadow-md: 0 4px 20px rgba(7, 13, 30, 0.08);
+  --shadow-lg: 0 12px 36px rgba(7, 13, 30, 0.12);
 }
 
 * {
@@ -289,10 +289,10 @@ select.form-select option {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+  background: linear-gradient(135deg, var(--accent-primary), #1d4ed8);
   color: white;
   box-shadow: 0 2px 12px var(--accent-primary-glow);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-primary:hover {
@@ -560,9 +560,9 @@ table tbody td {
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.06));
-  color: var(--accent-primary-hover);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.08));
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.35);
   box-shadow: 0 0 20px var(--accent-primary-glow);
 }
 
