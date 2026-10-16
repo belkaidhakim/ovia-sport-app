@@ -199,10 +199,13 @@ export default function AthletesList() {
   // Synchronisation URL param tab
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam === 'inscriptions') setActiveMainTab('inscriptions');
-    else if (tabParam === 'archives') {
+    if (tabParam === 'inscriptions') {
+      setActiveMainTab('inscriptions');
+    } else if (tabParam === 'archives') {
       setActiveMainTab('archives');
       fetchArchivedAthletes();
+    } else {
+      setActiveMainTab('membres');
     }
   }, [searchParams, fetchArchivedAthletes]);
 

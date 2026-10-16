@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves, UserCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
   const { role } = useAuth();
+  const location = useLocation();
   const [pendingInscriptionsCount, setPendingInscriptionsCount] = useState(0);
 
   useEffect(() => {
@@ -93,9 +94,24 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         </NavLink>
         
         {['admin', 'secretaire', 'entraineur'].includes(role) && (
-          <NavLink to="/athletes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
+          <NavLink 
+            to="/athletes" 
+            className={() => (location.pathname === '/athletes' && !location.search.includes('tab=inscriptions')) ? "nav-item active" : "nav-item"} 
+            onClick={() => setIsOpen(false)}
+          >
             <Users size={18} />
-            <span>Athlètes</span>
+            <span>Membres & Athlètes</span>
+          </NavLink>
+        )}
+
+        {['admin', 'secretaire'].includes(role) && (
+          <NavLink 
+            to="/athletes?tab=inscriptions" 
+            className={() => (location.pathname === '/athletes' && location.search.includes('tab=inscriptions')) ? "nav-item active" : "nav-item"} 
+            onClick={() => setIsOpen(false)}
+          >
+            <UserCheck size={18} />
+            <span>Inscriptions en attente</span>
             {pendingInscriptionsCount > 0 && (
               <span 
                 style={{ marginLeft: 'auto', backgroundColor: '#f59e0b', color: '#000', fontSize: '0.7rem', fontWeight: 800, padding: '2px 7px', borderRadius: '10px' }}
@@ -148,7 +164,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         </NavLink>
         <a href="/inscription" target="_blank" rel="noreferrer" className="nav-item" onClick={() => setIsOpen(false)}>
           <UserPlus size={18} />
-          <span>Inscription en ligne</span>
+          <span>Formulaire Inscription</span>
           <ExternalLink size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
         </a>
         <a href="/espace-adherent" target="_blank" rel="noreferrer" className="nav-item" onClick={() => setIsOpen(false)}>
