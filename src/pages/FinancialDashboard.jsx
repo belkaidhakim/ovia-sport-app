@@ -1085,11 +1085,12 @@ export default function FinancialDashboard() {
                   <label className="form-label font-bold text-xs mb-1">Montant encaissé (DA) *</label>
                   <input 
                     type="number" 
-                    min="1" 
-                    step="100" 
+                    min="0" 
+                    step="any" 
                     className="form-input w-full" 
                     value={formData.montant_paye} 
                     onChange={(e) => setFormData(prev => ({ ...prev, montant_paye: e.target.value }))}
+                    placeholder="Ex: 3000"
                     required 
                   />
                   <div className="flex gap-1.5 mt-1">
@@ -1236,11 +1237,12 @@ export default function FinancialDashboard() {
                   <label className="form-label font-bold text-xs mb-1">Montant (DA) *</label>
                   <input 
                     type="number" 
-                    min="1" 
-                    step="100" 
+                    min="0" 
+                    step="any" 
                     className="form-input w-full" 
                     value={depenseData.montant} 
                     onChange={(e) => setDepenseData(prev => ({ ...prev, montant: e.target.value }))}
+                    placeholder="Ex: 5000"
                     required 
                   />
                 </div>
