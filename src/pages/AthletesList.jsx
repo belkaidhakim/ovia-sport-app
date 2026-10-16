@@ -3,7 +3,7 @@ import {
   Plus, Search, QrCode, Edit, Printer, Download, Upload, Trash2, Mail, 
   MessageSquare, Send, CheckSquare, UserPlus, Timer, Users, Award, Waves, 
   FileText, HeartPulse, Shield, AlertTriangle, RotateCcw, Check, Ban, 
-  CreditCard, Sparkles, X, CheckCircle2
+  CreditCard, Sparkles, X, CheckCircle2, ExternalLink, Copy
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -463,6 +463,30 @@ export default function AthletesList() {
             </Button>
             <Button variant="secondary" onClick={handleExport}>
               <Download size={16} /> Exporter CSV
+            </Button>
+
+            <a 
+              href="/inscription" 
+              target="_blank" 
+              rel="noreferrer" 
+              style={{ textDecoration: 'none' }}
+              title="Ouvrir le formulaire d'inscription en ligne public"
+            >
+              <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <ExternalLink size={16} /> Formulaire Public
+              </Button>
+            </a>
+            <Button 
+              variant="secondary"
+              title="Copier le lien d'inscription à partager"
+              onClick={() => {
+                const url = `${window.location.origin}/inscription`;
+                navigator.clipboard.writeText(url);
+                toast.success("Lien d'inscription copié !");
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Copy size={16} /> Copier Lien
             </Button>
 
             <Link to="/athletes/new" style={{ textDecoration: 'none' }}>

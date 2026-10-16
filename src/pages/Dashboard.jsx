@@ -21,7 +21,8 @@ import {
   Filter,
   TrendingUp,
   Activity,
-  CalendarDays
+  CalendarDays,
+  Copy
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -419,7 +420,30 @@ export default function Dashboard() {
           <h1>Tableau de bord de Gestion</h1>
           <p style={{ marginBottom: 0 }}>Supervision, assiduité et recouvrement financier.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <a 
+            href="/inscription" 
+            target="_blank" 
+            rel="noreferrer" 
+            style={{ textDecoration: 'none' }}
+            title="Ouvrir le formulaire d'inscription en ligne public"
+          >
+            <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <ExternalLink size={16} /> Formulaire Public
+            </Button>
+          </a>
+          <Button 
+            variant="secondary"
+            title="Copier le lien d'inscription à partager"
+            onClick={() => {
+              const url = `${window.location.origin}/inscription`;
+              navigator.clipboard.writeText(url);
+              toast.success("Lien d'inscription copié !");
+            }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Copy size={16} /> Copier Lien
+          </Button>
           <Link to="/scanner" style={{ textDecoration: 'none' }}>
             <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <ScanLine size={17} /> Scanner QR

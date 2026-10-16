@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -140,12 +140,22 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         )}
 
         <div style={{ margin: '1.5rem 1rem 0.5rem', fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.1em', fontWeight: 600 }}>
-          Outils
+          Outils & Accès Publics
         </div>
         <NavLink to="/scanner" target="_blank" className="nav-item" onClick={() => setIsOpen(false)}>
           <ScanLine size={18} />
           <span>Scanner QR</span>
         </NavLink>
+        <a href="/inscription" target="_blank" rel="noreferrer" className="nav-item" onClick={() => setIsOpen(false)}>
+          <UserPlus size={18} />
+          <span>Inscription en ligne</span>
+          <ExternalLink size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+        </a>
+        <a href="/espace-adherent" target="_blank" rel="noreferrer" className="nav-item" onClick={() => setIsOpen(false)}>
+          <Waves size={18} />
+          <span>Espace Adhérent</span>
+          <ExternalLink size={13} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+        </a>
 
         <div style={{ flex: 1 }}></div>
         
