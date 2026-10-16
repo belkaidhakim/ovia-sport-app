@@ -135,7 +135,9 @@ export default function Dashboard() {
         const incompleteFiles = [];
 
         (athletesData || []).forEach(athlete => {
-          const statut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut);
+          const rawCards = athlete.cartes_acces;
+          const cardObj = Array.isArray(rawCards) ? rawCards[0] : rawCards;
+          const statut = cardObj?.statut || 'SUSPENDUE';
           if (statut === 'ACTIVE') {
             active++;
           } else {
@@ -154,17 +156,24 @@ export default function Dashboard() {
           }
 
           // Analyse des dates de cotisations
-          const tarifToUse = athlete.groupes?.tarif || 3000; // Default 3000 if null
+          const rawGroup = athlete.groupes;
+          const grpObj = Array.isArray(rawGroup) ? rawGroup[0] : rawGroup;
+          const tarifToUse = grpObj?.tarif || 3000; // Default 3000 if null
 
-          if (athlete.cotisations && athlete.cotisations.length > 0) {
-            const sorted = [...athlete.cotisations].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
+          const validCotis = Array.isArray(athlete.cotisations)
+            ? athlete.cotisations.filter(c => c && c.periode_couverte_fin && !isNaN(new Date(c.periode_couverte_fin).getTime()))
+            : [];
+
+          if (validCotis.length > 0) {
+            const sorted = [...validCotis].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
             const endDate = new Date(sorted[0].periode_couverte_fin);
+            const endDateStr = isNaN(endDate.getTime()) ? '-' : endDate.toLocaleDateString('fr-FR');
             
             if (endDate < now) {
               const daysExpired = Math.max(1, Math.ceil((now - endDate) / (1000 * 60 * 60 * 24)));
               expiredList.push({
                 ...athlete,
-                endDateStr: endDate.toLocaleDateString('fr-FR'),
+                endDateStr,
                 daysExpired
               });
               missingRevenue += tarifToUse; // Impact financier
@@ -172,23 +181,23 @@ export default function Dashboard() {
               const daysLeft = Math.max(0, Math.ceil((endDate - now) / (1000 * 60 * 60 * 24)));
               expiringSoon.push({
                 ...athlete,
-                endDateStr: endDate.toLocaleDateString('fr-FR'),
+                endDateStr,
                 daysLeft
               });
             }
           } else {
             // Si pas d'historique dans la table cotisations, vérifier la carte d'accès
-            const lastPayment = athlete.cartes_acces?.date_dernier_paiement || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.date_dernier_paiement);
-            const cardStatut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut);
+            const lastPayment = cardObj?.date_dernier_paiement;
 
-            if (lastPayment) {
+            if (lastPayment && !isNaN(new Date(lastPayment).getTime())) {
               const payDate = new Date(lastPayment);
               const estEndDate = new Date(payDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+              const endDateStr = isNaN(estEndDate.getTime()) ? '-' : estEndDate.toLocaleDateString('fr-FR');
               if (estEndDate < now) {
                 const daysExpired = Math.max(1, Math.ceil((now - estEndDate) / (1000 * 60 * 60 * 24)));
                 expiredList.push({
                   ...athlete,
-                  endDateStr: estEndDate.toLocaleDateString('fr-FR'),
+                  endDateStr,
                   daysExpired
                 });
                 missingRevenue += tarifToUse;
@@ -196,11 +205,11 @@ export default function Dashboard() {
                 const daysLeft = Math.max(0, Math.ceil((estEndDate - now) / (1000 * 60 * 60 * 24)));
                 expiringSoon.push({
                   ...athlete,
-                  endDateStr: estEndDate.toLocaleDateString('fr-FR'),
+                  endDateStr,
                   daysLeft
                 });
               }
-            } else if (cardStatut !== 'ACTIVE') {
+            } else if (statut !== 'ACTIVE') {
               expiredList.push({
                 ...athlete,
                 endDateStr: 'Non réglé',
@@ -236,14 +245,17 @@ export default function Dashboard() {
         const planningTomorrowMap = new Map();
 
         (athletesData || []).forEach(athlete => {
-          if (!athlete.groupes) return;
-          const groupName = athlete.groupes.nom;
-          const groupHoraires = parseHoraires(athlete.groupes.horaires);
+          const rawGroup = athlete.groupes;
+          const grpObj = Array.isArray(rawGroup) ? rawGroup[0] : rawGroup;
+          if (!grpObj) return;
+          const groupName = grpObj.nom || athlete.groupe;
+          if (!groupName) return;
+          const groupHoraires = parseHoraires(grpObj.horaires);
           
-          const sessionToday = groupHoraires.find(h => h.jour === todayDayName);
-          const sessionTomorrow = groupHoraires.find(h => h.jour === tomorrowDayName);
+          const sessionToday = groupHoraires.find(h => h && h.jour === todayDayName);
+          const sessionTomorrow = groupHoraires.find(h => h && h.jour === tomorrowDayName);
 
-          if (sessionToday) {
+          if (sessionToday && sessionToday.heure) {
             expectedTodayList.push(athlete);
             if (!planningTodayMap.has(groupName)) planningTodayMap.set(groupName, { nom: groupName, heure: sessionToday.heure, inscrits: 0 });
             planningTodayMap.get(groupName).inscrits += 1;
@@ -256,7 +268,7 @@ export default function Dashboard() {
             }
           }
           
-          if (sessionTomorrow) {
+          if (sessionTomorrow && sessionTomorrow.heure) {
             if (!planningTomorrowMap.has(groupName)) planningTomorrowMap.set(groupName, { nom: groupName, heure: sessionTomorrow.heure, inscrits: 0 });
             planningTomorrowMap.get(groupName).inscrits += 1;
           }
@@ -296,12 +308,15 @@ export default function Dashboard() {
         }
 
         (weekScans || []).forEach(scan => {
+          if (!scan || !scan.date_scan) return;
           const dateStr = scan.date_scan.split('T')[0];
           if (dailyTrendMap[dateStr]) {
             dailyTrendMap[dateStr].Total += 1;
             
             // Catégorisation pour le graphique détaillé (Phase 4)
-            const gName = (scan.athletes?.groupes?.nom || scan.athletes?.groupe || '').toLowerCase();
+            const athletesObj = Array.isArray(scan.athletes) ? scan.athletes[0] : scan.athletes;
+            const groupesObj = athletesObj?.groupes ? (Array.isArray(athletesObj.groupes) ? athletesObj.groupes[0] : athletesObj.groupes) : null;
+            const gName = (groupesObj?.nom || athletesObj?.groupe || '').toLowerCase();
             if (gName.includes('initiation')) {
               dailyTrendMap[dateStr].Initiation += 1;
             } else if (gName.includes('apprent')) {
@@ -322,12 +337,12 @@ export default function Dashboard() {
         let totalCapacity = 0;
         let totalEnrolled = 0;
         const groupCapacityStats = (groupesData || []).map(g => {
-          const count = g.athletes ? g.athletes.length : 0;
+          const count = Array.isArray(g.athletes) ? g.athletes.length : 0;
           const max = g.capacite_max || 20;
           totalCapacity += max;
           totalEnrolled += count;
-          const fillRate = Math.min(100, Math.round((count / max) * 100));
-          return { id: g.id, nom: g.nom, count, max, fillRate };
+          const fillRate = max > 0 ? Math.min(100, Math.round((count / max) * 100)) : 0;
+          return { id: g.id, nom: g.nom || 'Groupe', count, max, fillRate };
         });
 
         const globalFillRate = totalCapacity > 0 ? Math.min(100, Math.round((totalEnrolled / totalCapacity) * 100)) : 0;
@@ -366,12 +381,15 @@ export default function Dashboard() {
   // Filtrage dynamique des inscrits
   const filteredInscrits = useMemo(() => {
     return (stats.allAthletes || []).filter(athlete => {
+      if (!athlete) return false;
+      const grp = Array.isArray(athlete.groupes) ? athlete.groupes[0] : athlete.groupes;
       if (inscritsFilterGroup !== 'ALL') {
-        const gName = athlete.groupes?.nom || athlete.groupe || '';
+        const gName = grp?.nom || athlete.groupe || '';
         if (gName !== inscritsFilterGroup) return false;
       }
 
-      const statut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut);
+      const card = Array.isArray(athlete.cartes_acces) ? athlete.cartes_acces[0] : athlete.cartes_acces;
+      const statut = card?.statut || 'SUSPENDUE';
       if (inscritsFilterStatus === 'ACTIVE' && statut !== 'ACTIVE') return false;
       if (inscritsFilterStatus === 'SUSPENDED' && statut === 'ACTIVE') return false;
 
@@ -386,7 +404,12 @@ export default function Dashboard() {
     });
   }, [stats.allAthletes, inscritsFilterGroup, inscritsFilterStatus, inscritsSearch]);
 
-  const athletesWithPhoneToExpire = stats.expiredList.filter(a => a.telephone || a.contact_urgence || a.telephone_tuteur);
+  const athletesWithPhoneToExpire = useMemo(() => {
+    return (stats.expiredList || []).filter(a => {
+      const ph = a.telephone || a.contact_urgence || a.telephone_tuteur;
+      return ph && String(ph).trim().length > 0;
+    });
+  }, [stats.expiredList]);
 
   return (
     <div>
@@ -514,7 +537,8 @@ export default function Dashboard() {
                         <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
                           {athletesWithPhoneToExpire.map(athlete => {
                             const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.contact_urgence || athlete.telephone_tuteur);
-                            const msg = `Bonjour ${athlete.prenom}, votre adhésion à Ovia Sport a expiré le ${athlete.endDateStr}. Merci de bien vouloir régulariser votre cotisation à la réception du club. Cordialement.`;
+                            if (!wpPhone) return null;
+                            const msg = `Bonjour ${athlete.prenom || ''}, votre adhésion à Ovia Sport a expiré le ${athlete.endDateStr || ''}. Merci de bien vouloir régulariser votre cotisation à la réception du club. Cordialement.`;
                             return (
                               <a
                                 key={`bulk-${athlete.id}`}
@@ -555,14 +579,14 @@ export default function Dashboard() {
                             <div key={athlete.id} className="flex justify-between items-center p-2 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{athlete.nom} {athlete.prenom}</span>
-                                <div style={{ fontSize: '0.7rem', color: '#ef4444' }}>Expiré ({athlete.endDateStr})</div>
+                                <div style={{ fontSize: '0.7rem', color: '#ef4444' }}>Expiré ({athlete.endDateStr || 'Échu'})</div>
                               </div>
                               <div className="flex items-center gap-1">
-                                {wpPhone && (
-                                  <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${athlete.prenom}...`)}`} target="_blank" rel="noreferrer" style={{ padding: '4px 6px', borderRadius: '6px', backgroundColor: 'rgba(37, 211, 102, 0.15)', color: '#25D366' }}>
+                                {wpPhone ? (
+                                  <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${athlete.prenom || ''}...`)}`} target="_blank" rel="noreferrer" style={{ padding: '4px 6px', borderRadius: '6px', backgroundColor: 'rgba(37, 211, 102, 0.15)', color: '#25D366' }}>
                                     <MessageCircle size={14} />
                                   </a>
-                                )}
+                                ) : null}
                               </div>
                             </div>
                           );
@@ -778,13 +802,24 @@ export default function Dashboard() {
                       </tr>
                     ) : (
                       filteredInscrits.slice(0, 15).map(athlete => {
-                        const statut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut);
+                        const card = Array.isArray(athlete.cartes_acces) ? athlete.cartes_acces[0] : athlete.cartes_acces;
+                        const statut = card?.statut || 'SUSPENDUE';
                         const age = calculateAge(athlete.date_naissance);
+                        const grp = Array.isArray(athlete.groupes) ? athlete.groupes[0] : athlete.groupes;
                         
                         // Phase 4: Mise en évidence visuelle des suspendus
                         const rowStyle = statut !== 'ACTIVE' 
                           ? { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' } 
                           : {};
+
+                        const validCotisDates = Array.isArray(athlete.cotisations)
+                          ? athlete.cotisations
+                              .map(c => c?.periode_couverte_fin ? new Date(c.periode_couverte_fin).getTime() : NaN)
+                              .filter(t => !isNaN(t))
+                          : [];
+                        const lastCotisStr = validCotisDates.length > 0
+                          ? new Date(Math.max(...validCotisDates)).toLocaleDateString('fr-FR')
+                          : '-';
 
                         return (
                           <tr key={athlete.id} style={rowStyle}>
@@ -796,11 +831,9 @@ export default function Dashboard() {
                             <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                               {age ? `${age} ans` : '-'}
                             </td>
-                            <td>{athlete.groupes?.nom || athlete.groupe || '-'}</td>
+                            <td>{grp?.nom || athlete.groupe || '-'}</td>
                             <td style={{ fontSize: '0.8rem', color: statut !== 'ACTIVE' ? '#ef4444' : 'var(--text-secondary)' }}>
-                              {athlete.cotisations && athlete.cotisations.length > 0
-                                ? new Date(Math.max(...athlete.cotisations.map(c => new Date(c.periode_couverte_fin).getTime()))).toLocaleDateString('fr-FR')
-                                : '-'}
+                              {lastCotisStr}
                             </td>
                             <td>
                               <Badge status={statut}>

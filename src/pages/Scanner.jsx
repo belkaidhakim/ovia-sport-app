@@ -193,7 +193,8 @@ export default function Scanner() {
         const remainingSessions = Math.max(0, 8 - presencesCount);
         const cardStatut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut) || 'ACTIVE';
         
-        const sortedCotis = [...(athlete.cotisations || [])].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
+        const validCotis = (athlete.cotisations || []).filter(c => c?.periode_couverte_fin && !isNaN(new Date(c.periode_couverte_fin).getTime()));
+        const sortedCotis = [...validCotis].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
         const isCotisPaid = sortedCotis[0] && new Date(sortedCotis[0].periode_couverte_fin) >= new Date();
 
         let accessState = 'AUTORISE'; // 'AUTORISE' | 'TOLERANCE' | 'BLOQUE' | 'QUOTA_EXCEDE'

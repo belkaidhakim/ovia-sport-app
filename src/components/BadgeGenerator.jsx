@@ -9,9 +9,10 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
   const category = getSwimmingCategory(athlete.date_naissance);
 
   let endDateStr = null;
-  if (showEndDate && athlete.cotisations && athlete.cotisations.length > 0) {
-    const sorted = [...athlete.cotisations].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
-    if (sorted[0]?.periode_couverte_fin) {
+  if (showEndDate && Array.isArray(athlete.cotisations) && athlete.cotisations.length > 0) {
+    const valid = athlete.cotisations.filter(c => c?.periode_couverte_fin && !isNaN(new Date(c.periode_couverte_fin).getTime()));
+    if (valid.length > 0) {
+      const sorted = [...valid].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
       endDateStr = new Date(sorted[0].periode_couverte_fin).toLocaleDateString('fr-FR');
     }
   }

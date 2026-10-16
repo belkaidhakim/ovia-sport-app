@@ -56,7 +56,9 @@ export const calculateAge = (dateNaissance) => {
  * @returns {string}
  */
 export const formatPhoneInput = (val = '') => {
-  const digits = val.replace(/\D/g, '').substring(0, 10);
+  if (!val) return '';
+  const str = String(val);
+  const digits = str.replace(/\D/g, '').substring(0, 10);
   const parts = [];
   for (let i = 0; i < digits.length; i += 2) {
     parts.push(digits.substring(i, i + 2));
@@ -66,11 +68,14 @@ export const formatPhoneInput = (val = '') => {
 
 /**
  * Nettoie un numéro de téléphone pour lien WhatsApp international (+213)
- * @param {string} phone 
+ * @param {string|number|null} phone 
  * @returns {string}
  */
 export const formatWhatsAppPhone = (phone = '') => {
-  let clean = phone.replace(/\D/g, '');
+  if (!phone) return '';
+  const str = String(phone);
+  let clean = str.replace(/\D/g, '');
+  if (!clean) return '';
   if (clean.startsWith('0')) clean = '213' + clean.substring(1);
   return clean;
 };
