@@ -862,9 +862,9 @@ export default function AthletesList() {
                               {/* Membre + Dossier Médical / Licence (Phase 2) */}
                               <td style={{ padding: '0.85rem 1rem' }}>
                                 <div className="flex items-center gap-3">
-                                  {athlete.photo_url ? (
+                                  {(athlete.photo || athlete.photo_url) ? (
                                     <img 
-                                      src={athlete.photo_url} 
+                                      src={athlete.photo || athlete.photo_url} 
                                       alt={`${athlete.nom} ${athlete.prenom}`} 
                                       style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--accent-primary-hover)', flexShrink: 0 }} 
                                     />

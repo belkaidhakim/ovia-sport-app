@@ -142,9 +142,9 @@ export default function Dashboard() {
             suspended++;
           }
 
-          // Vérification des dossiers incomplets (ex: pas de certificat médical ou pas de photo)
-          const missingCertif = !athlete.certificat_medical_url && !athlete.certificat_medical;
-          const missingPhoto = !athlete.photo_url;
+          // Vérification des dossiers incomplets (ex: pas de certificat médical valide ou pas de photo)
+          const missingCertif = !athlete.certificat_medical_valide && !athlete.certificat_medical_url && !athlete.certificat_medical;
+          const missingPhoto = !athlete.photo && !athlete.photo_url;
           if (missingCertif || missingPhoto) {
             incompleteFiles.push({
               ...athlete,
@@ -177,12 +177,37 @@ export default function Dashboard() {
               });
             }
           } else {
-            expiredList.push({
-              ...athlete,
-              endDateStr: 'Aucune',
-              daysExpired: 99
-            });
-            missingRevenue += tarifToUse; // Impact financier
+            // Si pas d'historique dans la table cotisations, vérifier la carte d'accès
+            const lastPayment = athlete.cartes_acces?.date_dernier_paiement || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.date_dernier_paiement);
+            const cardStatut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut);
+
+            if (lastPayment) {
+              const payDate = new Date(lastPayment);
+              const estEndDate = new Date(payDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+              if (estEndDate < now) {
+                const daysExpired = Math.max(1, Math.ceil((now - estEndDate) / (1000 * 60 * 60 * 24)));
+                expiredList.push({
+                  ...athlete,
+                  endDateStr: estEndDate.toLocaleDateString('fr-FR'),
+                  daysExpired
+                });
+                missingRevenue += tarifToUse;
+              } else if (estEndDate <= in7Days) {
+                const daysLeft = Math.max(0, Math.ceil((estEndDate - now) / (1000 * 60 * 60 * 24)));
+                expiringSoon.push({
+                  ...athlete,
+                  endDateStr: estEndDate.toLocaleDateString('fr-FR'),
+                  daysLeft
+                });
+              }
+            } else if (cardStatut !== 'ACTIVE') {
+              expiredList.push({
+                ...athlete,
+                endDateStr: 'Non réglé',
+                daysExpired: 99
+              });
+              missingRevenue += tarifToUse;
+            }
           }
         });
 
@@ -784,8 +809,8 @@ export default function Dashboard() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <Link to={`/finances?search=${encodeURIComponent(athlete.nom)}`} style={{ textDecoration: 'none', marginRight: '6px' }}>
-                                <button className="btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '6px' }}>
-                                  <DollarSign size={14} />
+                                <button className="btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '6px' }} title="Voir finances">
+                                  <CreditCard size={14} />
                                 </button>
                               </Link>
                               <Link to={`/athletes/edit/${athlete.id}`} style={{ textDecoration: 'none' }}>

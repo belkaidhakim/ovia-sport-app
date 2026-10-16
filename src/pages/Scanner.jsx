@@ -51,8 +51,8 @@ export default function Scanner() {
       const { data, error } = await supabase
         .from('athletes')
         .select(`
-          id, nom, prenom, photo_url, token_qr, est_actif, groupe,
-          certificat_medical_valide, numero_licence,
+          id, nom, prenom, photo, token_qr, est_actif, groupe,
+          certificat_medical_valide,
           cartes_acces (statut, date_dernier_paiement),
           cotisations (periode_couverte_fin),
           presences (id)
