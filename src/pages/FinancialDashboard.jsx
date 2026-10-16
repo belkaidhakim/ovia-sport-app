@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';
@@ -42,6 +42,24 @@ export default function FinancialDashboard() {
   
   const [athletes, setAthletes] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchAthletes = useCallback(async () => {
+    try {
+      const { data: athletesData, error } = await supabase
+        .from('athletes')
+        .select('id, nom, prenom, telephone, contact_urgence, date_naissance, groupe, groupes(id, nom)')
+        .eq('est_actif', true)
+        .order('nom', { ascending: true });
+
+      if (error) {
+        console.error('Erreur chargement athlètes (finances):', error);
+      } else {
+        setAthletes(athletesData || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }, []);
   
   const [activeTab, setActiveTab] = useState('revenus'); // 'revenus' or 'depenses' or 'impayes'
   const [filterRevenueType, setFilterRevenueType] = useState('all'); // 'all', 'inscriptions', 'cotisations'
@@ -105,6 +123,7 @@ export default function FinancialDashboard() {
   
   // Forms (Encaisser & Dépense)
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
   const getDefaultFinDate = () => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
@@ -192,13 +211,13 @@ export default function FinancialDashboard() {
     fetchCotisations();
     fetchDepenses();
     fetchAthletes();
-  }, [fetchCotisations, fetchDepenses]);
+  }, [fetchCotisations, fetchDepenses, fetchAthletes]);
 
   useEffect(() => {
     if (showPaymentForm && athletes.length === 0) {
       fetchAthletes();
     }
-  }, [showPaymentForm, athletes.length]);
+  }, [showPaymentForm, athletes.length, fetchAthletes]);
 
   const filteredCotisations = useMemo(() => {
     let result = [...cotisations];
@@ -297,27 +316,6 @@ export default function FinancialDashboard() {
     });
     return list.sort((a,b) => new Date(a.periode_couverte_fin) - new Date(b.periode_couverte_fin));
   }, [cotisations, athletes]);
-
-  async function fetchAthletes() {
-    try {
-      setLoading(true);
-      const { data: athletesData, error } = await supabase
-        .from('athletes')
-        .select('id, nom, prenom, telephone, contact_urgence, date_naissance, groupe, groupes(id, nom)')
-        .eq('est_actif', true)
-        .order('nom', { ascending: true });
-
-      if (error) {
-        console.error('Erreur chargement athlètes (finances):', error);
-      } else {
-        setAthletes(athletesData || []);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 15;
@@ -652,6 +650,22 @@ export default function FinancialDashboard() {
                           <td className="text-xs">Jusqu'au {new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}</td>
                           <td style={{ textAlign: 'right' }}>
                             <div className="flex justify-end items-center gap-1.5">
+                              <button 
+                                onClick={() => {
+                                  setEditingPaymentId(cotis.id);
+                                  setFormData({
+                                    athlete_id: cotis.athlete_id || cotis.athletes?.id || '',
+                                    montant_paye: cotis.montant_paye || '',
+                                    mode_paiement: cotis.mode_paiement || 'Espèces',
+                                    periode_couverte_fin: cotis.periode_couverte_fin ? cotis.periode_couverte_fin.split('T')[0] : getDefaultFinDate()
+                                  });
+                                  setShowPaymentForm(true);
+                                }} 
+                                className="btn-secondary flex items-center justify-center p-1.5 rounded text-amber-500 hover:bg-amber-500/10 cursor-pointer" 
+                                title="Modifier cet encaissement"
+                              >
+                                <Edit size={14} />
+                              </button>
                               <button onClick={() => generatePDFReceipt(cotis, true)} className="btn-secondary flex items-center justify-center p-1.5 rounded text-indigo-500 hover:bg-indigo-500/10 cursor-pointer" title="Télécharger Reçu PDF">
                                 <Download size={14} />
                               </button>
@@ -952,7 +966,7 @@ export default function FinancialDashboard() {
                 </div>
               </div>
               <button 
-                onClick={() => setShowPaymentForm(false)}
+                onClick={() => { setShowPaymentForm(false); setEditingPaymentId(null); setFormData(initialFormState); }}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
               >
                 <X size={20} />
@@ -1149,7 +1163,7 @@ export default function FinancialDashboard() {
               </div>
 
               <div className="flex justify-end gap-3">
-                <Button type="button" variant="secondary" onClick={() => setShowPaymentForm(false)}>
+                <Button type="button" variant="secondary" onClick={() => { setShowPaymentForm(false); setEditingPaymentId(null); setFormData(initialFormState); }}>
                   Annuler
                 </Button>
                 <Button type="submit" variant="primary">
