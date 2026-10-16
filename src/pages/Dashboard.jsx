@@ -43,6 +43,7 @@ import {
 } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { Card, StatCard, Button, Badge, Skeleton } from '../components/ui';
+import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
 import BadgeGenerator from '../components/BadgeGenerator';
 import { formatWhatsAppPhone, calculateAge, formatName, formatDA } from '../utils/formatters';
 import toast from 'react-hot-toast';
@@ -421,6 +422,7 @@ export default function Dashboard() {
           <p style={{ marginBottom: 0 }}>Supervision, assiduité et recouvrement financier.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
+          <RegistrationStatusToggle />
           <a 
             href="/inscription" 
             target="_blank" 

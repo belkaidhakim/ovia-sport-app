@@ -1,12 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Users, Calendar, Activity, ChevronRight, CheckCircle2, Waves, ArrowRight, ArrowUpRight, Sun, Moon } from 'lucide-react';
+import { Trophy, Users, Calendar, Activity, ChevronRight, CheckCircle2, Waves, ArrowRight, ArrowUpRight, Sun, Moon, Lock } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useRegistrationSettings } from '../hooks/useRegistrationSettings';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { isOpen: isRegistrationOpen } = useRegistrationSettings();
   const isDark = theme === 'dark';
 
   // Theme-aware colors
@@ -77,8 +79,12 @@ export default function LandingPage() {
           <Link to="/login" style={{ color: colors.textMuted, textDecoration: 'none', fontSize: '0.9rem', transition: 'color 0.2s', fontWeight: 500 }} onMouseOver={e => e.target.style.color = '#3b82f6'} onMouseOut={e => e.target.style.color = colors.textMuted}>
             Espace Admin
           </Link>
-          <Button onClick={() => navigate('/inscription')} primary>
-            S'inscrire
+          <Button 
+            onClick={() => navigate('/inscription')} 
+            primary={isRegistrationOpen}
+            style={!isRegistrationOpen ? { opacity: 0.9, backgroundColor: '#334155', borderColor: '#475569', color: '#cbd5e1' } : {}}
+          >
+            {isRegistrationOpen ? "S'inscrire" : "Inscriptions Fermées"}
           </Button>
         </nav>
       </header>
@@ -109,9 +115,33 @@ export default function LandingPage() {
             animate="visible"
             style={{ position: 'relative', zIndex: 10, maxWidth: '900px' }}
           >
-            <motion.div variants={itemVariants} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 16px', background: 'rgba(59, 130, 246, 0.2)', border: '1px solid rgba(59, 130, 246, 0.4)', borderRadius: '20px', color: '#93c5fd', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '2rem' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#60a5fa', display: 'inline-block', boxShadow: '0 0 10px #60a5fa' }}></span>
-              Inscriptions Saison 2026/2027 Ouvertes
+            <motion.div 
+              variants={itemVariants} 
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '6px 16px', 
+                background: isRegistrationOpen ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
+                border: isRegistrationOpen ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)', 
+                borderRadius: '20px', 
+                color: isRegistrationOpen ? '#93c5fd' : '#fca5a5', 
+                fontSize: '0.85rem', 
+                fontWeight: 700, 
+                textTransform: 'uppercase', 
+                letterSpacing: '1px', 
+                marginBottom: '2rem' 
+              }}
+            >
+              <span style={{ 
+                width: '8px', 
+                height: '8px', 
+                borderRadius: '50%', 
+                background: isRegistrationOpen ? '#60a5fa' : '#ef4444', 
+                display: 'inline-block', 
+                boxShadow: isRegistrationOpen ? '0 0 10px #60a5fa' : '0 0 10px #ef4444' 
+              }}></span>
+              {isRegistrationOpen ? 'Inscriptions Saison 2026/2027 Ouvertes' : 'Inscriptions Temporairement Clôturées'}
             </motion.div>
             
             <motion.h1 variants={itemVariants} style={{ fontSize: 'clamp(3rem, 6vw, 5.5rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem', letterSpacing: '-0.03em', fontStyle: 'italic', textTransform: 'uppercase', color: '#fff' }}>
@@ -130,20 +160,26 @@ export default function LandingPage() {
                   fontSize: '1rem',
                   fontWeight: 600,
                   color: '#fff',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                  background: isRegistrationOpen 
+                    ? 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' 
+                    : 'linear-gradient(135deg, #475569 0%, #334155 100%)',
                   border: 'none',
                   borderRadius: '12px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.4)',
+                  boxShadow: isRegistrationOpen ? '0 10px 25px -5px rgba(59, 130, 246, 0.4)' : 'none',
                   transition: 'transform 0.2s, box-shadow 0.2s'
                 }}
                 onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                 onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
               >
-                Rejoindre le club <ArrowRight size={18} />
+                {isRegistrationOpen ? (
+                  <>Rejoindre le club <ArrowRight size={18} /></>
+                ) : (
+                  <>Consulter le statut d'admission <ArrowRight size={18} /></>
+                )}
               </button>
               <button 
                 onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}

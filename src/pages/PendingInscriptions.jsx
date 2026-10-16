@@ -37,6 +37,7 @@ import { useClubPricing } from '../hooks/useClubPricing';
 import { calculateAge, formatWhatsAppPhone, formatName, formatDA } from '../utils/formatters';
 import { generateOfficialRegistrationFormPdf } from '../utils/registrationFormPdfGenerator';
 import BadgeGenerator from '../components/BadgeGenerator';
+import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
 
 export default function PendingInscriptions({ embedded = false }) {
   const { 
@@ -264,35 +265,8 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Bouton Toggle Inscriptions Ouvertes / Fermées */}
-          <button
-            onClick={() => toggleInscriptions()}
-            style={{
-              padding: '0.4rem 0.85rem',
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: isRegistrationOpen ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-              color: isRegistrationOpen ? '#ef4444' : '#10b981',
-              border: isRegistrationOpen ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid rgba(16, 185, 129, 0.35)',
-              transition: 'all 0.2s'
-            }}
-            title={isRegistrationOpen ? "Cliquez pour fermer les inscriptions publiques" : "Cliquez pour ré-ouvrir les inscriptions publiques"}
-          >
-            {isRegistrationOpen ? (
-              <>
-                <Lock size={14} /> Désactiver les Inscriptions
-              </>
-            ) : (
-              <>
-                <Unlock size={14} /> Réactiver les Inscriptions
-              </>
-            )}
-          </button>
+          {/* Composant Standard Ouverture / Fermeture des Inscriptions */}
+          <RegistrationStatusToggle />
 
           <Button 
             variant="secondary" 

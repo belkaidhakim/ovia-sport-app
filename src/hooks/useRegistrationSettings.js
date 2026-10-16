@@ -39,6 +39,24 @@ export function useRegistrationSettings() {
 
   useEffect(() => {
     fetchSettings();
+
+    // Synchronisation en direct entre composants et fenêtres
+    const handleLocalChange = (e) => {
+      if (e.detail !== undefined) {
+        setIsOpen(e.detail);
+      } else {
+        const val = localStorage.getItem('scb_inscriptions_ouvertes');
+        if (val !== null) setIsOpen(val === 'true');
+      }
+    };
+
+    window.addEventListener('scb_registration_settings_changed', handleLocalChange);
+    window.addEventListener('storage', handleLocalChange);
+
+    return () => {
+      window.removeEventListener('scb_registration_settings_changed', handleLocalChange);
+      window.removeEventListener('storage', handleLocalChange);
+    };
   }, [fetchSettings]);
 
   // Activer / Désactiver
@@ -46,6 +64,7 @@ export function useRegistrationSettings() {
     const targetState = typeof newState === 'boolean' ? newState : !isOpen;
     setIsOpen(targetState);
     localStorage.setItem('scb_inscriptions_ouvertes', targetState ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent('scb_registration_settings_changed', { detail: targetState }));
 
     try {
       const { error } = await supabase
@@ -63,14 +82,19 @@ export function useRegistrationSettings() {
     }
 
     if (targetState) {
-      toast.success('Inscriptions en ligne ACTIVÉES ! Le formulaire public est désormais accessible.');
+      toast.success('Inscriptions en ligne OUVERTES ! Le formulaire public est désormais accessible.', {
+        icon: '🟢',
+        duration: 4000
+      });
     } else {
-      toast('Inscriptions en ligne DÉSACTIVÉES. Le formulaire public est fermé.', {
+      toast('Inscriptions en ligne FERMÉES. Le formulaire public est verrouillé.', {
         icon: '🔒',
+        duration: 4000,
         style: {
-          borderRadius: '10px',
+          borderRadius: '12px',
           background: '#1e293b',
           color: '#f59e0b',
+          border: '1px solid rgba(245, 158, 11, 0.3)'
         },
       });
     }

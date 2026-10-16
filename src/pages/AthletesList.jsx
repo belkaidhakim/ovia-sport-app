@@ -17,6 +17,7 @@ import Papa from 'papaparse';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
 import { Card, Button, Badge, Skeleton } from '../components/ui';
+import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
 import PendingInscriptions from './PendingInscriptions';
 
 const getInitials = (nom = '', prenom = '') => {
@@ -467,6 +468,8 @@ export default function AthletesList() {
             <Button variant="secondary" onClick={handleExport}>
               <Download size={16} /> Exporter CSV
             </Button>
+
+            <RegistrationStatusToggle />
 
             <a 
               href="/inscription" 
