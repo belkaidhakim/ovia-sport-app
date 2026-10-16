@@ -198,6 +198,7 @@ export default function AthleteForm() {
         // Generate a unique token for QR code
         const token_qr = `CLUB-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         payload.token_qr = token_qr;
+        payload.est_actif = true;
 
         let { error } = await supabase
           .from('athletes')

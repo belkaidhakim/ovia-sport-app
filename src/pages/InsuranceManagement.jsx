@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ShieldCheck, 
   ShieldAlert, 
@@ -43,7 +43,7 @@ import {
 import { formatDA, formatWhatsAppPhone } from '../utils/formatters';
 
 export default function InsuranceManagement() {
-  const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
+  const { athletes, loading: loadingAthletes, fetchAthletes, restoreAthlete } = useAthletes();
   const { groupes } = useGroupes();
   const { 
     assurances, 
@@ -57,11 +57,17 @@ export default function InsuranceManagement() {
     fetchAssurances
   } = useAssurances();
 
+  // Chargement automatique des athlètes au montage
+  useEffect(() => {
+    fetchAthletes(true);
+  }, [fetchAthletes]);
+
   // Filtres & Recherche
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, A_JOUR, EXPIRE_BIENTOT, NON_ASSURE
   const [groupFilter, setGroupFilter] = useState('ALL');
   const [compagnieFilter, setCompagnieFilter] = useState('ALL');
+  const [memberStatusFilter, setMemberStatusFilter] = useState('ALL'); // ALL, ACTIF, ARCHIVE
 
   // Sélection multiple
   const [selectedAthleteIds, setSelectedAthleteIds] = useState([]);
@@ -150,9 +156,14 @@ export default function InsuranceManagement() {
       const comp = item.assurance?.compagnie || '';
       const matchesCompagnie = compagnieFilter === 'ALL' || comp === compagnieFilter;
 
-      return matchesSearch && matchesStatus && matchesGroup && matchesCompagnie;
+      const matchesMemberStatus = 
+        memberStatusFilter === 'ALL' ||
+        (memberStatusFilter === 'ACTIF' && item.est_actif !== false) ||
+        (memberStatusFilter === 'ARCHIVE' && item.est_actif === false);
+
+      return matchesSearch && matchesStatus && matchesGroup && matchesCompagnie && matchesMemberStatus;
     });
-  }, [enrichedAthletes, searchQuery, statusFilter, groupFilter, compagnieFilter]);
+  }, [enrichedAthletes, searchQuery, statusFilter, groupFilter, compagnieFilter, memberStatusFilter]);
 
   // Métriques & KPIs
   const stats = useMemo(() => {
@@ -455,6 +466,19 @@ export default function InsuranceManagement() {
         <div className="flex flex-wrap items-center gap-2.5">
           <Button 
             variant="secondary"
+            onClick={() => {
+              fetchAthletes(true);
+              fetchAssurances();
+              toast.success('Liste des athlètes et assurances actualisée !');
+            }}
+            title="Recharger la liste des athlètes et des assurances"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={15} className={loadingAthletes || loadingAssurances ? 'animate-spin' : ''} /> Actualiser
+          </Button>
+
+          <Button 
+            variant="secondary"
             onClick={() => handleOpenBordereauModal()}
             title="Générer et télécharger le bordereau collectif officiel prêt à imprimer pour la compagnie"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
@@ -678,7 +702,7 @@ export default function InsuranceManagement() {
 
           {/* Filtres dropdown */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Statut */}
+            {/* Statut Assurance */}
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -689,10 +713,26 @@ export default function InsuranceManagement() {
                 color: 'var(--text-primary)'
               }}
             >
-              <option value="ALL">Tous les statuts</option>
+              <option value="ALL">Tous les statuts assurance</option>
               <option value="A_JOUR">🟢 À jour uniquement</option>
               <option value="EXPIRE_BIENTOT">🟠 Expire sous 30j</option>
               <option value="NON_ASSURE">🔴 Non assurés / Expirés</option>
+            </select>
+
+            {/* Statut Membre / Adhésion */}
+            <select
+              value={memberStatusFilter}
+              onChange={(e) => setMemberStatusFilter(e.target.value)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <option value="ALL">Tous membres ({enrichedAthletes.length})</option>
+              <option value="ACTIF">Actifs ({enrichedAthletes.filter(a => a.est_actif !== false).length})</option>
+              <option value="ARCHIVE">Archivés ({enrichedAthletes.filter(a => a.est_actif === false).length})</option>
             </select>
 
             {/* Groupe */}
@@ -880,9 +920,23 @@ export default function InsuranceManagement() {
                             {(ath.nom?.charAt(0) || '') + (ath.prenom?.charAt(0) || '')}
                           </div>
                           <div>
-                            <strong style={{ color: 'var(--text-primary)', display: 'block', fontSize: '0.88rem' }}>
-                              {(ath.nom || '').toUpperCase()} {ath.prenom}
-                            </strong>
+                            <div className="flex items-center gap-1.5">
+                              <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>
+                                {(ath.nom || '').toUpperCase()} {ath.prenom}
+                              </strong>
+                              {ath.est_actif === false && (
+                                <span style={{
+                                  fontSize: '0.65rem',
+                                  padding: '1px 5px',
+                                  borderRadius: '4px',
+                                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                  color: '#f59e0b',
+                                  fontWeight: 700
+                                }}>
+                                  Archivé
+                                </span>
+                              )}
+                            </div>
                             <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                               {ath.telephone || 'Sans numéro'}
                             </span>
@@ -989,6 +1043,20 @@ export default function InsuranceManagement() {
                           >
                             <Edit size={15} />
                           </button>
+
+                          {/* Réactiver si archivé */}
+                          {ath.est_actif === false && (
+                            <button
+                              onClick={async () => {
+                                await restoreAthlete(ath.id);
+                                fetchAthletes(true);
+                              }}
+                              title="Réactiver ce membre dans le club"
+                              className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-[var(--bg-tertiary)]"
+                            >
+                              <RefreshCw size={15} />
+                            </button>
+                          )}
 
                           {/* Supprimer si existant */}
                           {ass && (

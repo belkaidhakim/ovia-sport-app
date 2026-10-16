@@ -3,16 +3,23 @@ import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 
 export function useAthletes() {
-  const [athletes, setAthletes] = useState([]);
+  const [athletes, setAthletes] = useState(() => {
+    try {
+      const cached = localStorage.getItem('scb_cached_athletes_v1');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [archivedAthletes, setArchivedAthletes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchAthletes = useCallback(async () => {
+  const fetchAthletes = useCallback(async (includeArchived = false) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('athletes')
         .select(`
           *,
@@ -20,12 +27,21 @@ export function useAthletes() {
           cotisations (periode_couverte_fin),
           groupes(id, nom),
           presences (id)
-        `)
-        .eq('est_actif', true)
-        .order('date_inscription', { ascending: false });
+        `);
+
+      if (!includeArchived) {
+        query = query.eq('est_actif', true);
+      }
+
+      const { data, error } = await query.order('date_inscription', { ascending: false });
 
       if (error) throw error;
       setAthletes(data || []);
+      try {
+        localStorage.setItem('scb_cached_athletes_v1', JSON.stringify(data || []));
+      } catch (e) {
+        // Ignore storage quota errors
+      }
       setError(null);
     } catch (err) {
       console.error('Erreur fetchAthletes:', err);
@@ -35,6 +51,10 @@ export function useAthletes() {
       setLoading(false);
     }
   }, []);
+
+  const fetchAllAthletes = useCallback(async () => {
+    return fetchAthletes(true);
+  }, [fetchAthletes]);
 
   const fetchArchivedAthletes = useCallback(async () => {
     try {
@@ -209,6 +229,7 @@ export function useAthletes() {
     loadingArchived,
     error,
     fetchAthletes,
+    fetchAllAthletes,
     fetchArchivedAthletes,
     archiveAthlete,
     restoreAthlete,
