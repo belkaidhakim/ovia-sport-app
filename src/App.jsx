@@ -25,6 +25,7 @@ const LandingPage = lazy(() => import('./pages/LandingPage'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 const Schedule = lazy(() => import('./pages/Schedule'));
 const SportsTracking = lazy(() => import('./pages/SportsTracking'));
+const InsuranceManagement = lazy(() => import('./pages/InsuranceManagement'));
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -165,6 +166,9 @@ function AppRoutes() {
             <Route path="/finances" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><FinancialDashboard /></AppLayout></ProtectedRoute>} />
             
             <Route path="/groupes" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><GroupsManagement /></AppLayout></ProtectedRoute>} />
+            
+            <Route path="/assurances" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><InsuranceManagement /></AppLayout></ProtectedRoute>} />
+            <Route path="/assurance" element={<Navigate to="/assurances" replace />} />
             
             <Route path="/planning" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><Schedule /></AppLayout></ProtectedRoute>} />
             

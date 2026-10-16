@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves, UserCheck, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -140,6 +140,12 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <NavLink to="/groupes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
             <Users size={18} />
             <span>Groupes (Niveaux)</span>
+          </NavLink>
+        )}
+        {['admin', 'secretaire', 'entraineur'].includes(role) && (
+          <NavLink to="/assurances" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
+            <ShieldCheck size={18} />
+            <span>Assurances</span>
           </NavLink>
         )}
         {['admin', 'secretaire', 'entraineur'].includes(role) && (

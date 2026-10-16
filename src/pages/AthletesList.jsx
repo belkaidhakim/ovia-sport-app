@@ -3,7 +3,7 @@ import {
   Plus, Search, QrCode, Edit, Printer, Download, Upload, Trash2, Mail, 
   MessageSquare, Send, CheckSquare, UserPlus, Timer, Users, Award, Waves, 
   FileText, HeartPulse, Shield, AlertTriangle, RotateCcw, Check, Ban, 
-  CreditCard, Sparkles, X, CheckCircle2, ExternalLink, Copy
+  CreditCard, Sparkles, X, CheckCircle2, ExternalLink, Copy, ShieldCheck
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -470,6 +470,12 @@ export default function AthletesList() {
             </Button>
 
             <RegistrationStatusToggle />
+
+            <Link to="/assurances" style={{ textDecoration: 'none' }} title="Module de gestion des assurances">
+              <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <ShieldCheck size={16} /> Assurances
+              </Button>
+            </Link>
 
             <a 
               href="/inscription" 

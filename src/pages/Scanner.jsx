@@ -3,10 +3,12 @@ import { Scanner as QRScanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../supabaseClient';
 import { 
   CheckCircle2, XCircle, Users, Wifi, WifiOff, Volume2, VolumeX, 
-  RefreshCw, Sparkles, AlertTriangle, Maximize, Minimize, HeartPulse, CreditCard
+  RefreshCw, Sparkles, AlertTriangle, Maximize, Minimize, HeartPulse, CreditCard,
+  ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import BadgeGenerator from '../components/BadgeGenerator';
 import { soundController } from '../utils/audioFeedback';
+import { calculateInsuranceStatus } from '../hooks/useAssurances';
 import toast from 'react-hot-toast';
 
 const OFFLINE_QUEUE_KEY = 'scb_offline_presences_queue';
@@ -270,13 +272,19 @@ export default function Scanner() {
           if (soundEnabled) soundController.playError();
         }
 
+        const storedAssurances = JSON.parse(localStorage.getItem('ovia_assurances_data') || '[]');
+        const athleteAssurance = storedAssurances.find(a => a.athlete_id === athlete.id);
+        const insuranceStatus = calculateInsuranceStatus(athleteAssurance);
+
         setAthleteData({ 
           ...athlete, 
           alreadyScanned, 
           accessState, 
           blockReason, 
           presencesCount,
-          remainingSessions 
+          remainingSessions,
+          athleteAssurance,
+          insuranceStatus
         });
       }
     } catch {
@@ -424,6 +432,30 @@ export default function Scanner() {
             </div>
           )}
           
+          {/* Badge Statut Assurance */}
+          {athleteData.insuranceStatus && (
+            <div style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              backgroundColor: athleteData.insuranceStatus.isCovered ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)', 
+              border: `1px solid ${athleteData.insuranceStatus.isCovered ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.6)'}`,
+              padding: '0.35rem 1rem', 
+              borderRadius: '9999px', 
+              fontSize: '0.82rem', 
+              fontWeight: 800, 
+              marginBottom: '0.75rem', 
+              color: 'white' 
+            }}>
+              {athleteData.insuranceStatus.isCovered ? <ShieldCheck size={15} /> : <ShieldAlert size={15} />}
+              <span>
+                {athleteData.insuranceStatus.isCovered 
+                  ? `Assurance : ${athleteData.athleteAssurance?.compagnie?.split('(')[0].trim() || 'À jour'} (${athleteData.insuranceStatus.daysLeft}j)` 
+                  : '⚠️ Assurance : Non couverte / Expirée'}
+              </span>
+            </div>
+          )}
+          
           <div style={{ transform: 'scale(0.85)', margin: '-1rem 0' }}>
             <BadgeGenerator athlete={athleteData} showEndDate={true} />
           </div>
@@ -463,6 +495,30 @@ export default function Scanner() {
           <div style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '0.35rem 1.25rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>
             🟠 Séance d'essai {presencesCount + 1}/2 • Cotisation en attente
           </div>
+
+          {/* Badge Statut Assurance */}
+          {athleteData.insuranceStatus && (
+            <div style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              backgroundColor: athleteData.insuranceStatus.isCovered ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.35)', 
+              border: `1px solid ${athleteData.insuranceStatus.isCovered ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.6)'}`,
+              padding: '0.35rem 1rem', 
+              borderRadius: '9999px', 
+              fontSize: '0.82rem', 
+              fontWeight: 800, 
+              marginBottom: '0.75rem', 
+              color: 'white' 
+            }}>
+              {athleteData.insuranceStatus.isCovered ? <ShieldCheck size={15} /> : <ShieldAlert size={15} />}
+              <span>
+                {athleteData.insuranceStatus.isCovered 
+                  ? `Assurance : ${athleteData.athleteAssurance?.compagnie?.split('(')[0].trim() || 'À jour'} (${athleteData.insuranceStatus.daysLeft}j)` 
+                  : '⚠️ Assurance : Non couverte / Expirée'}
+              </span>
+            </div>
+          )}
 
           <div style={{ transform: 'scale(0.85)', margin: '-1rem 0' }}>
             <BadgeGenerator athlete={athleteData} showEndDate={true} />

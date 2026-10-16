@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Activity,
   CalendarDays,
-  Copy
+  Copy,
+  ShieldCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -423,6 +424,11 @@ export default function Dashboard() {
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <RegistrationStatusToggle />
+          <Link to="/assurances" style={{ textDecoration: 'none' }} title="Accéder au module de gestion des assurances">
+            <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <ShieldCheck size={16} /> Assurances
+            </Button>
+          </Link>
           <a 
             href="/inscription" 
             target="_blank" 
