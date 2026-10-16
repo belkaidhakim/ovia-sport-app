@@ -98,6 +98,20 @@ export default function InsuranceManagement() {
     notes: 'Souscription collective saison 2026/2027'
   });
 
+  // Modal & Formulaire Bordereau Collectif
+  const [showBordereauModal, setShowBordereauModal] = useState(false);
+  const [bordereauForm, setBordereauForm] = useState({
+    targetType: 'non_assures', // 'non_assures' | 'selected' | 'group' | 'all'
+    targetGroupId: '',
+    compagnie: 'SAA (Société Nationale d\'Assurance)',
+    numero_police: `BORD-OVIA-${new Date().getFullYear()}/01`,
+    date_debut: new Date().toISOString().split('T')[0],
+    date_fin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    type_couverture: 'Responsabilité Civile (RC) + Individuelle Accident (IA)',
+    montant: 1500,
+    autoEnregistrer: false
+  });
+
   // Fusionner chaque athlète avec son assurance active
   const enrichedAthletes = useMemo(() => {
     return athletes.map(ath => {
@@ -271,28 +285,67 @@ export default function InsuranceManagement() {
     }
   };
 
-  // Générer Bordereau Collectif PDF
-  const handleExportBordereauPdf = async () => {
-    const listToExport = selectedAthleteIds.length > 0
-      ? enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id))
-      : filteredAthletes;
+  // Ouvrir modal de configuration du bordereau
+  const handleOpenBordereauModal = (preferredTarget = null) => {
+    setBordereauForm(prev => ({
+      ...prev,
+      targetType: preferredTarget || (selectedAthleteIds.length > 0 ? 'selected' : (stats.nonAssure > 0 ? 'non_assures' : 'all'))
+    }));
+    setShowBordereauModal(true);
+  };
+
+  // Générer Bordereau Collectif PDF (avec auto-enregistrement optionnel)
+  const handleGenerateBordereau = async (e) => {
+    if (e) e.preventDefault();
+    let listToExport = [];
+
+    if (bordereauForm.targetType === 'non_assures') {
+      listToExport = enrichedAthletes.filter(a => a.insuranceStatus.code === 'NON_ASSURE' || a.insuranceStatus.code === 'EXPIREE');
+    } else if (bordereauForm.targetType === 'selected') {
+      listToExport = enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id));
+    } else if (bordereauForm.targetType === 'group') {
+      if (!bordereauForm.targetGroupId) {
+        toast.error('Veuillez sélectionner un groupe.');
+        return;
+      }
+      listToExport = enrichedAthletes.filter(a => String(a.groupe_id) === String(bordereauForm.targetGroupId) || a.groupes?.id === bordereauForm.targetGroupId);
+    } else {
+      listToExport = enrichedAthletes;
+    }
 
     if (!listToExport.length) {
-      toast.error('Aucun athlète à exporter dans le bordereau.');
+      toast.error('Aucun athlète trouvé pour cette sélection.');
       return;
     }
 
-    const toastId = toast.loading('Génération du Bordereau d\'Assurance Collectif (PDF)...');
+    const toastId = toast.loading(`Génération du bordereau pour ${listToExport.length} athlète(s)...`);
+
     try {
-      const primeCompagnie = listToExport[0]?.assurance?.compagnie || 'SAA Assurances';
-      const primePolice = listToExport[0]?.assurance?.numero_police || 'POL-COLLECTIF-2026';
+      // Si l'utilisateur a choisi d'enregistrer automatiquement ces assurances :
+      if (bordereauForm.autoEnregistrer) {
+        await batchSouscrire(listToExport.map(a => a.id), {
+          compagnie: bordereauForm.compagnie,
+          numero_police: bordereauForm.numero_police,
+          date_debut: bordereauForm.date_debut,
+          date_fin: bordereauForm.date_fin,
+          type_couverture: bordereauForm.type_couverture,
+          montant: bordereauForm.montant,
+          notes: 'Souscription via Bordereau Collectif'
+        });
+      }
 
       await generateBordereauCollectifPdf({
-        compagnie: primeCompagnie,
-        numeroPolice: primePolice,
+        compagnie: bordereauForm.compagnie,
+        numeroPolice: bordereauForm.numero_police,
+        dateDebut: bordereauForm.date_debut,
+        dateFin: bordereauForm.date_fin,
+        typeCouverture: bordereauForm.type_couverture,
         athletes: listToExport
       });
-      toast.success('Bordereau d\'assurance généré et téléchargé !', { id: toastId });
+
+      toast.success(`Bordereau d'assurance généré (${listToExport.length} athlètes) !`, { id: toastId });
+      setShowBordereauModal(false);
+      setSelectedAthleteIds([]);
     } catch (err) {
       toast.error('Erreur lors de la génération du bordereau PDF', { id: toastId });
     }
@@ -402,7 +455,7 @@ export default function InsuranceManagement() {
         <div className="flex flex-wrap items-center gap-2.5">
           <Button 
             variant="secondary"
-            onClick={handleExportBordereauPdf}
+            onClick={() => handleOpenBordereauModal()}
             title="Générer et télécharger le bordereau collectif officiel prêt à imprimer pour la compagnie"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
           >
@@ -476,18 +529,38 @@ export default function InsuranceManagement() {
             </div>
           </div>
 
-          <Button 
-            variant="secondary"
-            onClick={() => setStatusFilter('NON_ASSURE')}
-            style={{ 
-              fontSize: '0.78rem', 
-              padding: '0.35rem 0.75rem', 
-              borderColor: 'rgba(239, 68, 68, 0.4)', 
-              color: '#ef4444' 
-            }}
-          >
-            Voir les non-assurés
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="primary"
+              onClick={() => handleOpenBordereauModal('non_assures')}
+              style={{ 
+                fontSize: '0.78rem', 
+                padding: '0.4rem 0.85rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                backgroundColor: '#ef4444',
+                borderColor: '#ef4444',
+                color: '#ffffff'
+              }}
+              title="Générer directement le bordereau PDF pour tous les adhérents non encore assurés"
+            >
+              <FileText size={14} /> Bordereau Nouveaux Adhérents ({stats.nonAssure})
+            </Button>
+
+            <Button 
+              variant="secondary"
+              onClick={() => setStatusFilter('NON_ASSURE')}
+              style={{ 
+                fontSize: '0.78rem', 
+                padding: '0.4rem 0.75rem', 
+                borderColor: 'rgba(239, 68, 68, 0.4)', 
+                color: '#ef4444' 
+              }}
+            >
+              Filtrer la liste
+            </Button>
+          </div>
         </motion.div>
       )}
 
@@ -700,7 +773,7 @@ export default function InsuranceManagement() {
               </Button>
               <Button 
                 variant="secondary"
-                onClick={handleExportBordereauPdf}
+                onClick={() => handleOpenBordereauModal('selected')}
                 style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
               >
                 Bordereau PDF ({selectedAthleteIds.length})
@@ -1290,6 +1363,208 @@ export default function InsuranceManagement() {
                   </Button>
                   <Button variant="primary" type="submit">
                     Appliquer la souscription
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* MODALE 3 : CONFIGURATION DU BORDEREAU COLLECTIF PDF */}
+        {showBordereauModal && (
+          <div className="modal-overlay" style={{ zIndex: 100 }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-card modal-content"
+              style={{ maxWidth: '580px', width: '95%' }}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                  <FileText size={20} color="#818cf8" />
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
+                    Générateur de Bordereau Collectif (PDF)
+                  </h3>
+                </div>
+                <button 
+                  onClick={() => setShowBordereauModal(false)}
+                  className="text-[var(--text-muted)] hover:text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleGenerateBordereau} className="flex flex-col gap-3.5">
+                {/* 1. Sélection de la cible */}
+                <div>
+                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1.5">
+                    Quels athlètes inclure dans ce bordereau ? *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'non_assures' }))}
+                      className={`p-2.5 rounded-xl text-left border transition-all ${
+                        bordereauForm.targetType === 'non_assures'
+                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
+                      }`}
+                    >
+                      <strong className="block text-xs font-bold">🔴 Nouveaux & Non-assurés</strong>
+                      <span className="text-[0.7rem] opacity-80">{stats.nonAssure} athlète(s) à régulariser</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'selected' }))}
+                      className={`p-2.5 rounded-xl text-left border transition-all ${
+                        bordereauForm.targetType === 'selected'
+                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
+                      }`}
+                    >
+                      <strong className="block text-xs font-bold">📋 Sélection cochée</strong>
+                      <span className="text-[0.7rem] opacity-80">{selectedAthleteIds.length} athlète(s) coché(s)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'group' }))}
+                      className={`p-2.5 rounded-xl text-left border transition-all ${
+                        bordereauForm.targetType === 'group'
+                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
+                      }`}
+                    >
+                      <strong className="block text-xs font-bold">👥 Tout un Groupe</strong>
+                      <span className="text-[0.7rem] opacity-80">Sélectionner par niveau</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'all' }))}
+                      className={`p-2.5 rounded-xl text-left border transition-all ${
+                        bordereauForm.targetType === 'all'
+                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
+                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
+                      }`}
+                    >
+                      <strong className="block text-xs font-bold">🌐 Tous les Membres</strong>
+                      <span className="text-[0.7rem] opacity-80">Totalité du club ({stats.total})</span>
+                    </button>
+                  </div>
+
+                  {bordereauForm.targetType === 'group' && (
+                    <select
+                      value={bordereauForm.targetGroupId}
+                      onChange={(e) => setBordereauForm(prev => ({ ...prev, targetGroupId: e.target.value }))}
+                      required={bordereauForm.targetType === 'group'}
+                      className="w-full mt-2 px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="">Sélectionner le groupe...</option>
+                      {groupes.map(g => (
+                        <option key={g.id} value={g.id}>{g.nom}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* 2. Compagnie d'Assurance */}
+                <div>
+                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                    Compagnie d'Assurance Destinataire *
+                  </label>
+                  <select
+                    value={bordereauForm.compagnie}
+                    onChange={(e) => setBordereauForm(prev => ({ ...prev, compagnie: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                  >
+                    {COMPAGNIES_ASSURANCE.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Référence de police / bordereau */}
+                <div>
+                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                    Référence de Police / Contrat-Cadre *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    placeholder="Ex: BORD-OVIA-2026/01 ou POL-SAA-7890"
+                    value={bordereauForm.numero_police}
+                    onChange={(e) => setBordereauForm(prev => ({ ...prev, numero_police: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                  />
+                </div>
+
+                {/* 4. Dates de couverture */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Date de début *
+                    </label>
+                    <input 
+                      type="date"
+                      required
+                      value={bordereauForm.date_debut}
+                      onChange={(e) => setBordereauForm(prev => ({ ...prev, date_debut: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Date d'expiration *
+                    </label>
+                    <input 
+                      type="date"
+                      required
+                      value={bordereauForm.date_fin}
+                      onChange={(e) => setBordereauForm(prev => ({ ...prev, date_fin: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* 5. Option d'enregistrement automatique */}
+                <div style={{
+                  padding: '0.85rem 1rem',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px'
+                }}>
+                  <input 
+                    type="checkbox"
+                    id="autoEnregistrerCheck"
+                    checked={bordereauForm.autoEnregistrer}
+                    onChange={(e) => setBordereauForm(prev => ({ ...prev, autoEnregistrer: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="autoEnregistrerCheck" style={{ cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                    <strong>Enregistrer automatiquement ces membres comme assurés</strong>
+                    <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Cochez cette case si le contrat est déjà effectif : les athlètes inclus passeront immédiatement au vert 🟢 "À jour".
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-[var(--border-color)]">
+                  <Button variant="secondary" type="button" onClick={() => setShowBordereauModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button variant="primary" type="submit" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Download size={15} /> Télécharger le Bordereau PDF
                   </Button>
                 </div>
               </form>
