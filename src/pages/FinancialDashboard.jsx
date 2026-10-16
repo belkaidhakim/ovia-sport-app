@@ -105,8 +105,12 @@ export default function FinancialDashboard() {
   
   // Forms (Encaisser & Dépense)
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState(null);
-  const initialFormState = { athlete_id: '', montant_paye: '', mode_paiement: 'Espèces', periode_couverte_fin: '' };
+  const getDefaultFinDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().split('T')[0];
+  };
+  const initialFormState = { athlete_id: '', montant_paye: '', mode_paiement: 'Espèces', periode_couverte_fin: getDefaultFinDate() };
   const [formData, setFormData] = useState(initialFormState);
   
   const [showDepenseForm, setShowDepenseForm] = useState(false);
@@ -189,6 +193,12 @@ export default function FinancialDashboard() {
     fetchDepenses();
     fetchAthletes();
   }, [fetchCotisations, fetchDepenses]);
+
+  useEffect(() => {
+    if (showPaymentForm && athletes.length === 0) {
+      fetchAthletes();
+    }
+  }, [showPaymentForm, athletes.length]);
 
   const filteredCotisations = useMemo(() => {
     let result = [...cotisations];
@@ -291,8 +301,17 @@ export default function FinancialDashboard() {
   async function fetchAthletes() {
     try {
       setLoading(true);
-      const { data: athletesData } = await supabase.from('athletes').select('id, nom, prenom, telephone, telephone_tuteur, groupes(tarif)').eq('est_actif', true);
-      setAthletes(athletesData || []);
+      const { data: athletesData, error } = await supabase
+        .from('athletes')
+        .select('id, nom, prenom, telephone, contact_urgence, date_naissance, groupe, groupes(id, nom)')
+        .eq('est_actif', true)
+        .order('nom', { ascending: true });
+
+      if (error) {
+        console.error('Erreur chargement athlètes (finances):', error);
+      } else {
+        setAthletes(athletesData || []);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -623,7 +642,7 @@ export default function FinancialDashboard() {
                   ) : (
                     paginatedList.map(cotis => {
                       const athleteName = cotis.athletes ? `${cotis.athletes.nom} ${cotis.athletes.prenom}` : 'Inconnu';
-                      const wpPhone = cotis.athletes ? formatWhatsAppPhone(cotis.athletes.telephone || cotis.athletes.telephone_tuteur) : null;
+                      const wpPhone = cotis.athletes ? formatWhatsAppPhone(cotis.athletes.telephone || cotis.athletes.contact_urgence || cotis.athletes.telephone_tuteur) : null;
                       return (
                         <tr key={cotis.id}>
                           <td className="text-xs text-muted">{new Date(cotis.date_paiement).toLocaleDateString('fr-FR')}</td>
@@ -719,15 +738,15 @@ export default function FinancialDashboard() {
                   ) : (
                     paginatedList.map(cotis => {
                       const athleteName = cotis.athletes ? `${cotis.athletes.nom} ${cotis.athletes.prenom}` : 'Inconnu';
-                      const wpPhone = cotis.athletes ? formatWhatsAppPhone(cotis.athletes.telephone || cotis.athletes.telephone_tuteur) : null;
-                      const tarif = cotis.athletes?.groupes?.tarif || 3000;
+                      const wpPhone = cotis.athletes ? formatWhatsAppPhone(cotis.athletes.telephone || cotis.athletes.contact_urgence || cotis.athletes.telephone_tuteur) : null;
+                      const tarif = cotisationAdhesion || 3000;
                       
                       const retardDays = Math.max(0, Math.floor((new Date() - new Date(cotis.periode_couverte_fin)) / (1000 * 60 * 60 * 24)));
                       
                       return (
                         <tr key={`imp-${cotis.id}`} style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)' }}>
                           <td className="font-semibold text-sm">{athleteName}</td>
-                          <td className="text-xs text-muted">{cotis.athletes?.groupes?.nom || '-'} <br/><span className="text-[10px] text-red-400">Dû : {formatDA(tarif)}</span></td>
+                          <td className="text-xs text-muted">{cotis.athletes?.groupes?.nom || cotis.athletes?.groupe || '-'} <br/><span className="text-[10px] text-red-400">Dû : {formatDA(tarif)}</span></td>
                           <td className="text-xs font-bold text-orange-500">{cotis.endDateStr}</td>
                           <td className="text-xs font-bold text-red-500">{retardDays} jour(s)</td>
                           <td style={{ textAlign: 'right' }}>
@@ -1000,16 +1019,53 @@ export default function FinancialDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="form-group">
-                  <label className="form-label font-bold text-xs mb-1">Adhérent *</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="form-label font-bold text-xs mb-0">Adhérent *</label>
+                    <span className="text-[11px] text-muted">{athletes.length} membre(s) actif(s)</span>
+                  </div>
                   <select 
                     className="form-select w-full" 
                     value={formData.athlete_id} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, athlete_id: e.target.value }))}
+                    onChange={(e) => {
+                      const athleteId = e.target.value;
+                      setFormData(prev => {
+                        let nextMontant = prev.montant_paye;
+                        if (!nextMontant || Number(nextMontant) === 0) {
+                          if (siblingMap.has(athleteId)) {
+                            const sib = siblingMap.get(athleteId);
+                            nextMontant = Math.round(cotisationAdhesion * (1 - (sib.discountPercent || 0) / 100));
+                          } else {
+                            nextMontant = cotisationAdhesion || 3000;
+                          }
+                        }
+                        return {
+                          ...prev,
+                          athlete_id: athleteId,
+                          montant_paye: nextMontant
+                        };
+                      });
+                    }}
                     required
                   >
                     <option value="">Sélectionner un athlète</option>
-                    {athletes.map(a => <option key={a.id} value={a.id}>{formatName(a.nom, a.prenom)}</option>)}
+                    {athletes.map(a => {
+                      const grp = a.groupes?.nom || a.groupe;
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {formatName(a.nom, a.prenom)}{grp ? ` — ${grp}` : ''}
+                        </option>
+                      );
+                    })}
                   </select>
+                  {athletes.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => fetchAthletes()}
+                      className="text-xs text-blue-400 underline mt-1 block"
+                    >
+                      Actualiser la liste des adhérents
+                    </button>
+                  )}
                 </div>
                 <div className="form-group">
                   <label className="form-label font-bold text-xs mb-1">Montant encaissé (DA) *</label>
@@ -1022,6 +1078,22 @@ export default function FinancialDashboard() {
                     onChange={(e) => setFormData(prev => ({ ...prev, montant_paye: e.target.value }))}
                     required 
                   />
+                  <div className="flex gap-1.5 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, montant_paye: cotisationAdhesion || 3000 }))}
+                      style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                    >
+                      {formatDA(cotisationAdhesion || 3000)} (Cotis.)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, montant_paye: totalAdhesion || 3300 }))}
+                      style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                    >
+                      {formatDA(totalAdhesion || 3300)} (Inscr. Totale)
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1049,6 +1121,30 @@ export default function FinancialDashboard() {
                     onChange={(e) => setFormData(prev => ({ ...prev, periode_couverte_fin: e.target.value }))}
                     required 
                   />
+                  <div className="flex gap-1.5 mt-1">
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 30);
+                        setFormData(prev => ({ ...prev, periode_couverte_fin: d.toISOString().split('T')[0] }));
+                      }}
+                      style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                    >
+                      +30 jours (1 mois)
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 90);
+                        setFormData(prev => ({ ...prev, periode_couverte_fin: d.toISOString().split('T')[0] }));
+                      }}
+                      style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                    >
+                      +90 jours (Trimestre)
+                    </button>
+                  </div>
                 </div>
               </div>
 

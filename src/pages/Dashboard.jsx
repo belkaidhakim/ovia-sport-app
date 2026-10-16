@@ -113,10 +113,10 @@ export default function Dashboard() {
     async function fetchDashboardData() {
       try {
         setLoading(true);
-        // Phase 4: Fetch tarif for financial impact
+        // Phase 4: Financial impact calculation
         const { data: athletesData, error: athletesError } = await supabase
           .from('athletes')
-          .select(`*, cartes_acces(statut, date_dernier_paiement), cotisations(montant_paye, date_paiement, periode_couverte_fin), groupes(id, nom, horaires, tarif)`)
+          .select(`*, cartes_acces(statut, date_dernier_paiement), cotisations(montant_paye, date_paiement, periode_couverte_fin), groupes(id, nom, horaires)`)
           .eq('est_actif', true)
           .order('date_inscription', { ascending: false });
 
@@ -361,7 +361,7 @@ export default function Dashboard() {
     });
   }, [stats.allAthletes, inscritsFilterGroup, inscritsFilterStatus, inscritsSearch]);
 
-  const athletesWithPhoneToExpire = stats.expiredList.filter(a => a.telephone || a.telephone_tuteur);
+  const athletesWithPhoneToExpire = stats.expiredList.filter(a => a.telephone || a.contact_urgence || a.telephone_tuteur);
 
   return (
     <div>
@@ -488,7 +488,7 @@ export default function Dashboard() {
                         <p className="text-xs text-muted mb-3">Cliquez successivement sur chaque bouton pour ouvrir WhatsApp pré-rempli avec le message de relance.</p>
                         <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
                           {athletesWithPhoneToExpire.map(athlete => {
-                            const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.telephone_tuteur);
+                            const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.contact_urgence || athlete.telephone_tuteur);
                             const msg = `Bonjour ${athlete.prenom}, votre adhésion à Ovia Sport a expiré le ${athlete.endDateStr}. Merci de bien vouloir régulariser votre cotisation à la réception du club. Cordialement.`;
                             return (
                               <a
@@ -525,7 +525,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
                         {stats.expiredList.slice(0, 5).map(athlete => {
-                          const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.telephone_tuteur);
+                          const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.contact_urgence || athlete.telephone_tuteur);
                           return (
                             <div key={athlete.id} className="flex justify-between items-center p-2 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                               <div>

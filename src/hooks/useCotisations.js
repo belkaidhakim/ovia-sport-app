@@ -59,6 +59,20 @@ export function useCotisations() {
         `);
 
       if (error) throw error;
+
+      // Smart Access: Réactiver la carte d'accès de l'athlète automatiquement
+      if (cotisData.athlete_id) {
+        try {
+          const datePay = cotisData.date_paiement || new Date().toISOString().split('T')[0];
+          await supabase
+            .from('cartes_acces')
+            .update({ statut: 'ACTIVE', date_dernier_paiement: datePay })
+            .eq('athlete_id', cotisData.athlete_id);
+        } catch (e) {
+          console.warn('Carte acces update non-bloquant:', e);
+        }
+      }
+
       if (data && data[0]) {
         setCotisations(prev => [data[0], ...prev]);
       } else {

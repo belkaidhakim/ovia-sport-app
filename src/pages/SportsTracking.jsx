@@ -14,8 +14,12 @@ import toast from 'react-hot-toast';
 const PERFORMANCES_STORAGE_PREFIX = 'scb_athlete_perfs_';
 
 export default function SportsTracking() {
-  const { athletes, loading: loadingAthletes } = useAthletes();
+  const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
   const { groupes } = useGroupes();
+
+  useEffect(() => {
+    fetchAthletes();
+  }, [fetchAthletes]);
 
   const [activeTab, setActiveTab] = useState('feuille_match'); // 'feuille_match' | 'records' | 'niveaux'
   const [selectedGroupId, setSelectedGroupId] = useState('');
