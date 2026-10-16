@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Scanner as QRScanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../supabaseClient';
-import { CheckCircle2, XCircle, Users, Wifi, WifiOff, Volume2, VolumeX, RefreshCw, Sparkles } from 'lucide-react';
+import { 
+  CheckCircle2, XCircle, Users, Wifi, WifiOff, Volume2, VolumeX, 
+  RefreshCw, Sparkles, AlertTriangle, Maximize, Minimize, HeartPulse, CreditCard
+} from 'lucide-react';
 import BadgeGenerator from '../components/BadgeGenerator';
 import { soundController } from '../utils/audioFeedback';
 import toast from 'react-hot-toast';
@@ -15,6 +18,7 @@ export default function Scanner() {
   const [loading, setLoading] = useState(false);
   const [entryCount, setEntryCount] = useState(0);
   const [scanMode, setScanMode] = useState('pointage'); // 'pointage' ou 'verification'
+  const [isKioskMode, setIsKioskMode] = useState(false);
 
   // État de connexion & file hors-ligne
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -48,8 +52,10 @@ export default function Scanner() {
         .from('athletes')
         .select(`
           id, nom, prenom, photo_url, token_qr, est_actif, groupe,
+          certificat_medical_valide, numero_licence,
           cartes_acces (statut, date_dernier_paiement),
-          cotisations (periode_couverte_fin)
+          cotisations (periode_couverte_fin),
+          presences (id)
         `)
         .eq('est_actif', true);
 
@@ -114,7 +120,6 @@ export default function Scanner() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Initialisation du cache
     updateAthletesCache();
     syncOfflinePresences();
 
@@ -123,6 +128,17 @@ export default function Scanner() {
       window.removeEventListener('offline', handleOffline);
     };
   }, [syncOfflinePresences, updateAthletesCache]);
+
+  // Bascule Mode Kiosque (Plein Écran)
+  const toggleKioskMode = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      setIsKioskMode(true);
+    } else {
+      document.exitFullscreen?.().catch(() => {});
+      setIsKioskMode(false);
+    }
+  };
 
   // Détection du Scan QR
   const handleScan = async (detectedCodes) => {
@@ -143,7 +159,9 @@ export default function Scanner() {
             .select(`
               *,
               cartes_acces (statut, date_dernier_paiement),
-              cotisations (periode_couverte_fin)
+              cotisations (periode_couverte_fin),
+              groupes (nom),
+              presences (id, date_scan)
             `)
             .eq('token_qr', decodedText)
             .eq('est_actif', true)
@@ -171,10 +189,44 @@ export default function Scanner() {
         if (soundEnabled) soundController.playError();
         setAthleteData({ error: 'Membre introuvable ou QR code invalide.' });
       } else {
-        const statut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut);
+        const presencesCount = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
+        const remainingSessions = Math.max(0, 8 - presencesCount);
+        const cardStatut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut) || 'ACTIVE';
+        
+        const sortedCotis = [...(athlete.cotisations || [])].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
+        const isCotisPaid = sortedCotis[0] && new Date(sortedCotis[0].periode_couverte_fin) >= new Date();
+
+        let accessState = 'AUTORISE'; // 'AUTORISE' | 'TOLERANCE' | 'BLOQUE' | 'QUOTA_EXCEDE'
+        let blockReason = '';
         let alreadyScanned = false;
 
-        if (statut === 'ACTIVE') {
+        // ÉVALUATION DES RÈGLES MÉTIER STRICTES (PHASE 2)
+        if (cardStatut === 'SUSPENDUE' || cardStatut === 'BLOQUE') {
+          accessState = 'BLOQUE';
+          blockReason = "Carte suspendue par l'administration";
+        } else if (presencesCount >= 8) {
+          accessState = 'QUOTA_EXCEDE';
+          blockReason = 'Forfait épuisé (8/8 séances effectuées) - Renouvellement requis';
+          
+          // Mise à jour automatique de la carte en SUSPENDUE pour renouvellement
+          if (navigator.onLine) {
+            supabase
+              .from('cartes_acces')
+              .update({ statut: 'SUSPENDUE' })
+              .eq('athlete_id', athlete.id)
+              .catch(() => {});
+          }
+        } else if (!isCotisPaid) {
+          if (presencesCount <= 2) {
+            accessState = 'TOLERANCE';
+          } else {
+            accessState = 'BLOQUE';
+            blockReason = 'Cotisation impayée (Délai de tolérance dépassé)';
+          }
+        }
+
+        // ENREGISTREMENT DE LA PRÉSENCE SI AUTORISÉ OU TOLÉRÉ
+        if (accessState === 'AUTORISE' || accessState === 'TOLERANCE') {
           if (scanMode === 'pointage') {
             if (navigator.onLine) {
               const { error: insertError } = await supabase
@@ -191,7 +243,6 @@ export default function Scanner() {
                 setEntryCount(prev => prev + 1);
               }
             } else {
-              // Mode hors-ligne : Sauvegarder dans la file d'attente
               const newQueueItem = {
                 athlete_id: athlete.id,
                 nom: athlete.nom,
@@ -204,17 +255,28 @@ export default function Scanner() {
             }
           }
 
+          // SIGNAL SONORE ADAPTÉ
           if (alreadyScanned) {
+            if (soundEnabled) soundController.playWarning();
+          } else if (accessState === 'TOLERANCE') {
             if (soundEnabled) soundController.playWarning();
           } else {
             if (soundEnabled) soundController.playSuccess();
           }
+        } else if (accessState === 'QUOTA_EXCEDE') {
+          if (soundEnabled) soundController.playQuotaExceeded();
         } else {
-          // Statut non actif (suspendu / impayé)
           if (soundEnabled) soundController.playError();
         }
 
-        setAthleteData({ ...athlete, alreadyScanned });
+        setAthleteData({ 
+          ...athlete, 
+          alreadyScanned, 
+          accessState, 
+          blockReason, 
+          presencesCount,
+          remainingSessions 
+        });
       }
     } catch {
       if (soundEnabled) soundController.playError();
@@ -239,13 +301,15 @@ export default function Scanner() {
     }
   }, [athleteData, autoResetSeconds, handleReset]);
 
+  // RENDU DU RETOUR VISUEL PLEIN ÉCRAN (SMART ACCESS 3 ÉTATS - PHASE 2)
   const getStatusDisplay = () => {
     if (!athleteData) return null;
     
+    // CAS 1 : ERREUR SCAN
     if (athleteData.error) {
       return (
         <div style={{
-          backgroundColor: 'rgba(220, 38, 38, 0.96)',
+          backgroundColor: 'rgba(220, 38, 38, 0.97)',
           position: 'fixed',
           inset: 0,
           zIndex: 100,
@@ -255,11 +319,11 @@ export default function Scanner() {
           justifyContent: 'center',
           color: 'white',
           padding: '2rem',
-          backdropFilter: 'blur(10px)',
+          backdropFilter: 'blur(12px)',
           animation: 'pulse 1.5s infinite'
         }}>
           <XCircle size={90} className="mb-4 text-white" />
-          <h2 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '1rem', color: 'white', letterSpacing: '1px' }}>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '1px' }}>
             ACCÈS REFUSÉ
           </h2>
           <p style={{ fontSize: '1.25rem', textAlign: 'center', maxWidth: '500px', opacity: 0.95 }}>
@@ -267,7 +331,7 @@ export default function Scanner() {
           </p>
           <button 
             className="btn mt-8" 
-            style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, padding: '1rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }} 
+            style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, padding: '1rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
             onClick={handleReset}
           >
             Scanner un autre badge
@@ -276,13 +340,13 @@ export default function Scanner() {
       );
     }
 
-    const statut = athleteData.cartes_acces?.statut || (Array.isArray(athleteData.cartes_acces) && athleteData.cartes_acces[0]?.statut);
-    const isGranted = statut === 'ACTIVE';
+    const { accessState, blockReason, presencesCount, remainingSessions, alreadyScanned } = athleteData;
 
-    if (isGranted) {
+    // CAS 2 : 🔴 QUOTA ÉPUISÉ (8/8 SÉANCES TERMINÉES)
+    if (accessState === 'QUOTA_EXCEDE') {
       return (
         <div style={{
-          backgroundColor: 'rgba(16, 185, 129, 0.96)',
+          backgroundColor: 'rgba(225, 29, 72, 0.97)',
           position: 'fixed',
           inset: 0,
           zIndex: 100,
@@ -292,21 +356,69 @@ export default function Scanner() {
           justifyContent: 'center',
           color: 'white',
           padding: '1.5rem',
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(12px)'
+        }}>
+          <AlertTriangle size={85} className="mb-2 text-white animate-bounce" />
+          <h2 style={{ fontSize: '2.3rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '1px', textAlign: 'center' }}>
+            FORFAIT 8/8 ÉPUISÉ
+          </h2>
+          
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: '0.5rem 1.5rem', borderRadius: '9999px', fontSize: '1rem', fontWeight: 800, marginBottom: '1.25rem', color: '#fecdd3' }}>
+            ⚠️ 8 séances sur 8 effectuées — Renouvellement requis
+          </div>
+
+          <div style={{ transform: 'scale(0.85)', margin: '-1rem 0' }}>
+            <BadgeGenerator athlete={athleteData} showEndDate={true} />
+          </div>
+
+          <p style={{ maxWidth: '420px', textAlign: 'center', fontSize: '1rem', marginTop: '1rem', opacity: 0.95 }}>
+            Le quota mensuel de ce membre est atteint. Merci de régulariser la nouvelle cotisation au secrétariat.
+          </p>
+          
+          <button 
+            className="btn mt-5" 
+            style={{ backgroundColor: 'white', color: '#e11d48', fontWeight: 800, padding: '0.9rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
+            onClick={handleReset}
+          >
+            Scanner Suivant ({autoResetSeconds > 0 ? `${autoResetSeconds}s` : 'Manuel'})
+          </button>
+        </div>
+      );
+    }
+
+    // CAS 3 : 🟢 ACCÈS AUTORISÉ (COTISATION OK + SÉANCES RESTANTES)
+    if (accessState === 'AUTORISE') {
+      return (
+        <div style={{
+          backgroundColor: 'rgba(16, 185, 129, 0.97)',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          padding: '1.5rem',
+          backdropFilter: 'blur(12px)'
         }}>
           <CheckCircle2 size={85} className="mb-2 text-white" />
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: athleteData.alreadyScanned ? '0.4rem' : '1.5rem', color: 'white', letterSpacing: '1px' }}>
+          <h2 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: alreadyScanned ? '0.4rem' : '0.75rem', letterSpacing: '1px' }}>
             ACCÈS AUTORISÉ
           </h2>
           
-          {athleteData.alreadyScanned && (
-            <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.95)', padding: '0.35rem 1.25rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 800, marginBottom: '1rem', color: 'white', letterSpacing: '1px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+          {alreadyScanned ? (
+            <div style={{ backgroundColor: 'rgba(245, 158, 11, 0.95)', padding: '0.35rem 1.25rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>
               ⚠️ DÉJÀ POINTÉ AUJOURD'HUI
+            </div>
+          ) : (
+            <div style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '0.35rem 1.25rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>
+              🏊 Séances restantes : {Math.max(0, remainingSessions - 1)}/8
             </div>
           )}
 
           {!isOnline && (
-            <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.9)', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.85rem', color: 'white' }}>
+            <div style={{ backgroundColor: 'rgba(59, 130, 246, 0.9)', padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.75rem', color: 'white' }}>
               📶 Enregistré hors-ligne (en attente de sync)
             </div>
           )}
@@ -317,17 +429,20 @@ export default function Scanner() {
           
           <button 
             className="btn mt-4" 
-            style={{ backgroundColor: 'white', color: '#10b981', fontWeight: 800, padding: '0.85rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} 
+            style={{ backgroundColor: 'white', color: '#10b981', fontWeight: 800, padding: '0.85rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
             onClick={handleReset}
           >
             Scanner Suivant ({autoResetSeconds > 0 ? `${autoResetSeconds}s` : 'Manuel'})
           </button>
         </div>
       );
-    } else {
+    }
+
+    // CAS 4 : 🟠 TOLÉRANCE / ESSAI (COTISATION EN ATTENTE MAIS <= 2 SÉANCES)
+    if (accessState === 'TOLERANCE') {
       return (
         <div style={{
-          backgroundColor: 'rgba(220, 38, 38, 0.96)',
+          backgroundColor: 'rgba(217, 119, 6, 0.97)',
           position: 'fixed',
           inset: 0,
           zIndex: 100,
@@ -337,45 +452,90 @@ export default function Scanner() {
           justifyContent: 'center',
           color: 'white',
           padding: '1.5rem',
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(12px)'
         }}>
-          <XCircle size={85} className="mb-2 text-white" />
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '1rem', color: 'white', letterSpacing: '1px' }}>
-            ACCÈS REFUSÉ
+          <AlertTriangle size={85} className="mb-2 text-white" />
+          <h2 style={{ fontSize: '2.2rem', fontWeight: 900, marginBottom: '0.4rem', letterSpacing: '1px' }}>
+            ACCÈS TOLÉRÉ (ESSAI)
           </h2>
           
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '0.35rem 1.25rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>
+            🟠 Séance d'essai {presencesCount + 1}/2 • Cotisation en attente
+          </div>
+
           <div style={{ transform: 'scale(0.85)', margin: '-1rem 0' }}>
             <BadgeGenerator athlete={athleteData} showEndDate={true} />
           </div>
           
-          <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '0.85rem 1.5rem', borderRadius: '12px', textAlign: 'center', width: '100%', maxWidth: '380px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fca5a5' }}>
-              MOTIF : CARTE {statut === 'SUSPENDED' ? 'SUSPENDUE (COTISATION EXPIRÉE)' : (statut || 'NON VALIDÉE')}
+          <div style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: '0.65rem 1.25rem', borderRadius: '12px', textAlign: 'center', maxWidth: '420px', marginTop: '0.75rem' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#fef3c7' }}>
+              Rappel : Merci d'inviter l'adhérent à régler sa cotisation à l'accueil avant la 3ème séance.
             </p>
           </div>
           
           <button 
-            className="btn mt-5" 
-            style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, padding: '0.85rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.3)' }} 
+            className="btn mt-4" 
+            style={{ backgroundColor: 'white', color: '#d97706', fontWeight: 800, padding: '0.85rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
             onClick={handleReset}
           >
-            Scanner Suivant
+            Scanner Suivant ({autoResetSeconds > 0 ? `${autoResetSeconds}s` : 'Manuel'})
           </button>
         </div>
       );
     }
+
+    // CAS 5 : 🔴 ACCÈS BLOQUÉ (SUSPENDU, IMPAYÉ DÉPASSÉ OU SANS CERTIFICAT)
+    return (
+      <div style={{
+        backgroundColor: 'rgba(220, 38, 38, 0.97)',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        padding: '1.5rem',
+        backdropFilter: 'blur(12px)'
+      }}>
+        <XCircle size={85} className="mb-2 text-white" />
+        <h2 style={{ fontSize: '2.4rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '1px' }}>
+          ACCÈS BLOQUÉ
+        </h2>
+        
+        <div style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: '0.65rem 1.5rem', borderRadius: '12px', textAlign: 'center', width: '100%', maxWidth: '420px', marginBottom: '1rem', border: '1px solid rgba(255,255,255,0.2)' }}>
+          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fecaca' }}>
+            MOTIF : {blockReason.toUpperCase()}
+          </p>
+        </div>
+
+        <div style={{ transform: 'scale(0.85)', margin: '-1rem 0' }}>
+          <BadgeGenerator athlete={athleteData} showEndDate={true} />
+        </div>
+        
+        <button 
+          className="btn mt-5" 
+          style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, padding: '0.85rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
+          onClick={handleReset}
+        >
+          Scanner Suivant
+        </button>
+      </div>
+    );
   };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#090d16', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Outfit, sans-serif' }}>
-      {/* HEADER DU SCANNER AVEC STATUT RÉSEAU & COMPTEURS */}
+      
+      {/* HEADER DU SCANNER AVEC STATUT RÉSEAU & COMMANDES */}
       <div style={{ padding: '0.85rem 1.25rem', backgroundColor: '#0f172a', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
             Scanner de Contrôle Bassin
           </h1>
           <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
-            Pointage instantané des accès par badge QR
+            Pointage instantané & Smart Access (Quotas & Cotisations)
           </p>
         </div>
         
@@ -447,6 +607,24 @@ export default function Scanner() {
             <span>Mode {scanMode === 'pointage' ? 'Pointage' : 'Vérification'}</span>
           </button>
 
+          {/* Bouton Mode Kiosque Plein Écran */}
+          <button
+            onClick={toggleKioskMode}
+            style={{
+              padding: '0.45rem',
+              borderRadius: '8px',
+              backgroundColor: isKioskMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255,255,255,0.08)',
+              color: isKioskMode ? '#818cf8' : '#94a3b8',
+              border: '1px solid rgba(255,255,255,0.1)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+            title={isKioskMode ? 'Quitter le mode Kiosque' : 'Activer le mode Kiosque (Tablette / Réception)'}
+          >
+            {isKioskMode ? <Minimize size={16} /> : <Maximize size={16} />}
+          </button>
+
           {/* Bouton Son On/Off */}
           <button
             onClick={() => setSoundEnabled(prev => !prev)}
@@ -481,7 +659,7 @@ export default function Scanner() {
           </div>
         )}
         <p style={{ marginTop: '1.25rem', fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>
-          💡 Présentez le badge QR devant la caméra. La validation et le retour sonore sont automatiques.
+          💡 Présentez le badge QR devant la caméra. La vérification Smart Access et les alertes de quota sont automatiques.
         </p>
       </div>
       

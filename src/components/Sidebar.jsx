@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -92,12 +92,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <span>Tableau de bord</span>
         </NavLink>
         
-        {['admin', 'secretaire'].includes(role) && (
-          <NavLink to="/inscriptions-en-attente" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
-            <UserPlus size={18} />
-            <span>Inscriptions</span>
+        {['admin', 'secretaire', 'entraineur'].includes(role) && (
+          <NavLink to="/athletes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
+            <Users size={18} />
+            <span>Athlètes</span>
             {pendingInscriptionsCount > 0 && (
-              <span style={{ marginLeft: 'auto', backgroundColor: '#f59e0b', color: '#000', fontSize: '0.7rem', fontWeight: 800, padding: '2px 7px', borderRadius: '10px' }}>
+              <span 
+                style={{ marginLeft: 'auto', backgroundColor: '#f59e0b', color: '#000', fontSize: '0.7rem', fontWeight: 800, padding: '2px 7px', borderRadius: '10px' }}
+                title={`${pendingInscriptionsCount} inscription(s) en attente`}
+              >
                 {pendingInscriptionsCount}
               </span>
             )}
@@ -105,9 +108,9 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         )}
 
         {['admin', 'secretaire', 'entraineur'].includes(role) && (
-          <NavLink to="/athletes" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
-            <Users size={18} />
-            <span>Athlètes</span>
+          <NavLink to="/performances" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
+            <Timer size={18} />
+            <span>Performances & Chronos</span>
           </NavLink>
         )}
 

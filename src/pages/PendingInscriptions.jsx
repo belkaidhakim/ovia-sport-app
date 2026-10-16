@@ -38,7 +38,7 @@ import { calculateAge, formatWhatsAppPhone, formatName, formatDA } from '../util
 import { generateOfficialRegistrationFormPdf } from '../utils/registrationFormPdfGenerator';
 import BadgeGenerator from '../components/BadgeGenerator';
 
-export default function PendingInscriptions() {
+export default function PendingInscriptions({ embedded = false }) {
   const { 
     inscriptions, 
     loading, 
@@ -251,10 +251,17 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
     <div>
       {/* HEADER DE LA PAGE */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Inscriptions en Attente</h1>
-          <p style={{ margin: '2px 0 0', fontSize: '0.85rem' }}>Examinez les dossiers d'adhésion en ligne, vérifiez les pièces justificatives et intégrez les nouveaux membres.</p>
-        </div>
+        {!embedded ? (
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Inscriptions en Attente</h1>
+            <p style={{ margin: '2px 0 0', fontSize: '0.85rem' }}>Examinez les dossiers d'adhésion en ligne, vérifiez les pièces justificatives et intégrez les nouveaux membres.</p>
+          </div>
+        ) : (
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)' }}>Validation des Inscriptions</h2>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Examinez les dossiers soumis et intégrez directement les nouveaux membres.</p>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Bouton Toggle Inscriptions Ouvertes / Fermées */}

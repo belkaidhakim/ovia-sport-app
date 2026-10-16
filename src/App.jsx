@@ -24,6 +24,7 @@ const PendingInscriptions = lazy(() => import('./pages/PendingInscriptions'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const MemberPortal = lazy(() => import('./pages/MemberPortal'));
 const Schedule = lazy(() => import('./pages/Schedule'));
+const SportsTracking = lazy(() => import('./pages/SportsTracking'));
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -149,13 +150,16 @@ function AppRoutes() {
             {/* Admin routes with layout */}
             <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
             
-            <Route path="/inscriptions-en-attente" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><PendingInscriptions /></AppLayout></ProtectedRoute>} />
-            <Route path="/admin/inscriptions" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><PendingInscriptions /></AppLayout></ProtectedRoute>} />
-            <Route path="/inscriptions-admin" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><PendingInscriptions /></AppLayout></ProtectedRoute>} />
+            <Route path="/inscriptions-en-attente" element={<Navigate to="/athletes?tab=inscriptions" replace />} />
+            <Route path="/admin/inscriptions" element={<Navigate to="/athletes?tab=inscriptions" replace />} />
+            <Route path="/inscriptions-admin" element={<Navigate to="/athletes?tab=inscriptions" replace />} />
 
             <Route path="/athletes" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><AthletesList /></AppLayout></ProtectedRoute>} />
             <Route path="/athletes/new" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><AthleteForm /></AppLayout></ProtectedRoute>} />
             <Route path="/athletes/edit/:id" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><AthleteForm /></AppLayout></ProtectedRoute>} />
+            
+            <Route path="/performances" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><SportsTracking /></AppLayout></ProtectedRoute>} />
+            <Route path="/suivi-sportif" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><SportsTracking /></AppLayout></ProtectedRoute>} />
             
             <Route path="/finances" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><FinancialDashboard /></AppLayout></ProtectedRoute>} />
             
