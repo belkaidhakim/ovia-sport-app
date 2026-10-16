@@ -388,7 +388,7 @@ export default function FinancialDashboard() {
       doc.text("DÉTAILS DU RÈGLEMENT :", 18, 70);
       
       doc.setFontSize(9); doc.setTextColor(100, 116, 139);
-      doc.text("Montant payé :", 18, 80); doc.setTextColor(15, 23, 42); doc.text(`${formatDA(cotisation.montant_paye)} DA`, 60, 80);
+      doc.text("Montant payé :", 18, 80); doc.setTextColor(15, 23, 42); doc.text(`${formatDA(cotisation.montant_paye)}`, 60, 80);
       doc.setTextColor(100, 116, 139); doc.text("Période couverte :", 18, 88); doc.setTextColor(15, 23, 42); doc.text(`Jusqu'au ${endDateStr}`, 60, 88);
       doc.setTextColor(100, 116, 139); doc.text("Mode de paiement :", 18, 96); doc.setTextColor(15, 23, 42); doc.text(cotisation.mode_paiement || "Espèces", 60, 96);
 
@@ -478,18 +478,18 @@ export default function FinancialDashboard() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Encaissements Globaux</p>
-              <h2 className="text-2xl font-bold" style={{ color: '#10b981' }}>+ {formatDA(stats.totalRevenue)} DA</h2>
+              <h2 className="text-2xl font-bold" style={{ color: '#10b981' }}>+ {formatDA(stats.totalRevenue)}</h2>
             </div>
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><TrendingUp size={24} /></div>
           </div>
           <div className="pt-3 border-t border-[var(--border-color)]">
             <div className="flex justify-between text-xs mb-1">
               <span className="text-muted">Nouvelles Inscriptions ({stats.countFraisInscription}) :</span>
-              <span className="font-semibold">{formatDA(stats.totalFraisInscription)} DA</span>
+              <span className="font-semibold">{formatDA(stats.totalFraisInscription)}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted">Renouvellements ({stats.countCotisations}) :</span>
-              <span className="font-semibold">{formatDA(stats.totalCotisationsSportives)} DA</span>
+              <span className="font-semibold">{formatDA(stats.totalCotisationsSportives)}</span>
             </div>
           </div>
         </Card>
@@ -499,7 +499,7 @@ export default function FinancialDashboard() {
           <div className="flex justify-between items-start mb-4">
             <div>
               <p className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Décaissements Globaux</p>
-              <h2 className="text-2xl font-bold" style={{ color: '#ef4444' }}>- {formatDA(stats.totalDepenses)} DA</h2>
+              <h2 className="text-2xl font-bold" style={{ color: '#ef4444' }}>- {formatDA(stats.totalDepenses)}</h2>
             </div>
             <div className="p-2 bg-red-500/10 text-red-500 rounded-lg"><TrendingDown size={24} /></div>
           </div>
@@ -523,7 +523,7 @@ export default function FinancialDashboard() {
             <div>
               <p className="text-sm font-bold text-muted uppercase tracking-wider mb-1">Solde Net Période</p>
               <h2 className="text-2xl font-bold" style={{ color: stats.beneficeNet >= 0 ? '#3b82f6' : '#f59e0b' }}>
-                {stats.beneficeNet > 0 ? '+' : ''} {formatDA(stats.beneficeNet)} DA
+                {stats.beneficeNet > 0 ? '+' : ''} {formatDA(stats.beneficeNet)}
               </h2>
             </div>
             <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg"><Coins size={24} /></div>
@@ -628,7 +628,7 @@ export default function FinancialDashboard() {
                         <tr key={cotis.id}>
                           <td className="text-xs text-muted">{new Date(cotis.date_paiement).toLocaleDateString('fr-FR')}</td>
                           <td className="font-semibold text-sm">{athleteName}</td>
-                          <td className="font-bold text-emerald-500">{formatDA(cotis.montant_paye)} DA</td>
+                          <td className="font-bold text-emerald-500">{formatDA(cotis.montant_paye)}</td>
                           <td>{getPaymentModeBadge(cotis.mode_paiement)}</td>
                           <td className="text-xs">Jusqu'au {new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}</td>
                           <td style={{ textAlign: 'right' }}>
@@ -637,7 +637,7 @@ export default function FinancialDashboard() {
                                 <Download size={14} />
                               </button>
                               {wpPhone && (
-                                <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, voici la confirmation de votre paiement de ${formatDA(cotis.montant_paye)} DA pour la cotisation Ovia Sport (valable jusqu'au ${new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}). Merci !`)}`} target="_blank" rel="noreferrer" className="btn-secondary flex items-center justify-center p-1.5 rounded text-[#25D366] hover:bg-[#25D366]/10" title="Envoyer Reçu WhatsApp">
+                                <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, voici la confirmation de votre paiement de ${formatDA(cotis.montant_paye)} pour la cotisation Ovia Sport (valable jusqu'au ${new Date(cotis.periode_couverte_fin).toLocaleDateString('fr-FR')}). Merci !`)}`} target="_blank" rel="noreferrer" className="btn-secondary flex items-center justify-center p-1.5 rounded text-[#25D366] hover:bg-[#25D366]/10" title="Envoyer Reçu WhatsApp">
                                   <MessageCircle size={14} />
                                 </a>
                               )}
@@ -680,7 +680,7 @@ export default function FinancialDashboard() {
                         <td className="text-xs text-muted">{new Date(dep.date_depense).toLocaleDateString('fr-FR')}</td>
                         <td><Badge style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{dep.categorie}</Badge></td>
                         <td className="text-sm">{dep.description}</td>
-                        <td className="font-bold text-red-500">- {formatDA(dep.montant)} DA</td>
+                        <td className="font-bold text-red-500">- {formatDA(dep.montant)}</td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="flex justify-end items-center gap-1.5">
                             <button 
@@ -727,12 +727,12 @@ export default function FinancialDashboard() {
                       return (
                         <tr key={`imp-${cotis.id}`} style={{ backgroundColor: isDark ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)' }}>
                           <td className="font-semibold text-sm">{athleteName}</td>
-                          <td className="text-xs text-muted">{cotis.athletes?.groupes?.nom || '-'} <br/><span className="text-[10px] text-red-400">Dû : {formatDA(tarif)} DA</span></td>
+                          <td className="text-xs text-muted">{cotis.athletes?.groupes?.nom || '-'} <br/><span className="text-[10px] text-red-400">Dû : {formatDA(tarif)}</span></td>
                           <td className="text-xs font-bold text-orange-500">{cotis.endDateStr}</td>
                           <td className="text-xs font-bold text-red-500">{retardDays} jour(s)</td>
                           <td style={{ textAlign: 'right' }}>
                             {wpPhone ? (
-                              <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, sauf erreur de notre part, votre cotisation Ovia Sport de ${formatDA(tarif)} DA a expiré le ${cotis.endDateStr}. Merci de régulariser la situation à la réception. Sportivement.`)}`} target="_blank" rel="noreferrer">
+                              <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${cotis.athletes?.prenom}, sauf erreur de notre part, votre cotisation Ovia Sport de ${formatDA(tarif)} a expiré le ${cotis.endDateStr}. Merci de régulariser la situation à la réception. Sportivement.`)}`} target="_blank" rel="noreferrer">
                                 <Button variant="secondary" style={{ backgroundColor: 'rgba(37, 211, 102, 0.1)', color: '#25D366', borderColor: 'transparent', padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>
                                   <MessageCircle size={14} style={{ marginRight: '6px' }} /> Relancer
                                 </Button>
@@ -826,7 +826,7 @@ export default function FinancialDashboard() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted text-xs font-semibold">Montant encaissé :</span>
                     <strong className="text-sm font-bold text-emerald-500">
-                      + {formatDA(deleteModal.item.montant_paye)} DA
+                      + {formatDA(deleteModal.item.montant_paye)}
                     </strong>
                   </div>
                   <div className="flex justify-between items-center">
@@ -859,7 +859,7 @@ export default function FinancialDashboard() {
                   <div className="flex justify-between items-center">
                     <span className="text-muted text-xs font-semibold">Montant décaissé :</span>
                     <strong className="text-sm font-bold text-red-500">
-                      - {formatDA(deleteModal.item.montant)} DA
+                      - {formatDA(deleteModal.item.montant)}
                     </strong>
                   </div>
                   <div className="flex justify-between items-center">

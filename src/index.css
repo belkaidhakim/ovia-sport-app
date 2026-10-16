@@ -560,10 +560,29 @@ table tbody td {
 }
 
 .nav-item.active {
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(37, 99, 235, 0.08));
-  color: #ffffff;
-  border-color: rgba(56, 189, 248, 0.35);
-  box-shadow: 0 0 20px var(--accent-primary-glow);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff !important;
+  font-weight: 600;
+  border-color: rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+}
+
+.nav-item.active:hover {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+
+[data-theme="light"] .nav-item.active {
+  background: linear-gradient(135deg, #070d1e 0%, #1e3a8a 100%);
+  color: #ffffff !important;
+  font-weight: 600;
+  border-color: rgba(7, 13, 30, 0.2);
+  box-shadow: 0 4px 14px rgba(7, 13, 30, 0.25);
+}
+
+[data-theme="light"] .nav-item.active:hover {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #0f172a 0%, #172554 100%);
 }
 
 .nav-item.active::before {
@@ -574,9 +593,9 @@ table tbody td {
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background: var(--accent-primary);
+  background: var(--accent-secondary);
   border-radius: var(--radius-full);
-  box-shadow: 0 0 8px var(--accent-primary-glow);
+  box-shadow: 0 0 8px var(--accent-secondary-glow);
 }
 
 .main-content {

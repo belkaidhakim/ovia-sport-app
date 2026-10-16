@@ -4,7 +4,7 @@ import {
   AlertTriangle, 
   CreditCard, 
   ScanLine, 
-  DollarSign, 
+  Wallet, 
   Clock, 
   UserX, 
   Phone, 
@@ -374,7 +374,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           <Link to="/scanner" style={{ textDecoration: 'none' }}>
             <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <ScanLine size={17} /> Scanner Bassin
+              <ScanLine size={17} /> Scanner QR
             </Button>
           </Link>
           <Link to="/athletes/new" style={{ textDecoration: 'none' }}>
@@ -419,12 +419,12 @@ export default function Dashboard() {
             />
             {/* Phase 4: Indicateur Financier Remplacé */}
             <StatCard
-              icon={<DollarSign size={20} />}
+              icon={<Wallet size={20} />}
               iconBg="rgba(239, 68, 68, 0.1)"
               iconColor="#ef4444"
               glowColor="rgba(239, 68, 68, 0.15)"
               label="Manque à gagner (Impayés)"
-              value={`${formatDA(stats.missingRevenue)} DA`}
+              value={formatDA(stats.missingRevenue)}
               subtitle={`${stats.expiredList.length} cotisations suspendues`}
             />
             <StatCard

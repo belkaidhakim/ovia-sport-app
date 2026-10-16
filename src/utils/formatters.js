@@ -9,7 +9,8 @@
  */
 export const formatDA = (val) => {
   if (val === undefined || val === null || val === '') return '0 DA';
-  const num = Math.round(Number(val));
+  const cleanVal = typeof val === 'string' ? val.replace(/\s*DA\s*$/i, '').replace(/\s+/g, '').trim() : val;
+  const num = Math.round(Number(cleanVal));
   if (isNaN(num)) return '0 DA';
   const formatted = num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return `${formatted} DA`;
