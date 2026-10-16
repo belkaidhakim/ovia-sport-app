@@ -789,7 +789,7 @@ export default function Dashboard() {
                         return (
                           <tr key={athlete.id} style={rowStyle}>
                             <td style={{ fontWeight: 600 }}>
-                              <Link to={`/athletes/${athlete.id}`} style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
+                              <Link to={`/athletes/edit/${athlete.id}`} style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
                                 {athlete.nom} {athlete.prenom}
                               </Link>
                             </td>

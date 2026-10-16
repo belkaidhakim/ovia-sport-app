@@ -157,6 +157,7 @@ function AppRoutes() {
             <Route path="/athletes" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><AthletesList /></AppLayout></ProtectedRoute>} />
             <Route path="/athletes/new" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><AthleteForm /></AppLayout></ProtectedRoute>} />
             <Route path="/athletes/edit/:id" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><AthleteForm /></AppLayout></ProtectedRoute>} />
+            <Route path="/athletes/:id" element={<ProtectedRoute allowedRoles={['admin', 'secretaire']}><AppLayout><AthleteForm /></AppLayout></ProtectedRoute>} />
             
             <Route path="/performances" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><SportsTracking /></AppLayout></ProtectedRoute>} />
             <Route path="/suivi-sportif" element={<ProtectedRoute allowedRoles={['admin', 'secretaire', 'entraineur']}><AppLayout><SportsTracking /></AppLayout></ProtectedRoute>} />
