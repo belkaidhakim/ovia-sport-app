@@ -64,7 +64,7 @@ export function useAthletes() {
         .select(`
           *,
           cartes_acces (statut, date_dernier_paiement),
-          cotisations (periode_couverte_fin),
+          cotisations (periode_couverte_fin, date_paiement, montant_paye),
           groupes(id, nom)
         `)
         .eq('est_actif', false)
@@ -72,9 +72,11 @@ export function useAthletes() {
 
       if (error) throw error;
       setArchivedAthletes(data || []);
+      return data || [];
     } catch (err) {
       console.error('Erreur fetchArchivedAthletes:', err);
       toast.error('Erreur lors du chargement des archives');
+      return [];
     } finally {
       setLoadingArchived(false);
     }
@@ -113,6 +115,78 @@ export function useAthletes() {
     } catch (err) {
       console.error('Erreur restoreAthlete:', err);
       toast.error("Erreur lors de la réactivation");
+      return false;
+    }
+  };
+
+  const bulkRestoreAthletes = async (athleteIds) => {
+    if (!athleteIds || athleteIds.length === 0) return false;
+    try {
+      const { error } = await supabase
+        .from('athletes')
+        .update({ est_actif: true })
+        .in('id', athleteIds);
+
+      if (error) throw error;
+      setArchivedAthletes(prev => prev.filter(a => !athleteIds.includes(a.id)));
+      fetchAthletes();
+      toast.success(`${athleteIds.length} membre(s) réactivé(s) avec succès`);
+      return true;
+    } catch (err) {
+      console.error('Erreur bulkRestoreAthletes:', err);
+      toast.error("Erreur lors de la réactivation en masse");
+      return false;
+    }
+  };
+
+  const deleteAthletePermanently = async (id) => {
+    try {
+      // Nettoyer les dépendances clés étrangères avant suppression définitive
+      await supabase.from('cartes_acces').delete().eq('athlete_id', id).catch(() => {});
+      await supabase.from('cotisations').delete().eq('athlete_id', id).catch(() => {});
+      await supabase.from('assurances').delete().eq('athlete_id', id).catch(() => {});
+      await supabase.from('presences').delete().eq('athlete_id', id).catch(() => {});
+      await supabase.from('scans').delete().eq('athlete_id', id).catch(() => {});
+
+      const { error } = await supabase
+        .from('athletes')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setArchivedAthletes(prev => prev.filter(a => a.id !== id));
+      setAthletes(prev => prev.filter(a => a.id !== id));
+      toast.success("Membre supprimé définitivement");
+      return true;
+    } catch (err) {
+      console.error('Erreur deleteAthletePermanently:', err);
+      toast.error("Erreur lors de la suppression définitive");
+      return false;
+    }
+  };
+
+  const bulkDeleteAthletesPermanently = async (athleteIds) => {
+    if (!athleteIds || athleteIds.length === 0) return false;
+    try {
+      await supabase.from('cartes_acces').delete().in('athlete_id', athleteIds).catch(() => {});
+      await supabase.from('cotisations').delete().in('athlete_id', athleteIds).catch(() => {});
+      await supabase.from('assurances').delete().in('athlete_id', athleteIds).catch(() => {});
+      await supabase.from('presences').delete().in('athlete_id', athleteIds).catch(() => {});
+      await supabase.from('scans').delete().in('athlete_id', athleteIds).catch(() => {});
+
+      const { error } = await supabase
+        .from('athletes')
+        .delete()
+        .in('id', athleteIds);
+
+      if (error) throw error;
+      setArchivedAthletes(prev => prev.filter(a => !athleteIds.includes(a.id)));
+      setAthletes(prev => prev.filter(a => !athleteIds.includes(a.id)));
+      toast.success(`${athleteIds.length} membre(s) supprimé(s) définitivement`);
+      return true;
+    } catch (err) {
+      console.error('Erreur bulkDeleteAthletesPermanently:', err);
+      toast.error("Erreur lors de la suppression définitive en masse");
       return false;
     }
   };
@@ -233,6 +307,9 @@ export function useAthletes() {
     fetchArchivedAthletes,
     archiveAthlete,
     restoreAthlete,
+    bulkRestoreAthletes,
+    deleteAthletePermanently,
+    bulkDeleteAthletesPermanently,
     toggleAccessStatus,
     bulkUpdateGroup,
     bulkToggleAccess,

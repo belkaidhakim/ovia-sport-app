@@ -603,9 +603,19 @@ export default function AthletesList() {
         {/* ONGLET 3 : ARCHIVES / ANCIENS */}
         {activeMainTab === 'archives' && (
           <Card noPadding>
-            <div className="p-4" style={{ borderBottom: '1px solid var(--border-color)' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Membres archivés ou inactifs</h3>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ces membres ne peuvent plus accéder au bassin via le Scanner QR. Vous pouvez les restaurer à tout moment.</p>
+            <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--border-color)' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Membres archivés ou inactifs</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ces membres ne peuvent plus accéder au bassin via le Scanner QR. Vous pouvez les restaurer à tout moment.</p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/archives')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+              >
+                <span>Ouvrir le module complet Archives</span>
+                <ExternalLink size={14} />
+              </Button>
             </div>
             {loadingArchived ? (
               <div className="p-6 flex flex-col gap-3">

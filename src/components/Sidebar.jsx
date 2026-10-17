@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves, UserCheck, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, ScanLine, LogOut, X, Shield, CalendarDays, UserPlus, Timer, ExternalLink, Waves, UserCheck, ShieldCheck, Archive } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -10,24 +10,33 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const { role } = useAuth();
   const location = useLocation();
   const [pendingInscriptionsCount, setPendingInscriptionsCount] = useState(0);
+  const [archivedCount, setArchivedCount] = useState(0);
 
   useEffect(() => {
-    const fetchPendingCount = async () => {
+    const fetchCounts = async () => {
       try {
-        const { count, error } = await supabase
+        const { count: pCount, error: pErr } = await supabase
           .from('inscriptions')
           .select('*', { count: 'exact', head: true })
           .eq('statut', 'EN_ATTENTE');
-        if (!error && count !== null) {
-          setPendingInscriptionsCount(count);
+        if (!pErr && pCount !== null) {
+          setPendingInscriptionsCount(pCount);
+        }
+
+        const { count: aCount, error: aErr } = await supabase
+          .from('athletes')
+          .select('*', { count: 'exact', head: true })
+          .eq('est_actif', false);
+        if (!aErr && aCount !== null) {
+          setArchivedCount(aCount);
         }
       } catch {
         // Silently ignore if table doesn't exist yet
       }
     };
     if (['admin', 'secretaire'].includes(role)) {
-      fetchPendingCount();
-      const interval = setInterval(fetchPendingCount, 25000);
+      fetchCounts();
+      const interval = setInterval(fetchCounts, 25000);
       return () => clearInterval(interval);
     }
   }, [role]);
@@ -146,6 +155,20 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <NavLink to="/assurances" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
             <ShieldCheck size={18} />
             <span>Assurances</span>
+          </NavLink>
+        )}
+        {['admin', 'secretaire'].includes(role) && (
+          <NavLink to="/archives" className={({ isActive }) => isActive ? "nav-item active" : "nav-item"} onClick={() => setIsOpen(false)}>
+            <Archive size={18} />
+            <span>Archives Membres</span>
+            {archivedCount > 0 && (
+              <span 
+                style={{ marginLeft: 'auto', backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', fontSize: '0.7rem', fontWeight: 800, padding: '2px 7px', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.3)' }}
+                title={`${archivedCount} membre(s) archivé(s)`}
+              >
+                {archivedCount}
+              </span>
+            )}
           </NavLink>
         )}
         {['admin', 'secretaire', 'entraineur'].includes(role) && (
