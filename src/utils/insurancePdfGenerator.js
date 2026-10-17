@@ -349,3 +349,224 @@ export async function generateAttestationAssurancePdf({
     throw err;
   }
 }
+
+/**
+ * Génère le Bordereau Officiel de Déclaration d'Assurance Fédérale (FAN & DJS)
+ * Conforme aux exigences de la Fédération Algérienne de Natation et de la DJS Bouira.
+ */
+export async function generateBordereauFederalFanPdf({
+  compagnie = 'SAA Assurances',
+  numeroPolice = 'CONV-FAN-OVIA-2026',
+  saison = '2026 / 2027',
+  athletes = []
+} = {}) {
+  try {
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const logoBase64 = await loadClubLogoBase64();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    const drawHeader = (pageNum, totalPages) => {
+      // En-tête national & fédéral
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text('RÉPUBLIQUE ALGÉRIENNE DÉMOCRATIQUE ET POPULAIRE', pageWidth / 2, 10, { align: 'center' });
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
+      doc.text('MINISTÈRE DE LA JEUNESSE ET DES SPORTS · DIRECTION DE LA JEUNESSE ET DES SPORTS (DJS BOUIRA)', pageWidth / 2, 15, { align: 'center' });
+      doc.text('FÉDÉRATION ALGÉRIENNE DE NATATION (FAN) · LIGUE DE NATATION DE LA WILAYA DE BOUIRA', pageWidth / 2, 19, { align: 'center' });
+
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.4);
+      doc.line(14, 22, pageWidth - 14, 22);
+
+      // Logo Club
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'JPEG', 14, 25, 16, 16);
+        } catch {}
+      }
+
+      // Identité Club
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text('CLUB SPORTIF AMATEUR · OVIA SPORT (CSA OVIA)', 34, 30);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Affiliation FAN N° : FAN-BOU-044/2026 · Wilaya de Bouira · Saison Sportive : ${saison}`, 34, 35);
+      doc.text(`Compagnie Assureur Conventionnée : ${compagnie} · Police Groupe N° : ${numeroPolice}`, 34, 39);
+
+      // Titre Encadré Officiel
+      doc.setFillColor(15, 23, 42);
+      doc.roundedRect(pageWidth - 95, 25, 81, 16, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text('BORDEREAU D\'ASSURANCE FÉDÉRALE', pageWidth - 90, 31);
+      doc.setFontSize(7.5);
+      doc.setTextColor(56, 189, 248);
+      doc.text('DÉCLARATION COLLECTIVE DES ADHÉRENTS', pageWidth - 90, 37);
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Page ${pageNum} / ${totalPages} · Édité le ${new Date().toLocaleDateString('fr-FR')}`, pageWidth - 14, 45, { align: 'right' });
+    };
+
+    const startY = 48;
+    const rowHeight = 7.5;
+    const rowsPerPage = 14;
+    const totalPages = Math.ceil(athletes.length / rowsPerPage) || 1;
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) doc.addPage();
+      drawHeader(page + 1, totalPages);
+
+      // Table Header
+      let y = startY;
+      doc.setFillColor(241, 245, 249);
+      doc.rect(14, y, pageWidth - 28, 8, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(14, y, pageWidth - 28, 8, 'S');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+
+      const cols = [
+        { label: 'N°', x: 18, width: 10 },
+        { label: 'N° LICENCE FAN', x: 30, width: 30 },
+        { label: 'NOM & PRÉNOM', x: 62, width: 55 },
+        { label: 'DATE NAISS.', x: 120, width: 25 },
+        { label: 'SEXE', x: 148, width: 15 },
+        { label: 'CATÉGORIE FÉDÉRALE', x: 165, width: 40 },
+        { label: 'N° QUITTANCE / POLICE', x: 208, width: 45 },
+        { label: 'VISA MÉDECIN', x: 256, width: 25 }
+      ];
+
+      cols.forEach(col => {
+        doc.text(col.label, col.x, y + 5.5);
+      });
+
+      // Rows
+      y += 8;
+      const pageAthletes = athletes.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+
+      pageAthletes.forEach((ath, idx) => {
+        const globalIdx = page * rowsPerPage + idx + 1;
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 250, 252);
+          doc.rect(14, y, pageWidth - 28, rowHeight, 'F');
+        }
+        doc.setDrawColor(226, 232, 240);
+        doc.rect(14, y, pageWidth - 28, rowHeight, 'S');
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+
+        // N°
+        doc.text(String(globalIdx), cols[0].x, y + 5);
+
+        // N° Licence FAN
+        const licenceFan = ath.token_qr || `FAN-${new Date().getFullYear()}-${String(globalIdx).padStart(4, '0')}`;
+        doc.setFont('courier', 'bold');
+        doc.text(licenceFan.substring(0, 16), cols[1].x, y + 5);
+        doc.setFont('helvetica', 'normal');
+
+        // Nom & Prénom
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${(ath.nom || '').toUpperCase()} ${ath.prenom || ''}`.substring(0, 30), cols[2].x, y + 5);
+        doc.setFont('helvetica', 'normal');
+
+        // Date Naissance
+        const bDate = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '-';
+        doc.text(bDate, cols[3].x, y + 5);
+
+        // Sexe
+        doc.text(ath.sexe === 'Femme' || ath.sexe === 'F' ? 'F' : 'M', cols[4].x, y + 5);
+
+        // Catégorie
+        const cat = ath.categorie || ath.groupes?.nom || ath.groupe || 'Standard';
+        doc.text(cat.substring(0, 24), cols[5].x, y + 5);
+
+        // N° Quittance / Police
+        const policeNum = ath.assurance?.numero_police || numeroPolice || 'En attente';
+        doc.text(policeNum.substring(0, 24), cols[6].x, y + 5);
+
+        // Visa Médecin
+        doc.setFontSize(7);
+        doc.setTextColor(16, 185, 129);
+        doc.text(ath.medical_ok !== false ? 'Apte [✓]' : 'En attente', cols[7].x, y + 5);
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(8);
+
+        y += rowHeight;
+      });
+
+      // Cadre des 3 Visas et Signatures officielles sur chaque page
+      const footerBoxY = pageHeight - 34;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(203, 213, 225);
+      doc.rect(14, footerBoxY, pageWidth - 28, 26, 'S');
+
+      const colW = (pageWidth - 28) / 3;
+
+      // 1. Médecin du Club
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text('1. VISA DU MÉDECIN DU CLUB', 18, footerBoxY + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Certifie l\'aptitude médicale des athlètes', 18, footerBoxY + 11);
+      doc.text('(Signature et Cachet du Médecin)', 18, footerBoxY + 22);
+
+      // Séparateur 1
+      doc.line(14 + colW, footerBoxY, 14 + colW, footerBoxY + 26);
+
+      // 2. Président Ovia Sport
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text('2. LE PRÉSIDENT DU CLUB (CSA)', 18 + colW, footerBoxY + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Déclare l\'exactitude des informations et le paiement de la prime', 18 + colW, footerBoxY + 11);
+      doc.text('(Signature et Cachet Officiel Ovia Sport)', 18 + colW, footerBoxY + 22);
+
+      // Séparateur 2
+      doc.line(14 + colW * 2, footerBoxY, 14 + colW * 2, footerBoxY + 26);
+
+      // 3. Visa Ligue / DJS
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text('3. VISA LIGUE FAN / DJS BOUIRA', 18 + colW * 2, footerBoxY + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Homologation fédérale et délivrance des licences', 18 + colW * 2, footerBoxY + 11);
+      doc.text('(Cachet de la Ligue de Natation)', 18 + colW * 2, footerBoxY + 22);
+    }
+
+    const fileName = `Bordereau_Federal_FAN_OviaSport_${Date.now()}.pdf`;
+    doc.save(fileName);
+    return fileName;
+  } catch (err) {
+    console.error('Erreur génération Bordereau FAN PDF:', err);
+    throw err;
+  }
+}
+

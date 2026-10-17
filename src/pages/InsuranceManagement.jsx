@@ -26,7 +26,12 @@ import {
   UserPlus,
   UserMinus,
   UserCheck,
-  Check
+  Check,
+  Building2,
+  History,
+  Send,
+  Award,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -42,9 +47,14 @@ import {
 } from '../hooks/useAssurances';
 import { 
   generateBordereauCollectifPdf, 
-  generateAttestationAssurancePdf 
+  generateAttestationAssurancePdf,
+  generateBordereauFederalFanPdf
 } from '../utils/insurancePdfGenerator';
 import { formatDA, formatWhatsAppPhone } from '../utils/formatters';
+import InsuranceWhatsAppModal from '../components/InsuranceWhatsAppModal';
+import InsuranceOcrModal from '../components/InsuranceOcrModal';
+import InsurancePartnersModal from '../components/InsurancePartnersModal';
+import InsuranceAuditModal, { logInsuranceAction } from '../components/InsuranceAuditModal';
 
 export default function InsuranceManagement() {
   const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
@@ -75,6 +85,15 @@ export default function InsuranceManagement() {
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, A_JOUR, EXPIRE_BIENTOT, NON_ASSURE
   const [groupFilter, setGroupFilter] = useState('ALL');
   const [compagnieFilter, setCompagnieFilter] = useState('ALL');
+  const [federalCategoryFilter, setFederalCategoryFilter] = useState('ALL');
+  const [urgencyFilterOnly, setUrgencyFilterOnly] = useState(false);
+
+  // Nouveaux Modales Intelligentes
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [whatsAppTargetAthletes, setWhatsAppTargetAthletes] = useState([]);
+  const [showOcrModal, setShowOcrModal] = useState(false);
+  const [showPartnersModal, setShowPartnersModal] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
 
   // Sélection multiple
   const [selectedAthleteIds, setSelectedAthleteIds] = useState([]);
@@ -140,22 +159,39 @@ export default function InsuranceManagement() {
     autoEnregistrer: false
   });
 
-  // Fusionner chaque athlète ACTIF avec son assurance active (exclut strictement les athlètes archivés)
+  // Calcul automatique de la catégorie d'âge sportive fédérale (FAN)
+  const getAthleteFederalCategory = (dateNaissance) => {
+    if (!dateNaissance) return { age: null, label: 'Seniors (18+ ans)', code: 'SENIORS' };
+    const birthYear = new Date(dateNaissance).getFullYear();
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - birthYear;
+    if (age <= 7) return { age, label: 'École (<8 ans)', code: 'ECOLE' };
+    if (age <= 9) return { age, label: 'Poussins (9-10 ans)', code: 'POUSSINS' };
+    if (age <= 11) return { age, label: 'Benjamins (11-12 ans)', code: 'BENJAMINS' };
+    if (age <= 13) return { age, label: 'Minimes (13-14 ans)', code: 'MINIMES' };
+    if (age <= 15) return { age, label: 'Cadets (15-16 ans)', code: 'CADETS' };
+    if (age <= 17) return { age, label: 'Juniors (17-18 ans)', code: 'JUNIORS' };
+    return { age, label: 'Seniors (18+ ans)', code: 'SENIORS' };
+  };
+
+  // Fusionner chaque athlète ACTIF avec son assurance active & catégorie fédérale
   const enrichedAthletes = useMemo(() => {
     return athletes
       .filter(ath => ath.est_actif !== false)
       .map(ath => {
         const assurance = getAthleteAssurance(ath.id);
         const statusInfo = calculateInsuranceStatus(assurance);
+        const federalCategory = getAthleteFederalCategory(ath.date_naissance);
         return {
           ...ath,
           assurance,
-          insuranceStatus: statusInfo
+          insuranceStatus: statusInfo,
+          federalCategory
         };
       });
   }, [athletes, getAthleteAssurance]);
 
-  // Filtrage combiné (incluant les onglets Liste d'Assurance)
+  // Filtrage combiné (recherche, statut, groupe, compagnie, catégorie fédérale, urgence)
   const filteredAthletes = useMemo(() => {
     return enrichedAthletes.filter(item => {
       const q = searchQuery.toLowerCase().trim();
@@ -186,9 +222,16 @@ export default function InsuranceManagement() {
       const comp = item.assurance?.compagnie || '';
       const matchesCompagnie = compagnieFilter === 'ALL' || comp === compagnieFilter;
 
-      return matchesSearch && matchesTab && matchesStatus && matchesGroup && matchesCompagnie;
+      const matchesFederalCategory = federalCategoryFilter === 'ALL' || item.federalCategory.code === federalCategoryFilter;
+
+      const matchesUrgency = !urgencyFilterOnly || 
+        item.insuranceStatus.code === 'NON_ASSURE' || 
+        item.insuranceStatus.code === 'EXPIREE' || 
+        (item.insuranceStatus.code === 'EXPIRE_BIENTOT' && (item.insuranceStatus.daysLeft <= 15));
+
+      return matchesSearch && matchesTab && matchesStatus && matchesGroup && matchesCompagnie && matchesFederalCategory && matchesUrgency;
     });
-  }, [enrichedAthletes, searchQuery, viewTab, statusFilter, groupFilter, compagnieFilter]);
+  }, [enrichedAthletes, searchQuery, viewTab, statusFilter, groupFilter, compagnieFilter, federalCategoryFilter, urgencyFilterOnly]);
 
   // Métriques & KPIs
   const stats = useMemo(() => {
@@ -523,26 +566,116 @@ export default function InsuranceManagement() {
     }
   };
 
-  // Relance WhatsApp
+  // Centre de relances WhatsApp & SMS automatisées
+  const handleOpenWhatsAppModal = (targetList = null) => {
+    if (targetList && targetList.length > 0) {
+      setWhatsAppTargetAthletes(targetList);
+    } else if (selectedAthleteIds.length > 0) {
+      setWhatsAppTargetAthletes(enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id)));
+    } else {
+      const nonAssures = enrichedAthletes.filter(a => a.insuranceStatus.code === 'NON_ASSURE' || a.insuranceStatus.code === 'EXPIREE');
+      setWhatsAppTargetAthletes(nonAssures);
+    }
+    setShowWhatsAppModal(true);
+  };
+
   const handleWhatsAppReminder = (athlete) => {
-    const rawPhone = athlete.telephone || athlete.contact_urgence;
-    if (!rawPhone) {
-      toast.error(`Aucun numéro de téléphone enregistré pour ${athlete.nom} ${athlete.prenom}`);
+    handleOpenWhatsAppModal([athlete]);
+  };
+
+  // Bordereau Fédéral FAN & DJS Bouira
+  const handleGenerateBordereauFederalFan = async () => {
+    const listToExport = selectedAthleteIds.length > 0
+      ? enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id))
+      : (stats.nonAssure > 0 
+          ? enrichedAthletes.filter(a => a.insuranceStatus.code === 'NON_ASSURE' || a.insuranceStatus.code === 'EXPIREE') 
+          : enrichedAthletes);
+
+    if (!listToExport.length) {
+      toast.error('Aucun athlète à exporter dans le bordereau fédéral.');
       return;
     }
-    const cleanPhone = formatWhatsAppPhone(rawPhone);
-    const athleteName = `${athlete.prenom} ${athlete.nom}`.trim();
-    const statusText = athlete.insuranceStatus.code === 'NON_ASSURE'
-      ? "n'a pas encore de couverture d'assurance sportive enregistrée pour cette saison"
-      : `a son assurance qui expire le ${athlete.assurance?.date_fin ? new Date(athlete.assurance.date_fin).toLocaleDateString('fr-FR') : 'prochainement'}`;
 
-    const message = encodeURIComponent(
-      `Bonjour,\n\nLe club de natation *Ovia Sport* vous informe que l'athlète *${athleteName}* ${statusText}.\n\n` +
-      `Pour des raisons de conformité et de sécurité au bord du bassin, nous vous prions de régulariser la situation auprès du secrétariat du club.\n\n` +
-      `Cordialement,\nDirection Ovia Sport 🏊‍♂️`
-    );
+    const toastId = toast.loading(`Génération du Bordereau Fédéral FAN pour ${listToExport.length} athlète(s)...`);
+    try {
+      const activePartnerName = localStorage.getItem('ovia_active_insurance_partner_name') || 'SAA (Société Nationale d\'Assurance)';
+      const activePolice = localStorage.getItem('ovia_active_insurance_partner_police') || 'CONV-FAN-OVIA-2026';
 
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+      await generateBordereauFederalFanPdf({
+        compagnie: activePartnerName,
+        numeroPolice: activePolice,
+        saison: '2026 / 2027',
+        athletes: listToExport
+      });
+
+      logInsuranceAction({
+        athleteNom: `${listToExport.length} athlètes (Collectif)`,
+        action: 'EXPORT_BORDEREAU',
+        actionLabel: 'Génération Bordereau Officiel FAN / DJS',
+        details: `Bordereau officiel FAN généré pour ${listToExport.length} athlètes`
+      });
+
+      toast.success(`Bordereau Officiel FAN téléchargé (${listToExport.length} athlètes) !`, { id: toastId });
+    } catch (err) {
+      toast.error('Erreur lors de la génération du bordereau fédéral', { id: toastId });
+    }
+  };
+
+  // Traitement OCR intelligent
+  const handleApplyOcrAssurance = async (ocrData) => {
+    const toastId = toast.loading('Enregistrement de l\'assurance reconnue par OCR...');
+    try {
+      await saveAssurance({
+        athlete_id: ocrData.athlete_id,
+        compagnie: ocrData.compagnie,
+        numero_police: ocrData.numero_police,
+        date_debut: ocrData.date_debut,
+        date_fin: ocrData.date_fin,
+        type_couverture: ocrData.type_couverture,
+        montant: ocrData.montant,
+        notes: ocrData.notes
+      });
+
+      const ath = athletes.find(a => a.id === ocrData.athlete_id);
+      logInsuranceAction({
+        athleteNom: ath ? `${ath.nom} ${ath.prenom}` : 'Athlète',
+        action: 'SOUSCRIPTION',
+        actionLabel: 'Attestation scannée et importée par OCR',
+        details: `${ocrData.compagnie} · Police ${ocrData.numero_police}`
+      });
+
+      toast.success('Assurance importée et validée avec succès !', { id: toastId });
+    } catch {
+      toast.error('Erreur lors de l\'enregistrement', { id: toastId });
+    }
+  };
+
+  // Sélection d'un partenaire référent
+  const handleSelectPartner = (partner) => {
+    setSingleForm(prev => ({
+      ...prev,
+      compagnie: partner.nom,
+      montant: partner.tarifNegocie,
+      numero_police: partner.policeGroupe
+    }));
+    setBatchForm(prev => ({
+      ...prev,
+      compagnie: partner.nom,
+      montant: partner.tarifNegocie,
+      numero_police: partner.policeGroupe
+    }));
+    setAddModalForm(prev => ({
+      ...prev,
+      compagnie: partner.nom,
+      montant: partner.tarifNegocie,
+      numero_police: partner.policeGroupe
+    }));
+    logInsuranceAction({
+      athleteNom: 'Club Ovia Sport',
+      action: 'MODIFICATION',
+      actionLabel: 'Changement de partenaire d\'assurance référent',
+      details: `Partenaire actif défini sur ${partner.nom} (Tarif : ${partner.tarifNegocie} DA)`
+    });
   };
 
   // Exporter en CSV / Excel
@@ -604,7 +737,63 @@ export default function InsuranceManagement() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Relances Automatisées WhatsApp & SMS */}
+          <button 
+            type="button"
+            onClick={() => handleOpenWhatsAppModal()}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition cursor-pointer"
+            title="Ouvrir le centre de relances automatisées par WhatsApp et SMS pour les non-assurés"
+          >
+            <Send size={14} />
+            Relances WhatsApp ({stats.nonAssure})
+          </button>
+
+          {/* Scanner Intelligent OCR */}
+          <button 
+            type="button"
+            onClick={() => setShowOcrModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition cursor-pointer"
+            title="Glisser-déposer une attestation papier ou PDF pour reconnaissance OCR instantanée"
+          >
+            <Sparkles size={14} />
+            Scanner OCR
+          </button>
+
+          {/* Accords Cadres & Partenaires */}
+          <button 
+            type="button"
+            onClick={() => setShowPartnersModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-sky-600/20 transition cursor-pointer"
+            title="Gérer les conventions et tarifs négociés avec la SAA, CAAT, Macir Vie..."
+          >
+            <Building2 size={14} />
+            Accords Cadres
+          </button>
+
+          {/* Bordereau Fédéral FAN */}
+          <button 
+            type="button"
+            onClick={handleGenerateBordereauFederalFan}
+            className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer border border-slate-700"
+            title="Générer le bordereau officiel pour la Fédération Algérienne de Natation (FAN) et la DJS"
+          >
+            <Award size={15} className="text-amber-400" />
+            Bordereau FAN (PDF)
+          </button>
+
+          {/* Journal d'Audit & Traçabilité */}
+          <button 
+            type="button"
+            onClick={() => setShowAuditModal(true)}
+            className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+            title="Consulter l'historique de traçabilité des modifications d'assurance"
+          >
+            <History size={14} className="text-purple-500" />
+            Audit
+          </button>
+
+          {/* Actualiser */}
           <Button 
             variant="secondary"
             onClick={() => {
@@ -613,44 +802,12 @@ export default function InsuranceManagement() {
               toast.success('Liste des athlètes et assurances actualisée !');
             }}
             title="Recharger la liste des athlètes et des assurances"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}
           >
-            <RefreshCw size={15} className={loadingAthletes || loadingAssurances ? 'animate-spin' : ''} /> Actualiser
+            <RefreshCw size={13} className={loadingAthletes || loadingAssurances ? 'animate-spin' : ''} />
           </Button>
 
-          <Button 
-            variant="secondary"
-            onClick={() => handleOpenBordereauModal()}
-            title="Générer et télécharger le bordereau collectif officiel prêt à imprimer pour la compagnie"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <FileText size={16} /> Bordereau Collectif PDF
-          </Button>
-
-          <Button 
-            variant="secondary"
-            onClick={() => {
-              setBatchForm(prev => ({
-                ...prev,
-                targetType: selectedAthleteIds.length > 0 ? 'selected' : 'group'
-              }));
-              setShowBatchModal(true);
-            }}
-            title="Souscrire une police commune pour tout un groupe ou pour la sélection"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <Users size={16} /> Souscription Groupée
-          </Button>
-
-          <Button 
-            variant="secondary"
-            onClick={() => handleOpenSingleModal(null)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            title="Saisir manuellement une police détaillée"
-          >
-            <Plus size={16} /> Nouvelle Police
-          </Button>
-
+          {/* Bouton Ajouter à la Liste */}
           <Button 
             variant="primary"
             onClick={handleOpenAddAthletesModal}
@@ -662,11 +819,13 @@ export default function InsuranceManagement() {
               borderColor: '#10b981',
               color: '#ffffff',
               fontWeight: 700,
+              fontSize: '0.78rem',
+              padding: '0.45rem 0.85rem',
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)'
             }}
             title="Ajouter des athlètes à la liste d'assurance du club"
           >
-            <UserPlus size={16} /> + Ajouter à la Liste d'Assurance
+            <UserPlus size={14} /> + Ajouter à la Liste
           </Button>
         </div>
       </div>
@@ -795,7 +954,33 @@ export default function InsuranceManagement() {
       {/* CARTES DE STATISTIQUES / KPIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard 
-          icon={<ShieldCheck size={24} />}
+          icon={
+            <div className="relative w-8 h-8 flex items-center justify-center">
+              <svg className="w-8 h-8 transform -rotate-90">
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="12"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  className="text-slate-200 dark:text-slate-700"
+                  fill="transparent"
+                />
+                <circle
+                  cx="16"
+                  cy="16"
+                  r="12"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeDasharray={75.4}
+                  strokeDashoffset={75.4 - (75.4 * stats.tauxConformite) / 100}
+                  strokeLinecap="round"
+                  className={stats.tauxConformite >= 75 ? "text-emerald-500" : stats.tauxConformite >= 40 ? "text-amber-500" : "text-rose-500"}
+                  fill="transparent"
+                />
+              </svg>
+            </div>
+          }
           iconBg="rgba(16, 185, 129, 0.15)"
           iconColor="#10b981"
           label="Taux de Conformité"
@@ -954,6 +1139,42 @@ export default function InsuranceManagement() {
               ))}
             </select>
 
+            {/* Catégorie d'Âge Fédérale FAN */}
+            <select
+              value={federalCategoryFilter}
+              onChange={(e) => setFederalCategoryFilter(e.target.value)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+            >
+              <option value="ALL">Toutes catégories d'âge</option>
+              <option value="ECOLE">École (&lt;8 ans)</option>
+              <option value="POUSSINS">Poussins (9-10 ans)</option>
+              <option value="BENJAMINS">Benjamins (11-12 ans)</option>
+              <option value="MINIMES">Minimes (13-14 ans)</option>
+              <option value="CADETS">Cadets (15-16 ans)</option>
+              <option value="JUNIORS">Juniors (17-18 ans)</option>
+              <option value="SENIORS">Seniors (18+ ans)</option>
+            </select>
+
+            {/* Filtre Urgence Immédiate */}
+            <button
+              type="button"
+              onClick={() => setUrgencyFilterOnly(!urgencyFilterOnly)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                urgencyFilterOnly
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                  : 'bg-[var(--bg-tertiary)] text-slate-600 dark:text-slate-300 border-[var(--border-color)] hover:border-rose-400'
+              }`}
+              title="Filtrer uniquement les athlètes non assurés ou avec expiration imminente (< 15 jours)"
+            >
+              <ShieldAlert size={14} className={urgencyFilterOnly ? 'text-white' : 'text-rose-500'} />
+              🚨 Urgences ({stats.nonAssure})
+            </button>
+
             {/* Export CSV */}
             <Button 
               variant="secondary" 
@@ -1027,12 +1248,32 @@ export default function InsuranceManagement() {
                 <Trash2 size={14} /> Supprimer de la liste d'assurance
               </Button>
 
+              {/* RELANCES WHATSAPP EN MASSE */}
+              <button
+                type="button"
+                onClick={() => handleOpenWhatsAppModal(enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id)))}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+                title="Envoyer des rappels WhatsApp ciblés pour les athlètes sélectionnés"
+              >
+                <Send size={13} /> Relance WhatsApp ({selectedAthleteIds.length})
+              </button>
+
+              {/* BORDEREAU FÉDÉRAL FAN */}
+              <button
+                type="button"
+                onClick={handleGenerateBordereauFederalFan}
+                className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
+                title="Générer le bordereau officiel FAN pour la sélection"
+              >
+                <Award size={13} className="text-amber-400" /> Bordereau FAN ({selectedAthleteIds.length})
+              </button>
+
               <Button 
                 variant="secondary"
                 onClick={() => handleOpenBordereauModal('selected')}
                 style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
-                <FileText size={14} /> Bordereau PDF ({selectedAthleteIds.length})
+                <FileText size={14} /> Bordereau Compagnie ({selectedAthleteIds.length})
               </Button>
 
               <button
@@ -1137,14 +1378,17 @@ export default function InsuranceManagement() {
                             {(ath.nom?.charAt(0) || '') + (ath.prenom?.charAt(0) || '')}
                           </div>
                           <div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
                               <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>
                                 {(ath.nom || '').toUpperCase()} {ath.prenom}
                               </strong>
+                              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
+                                {ath.federalCategory?.label?.split('(')[0]?.trim() || 'Adhérent'}
+                              </span>
                             </div>
                             <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                              {ath.telephone || 'Sans numéro'}
-                              {ath.date_naissance && ` • Né(e) le ${new Date(ath.date_naissance).toLocaleDateString('fr-FR')}${ath.lieu_naissance ? ` à ${ath.lieu_naissance}` : ''}`}
+                              {ath.telephone || ath.telephone_parent || 'Sans numéro'}
+                              {ath.date_naissance && ` • Né(e) le ${new Date(ath.date_naissance).toLocaleDateString('fr-FR')} (${ath.federalCategory?.age} ans)`}
                             </span>
                           </div>
                         </div>
@@ -1165,23 +1409,29 @@ export default function InsuranceManagement() {
                         </span>
                       </td>
 
-                      {/* Statut Couverture */}
+                      {/* Statut Couverture Dynamique */}
                       <td style={{ padding: '0.85rem 1rem' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          padding: '3px 10px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          backgroundColor: st.bg,
-                          color: st.color,
-                          border: `1px solid ${st.borderColor}`
-                        }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: st.color }} />
-                          {st.label}
-                        </span>
+                        {st.code === 'A_JOUR' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                            <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
+                            <span>À jour ({st.daysLeft}j)</span>
+                          </span>
+                        ) : st.code === 'EXPIRE_BIENTOT' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 animate-pulse">
+                            <Clock size={13} className="text-amber-500 flex-shrink-0" />
+                            <span>Expire sous {st.daysLeft}j</span>
+                          </span>
+                        ) : st.code === 'EXPIREE' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                            <X size={13} className="text-rose-500 flex-shrink-0" />
+                            <span>Expirée ({Math.abs(st.daysLeft)}j)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping flex-shrink-0" />
+                            <span>Non Assuré (Bloqué)</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Compagnie & N° Police */}
@@ -2136,6 +2386,42 @@ export default function InsuranceManagement() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* MODALE RELANCES AUTOMATISÉES WHATSAPP & SMS */}
+      <InsuranceWhatsAppModal 
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        athletes={whatsAppTargetAthletes}
+        onReminderSent={(ath, type, tmplTitle) => {
+          logInsuranceAction({
+            athleteNom: `${ath.nom} ${ath.prenom}`,
+            action: 'RELANCE_WHATSAPP',
+            actionLabel: `Relance ${type} envoyée (${tmplTitle})`,
+            details: `Envoyé au ${ath.telephone || ath.telephone_parent || 'Tuteur'}`
+          });
+        }}
+      />
+
+      {/* MODALE SCANNER INTELLIGENT OCR */}
+      <InsuranceOcrModal 
+        isOpen={showOcrModal}
+        onClose={() => setShowOcrModal(false)}
+        athletes={enrichedAthletes}
+        onApplyAssurance={handleApplyOcrAssurance}
+      />
+
+      {/* MODALE ACCORDS CADRES & PARTENAIRES */}
+      <InsurancePartnersModal 
+        isOpen={showPartnersModal}
+        onClose={() => setShowPartnersModal(false)}
+        onSelectPartner={handleSelectPartner}
+      />
+
+      {/* MODALE JOURNAL D'AUDIT & TRAÇABILITÉ */}
+      <InsuranceAuditModal 
+        isOpen={showAuditModal}
+        onClose={() => setShowAuditModal(false)}
+      />
     </div>
   );
 }
