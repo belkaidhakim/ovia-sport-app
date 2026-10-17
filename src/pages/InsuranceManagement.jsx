@@ -47,7 +47,7 @@ import {
 import { formatDA, formatWhatsAppPhone } from '../utils/formatters';
 
 export default function InsuranceManagement() {
-  const { athletes, loading: loadingAthletes, fetchAthletes, restoreAthlete } = useAthletes();
+  const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
   const { groupes } = useGroupes();
   const { 
     assurances, 
@@ -64,9 +64,9 @@ export default function InsuranceManagement() {
     fetchAssurances
   } = useAssurances();
 
-  // Chargement automatique des athlètes au montage
+  // Chargement automatique des athlètes actifs au montage (exclut les archivés)
   useEffect(() => {
-    fetchAthletes(true);
+    fetchAthletes(false);
   }, [fetchAthletes]);
 
   // Filtres & Recherche
@@ -75,7 +75,6 @@ export default function InsuranceManagement() {
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, A_JOUR, EXPIRE_BIENTOT, NON_ASSURE
   const [groupFilter, setGroupFilter] = useState('ALL');
   const [compagnieFilter, setCompagnieFilter] = useState('ALL');
-  const [memberStatusFilter, setMemberStatusFilter] = useState('ALL'); // ALL, ACTIF, ARCHIVE
 
   // Sélection multiple
   const [selectedAthleteIds, setSelectedAthleteIds] = useState([]);
@@ -141,17 +140,19 @@ export default function InsuranceManagement() {
     autoEnregistrer: false
   });
 
-  // Fusionner chaque athlète avec son assurance active
+  // Fusionner chaque athlète ACTIF avec son assurance active (exclut strictement les athlètes archivés)
   const enrichedAthletes = useMemo(() => {
-    return athletes.map(ath => {
-      const assurance = getAthleteAssurance(ath.id);
-      const statusInfo = calculateInsuranceStatus(assurance);
-      return {
-        ...ath,
-        assurance,
-        insuranceStatus: statusInfo
-      };
-    });
+    return athletes
+      .filter(ath => ath.est_actif !== false)
+      .map(ath => {
+        const assurance = getAthleteAssurance(ath.id);
+        const statusInfo = calculateInsuranceStatus(assurance);
+        return {
+          ...ath,
+          assurance,
+          insuranceStatus: statusInfo
+        };
+      });
   }, [athletes, getAthleteAssurance]);
 
   // Filtrage combiné (incluant les onglets Liste d'Assurance)
@@ -185,14 +186,9 @@ export default function InsuranceManagement() {
       const comp = item.assurance?.compagnie || '';
       const matchesCompagnie = compagnieFilter === 'ALL' || comp === compagnieFilter;
 
-      const matchesMemberStatus = 
-        memberStatusFilter === 'ALL' ||
-        (memberStatusFilter === 'ACTIF' && item.est_actif !== false) ||
-        (memberStatusFilter === 'ARCHIVE' && item.est_actif === false);
-
-      return matchesSearch && matchesTab && matchesStatus && matchesGroup && matchesCompagnie && matchesMemberStatus;
+      return matchesSearch && matchesTab && matchesStatus && matchesGroup && matchesCompagnie;
     });
-  }, [enrichedAthletes, searchQuery, viewTab, statusFilter, groupFilter, compagnieFilter, memberStatusFilter]);
+  }, [enrichedAthletes, searchQuery, viewTab, statusFilter, groupFilter, compagnieFilter]);
 
   // Métriques & KPIs
   const stats = useMemo(() => {
@@ -261,7 +257,7 @@ export default function InsuranceManagement() {
       setTargetAthlete(null);
       setEditingAssurance(null);
       setSingleForm({
-        athlete_id: athletes[0]?.id || '',
+        athlete_id: enrichedAthletes[0]?.id || '',
         compagnie: 'SAA (Société Nationale d\'Assurance)',
         numero_police: `POL-${Date.now().toString().slice(-6)}`,
         date_debut: new Date().toISOString().split('T')[0],
@@ -317,12 +313,12 @@ export default function InsuranceManagement() {
         toast.error('Veuillez choisir un groupe cible.');
         return;
       }
-      targetIds = athletes
+      targetIds = enrichedAthletes
         .filter(a => String(a.groupe_id) === String(batchForm.targetGroupId) || a.groupes?.id === batchForm.targetGroupId)
         .map(a => a.id);
 
       if (!targetIds.length) {
-        toast.error('Aucun athlète trouvé dans ce groupe.');
+        toast.error('Aucun athlète actif trouvé dans ce groupe.');
         return;
       }
     }
@@ -612,7 +608,7 @@ export default function InsuranceManagement() {
           <Button 
             variant="secondary"
             onClick={() => {
-              fetchAthletes(true);
+              fetchAthletes(false);
               fetchAssurances();
               toast.success('Liste des athlètes et assurances actualisée !');
             }}
@@ -924,22 +920,6 @@ export default function InsuranceManagement() {
               <option value="NON_ASSURE">🔴 Non assurés / Expirés</option>
             </select>
 
-            {/* Statut Membre / Adhésion */}
-            <select
-              value={memberStatusFilter}
-              onChange={(e) => setMemberStatusFilter(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <option value="ALL">Tous membres ({enrichedAthletes.length})</option>
-              <option value="ACTIF">Actifs ({enrichedAthletes.filter(a => a.est_actif !== false).length})</option>
-              <option value="ARCHIVE">Archivés ({enrichedAthletes.filter(a => a.est_actif === false).length})</option>
-            </select>
-
             {/* Groupe */}
             <select
               value={groupFilter}
@@ -1161,18 +1141,6 @@ export default function InsuranceManagement() {
                               <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>
                                 {(ath.nom || '').toUpperCase()} {ath.prenom}
                               </strong>
-                              {ath.est_actif === false && (
-                                <span style={{
-                                  fontSize: '0.65rem',
-                                  padding: '1px 5px',
-                                  borderRadius: '4px',
-                                  backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                                  color: '#f59e0b',
-                                  fontWeight: 700
-                                }}>
-                                  Archivé
-                                </span>
-                              )}
                             </div>
                             <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                               {ath.telephone || 'Sans numéro'}
@@ -1327,20 +1295,6 @@ export default function InsuranceManagement() {
                           >
                             <MessageSquare size={15} />
                           </button>
-
-                          {/* Réactiver si archivé */}
-                          {ath.est_actif === false && (
-                            <button
-                              onClick={async () => {
-                                await restoreAthlete(ath.id);
-                                fetchAthletes(true);
-                              }}
-                              title="Réactiver ce membre dans le club"
-                              className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-[var(--bg-tertiary)]"
-                            >
-                              <RefreshCw size={15} />
-                            </button>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -1405,7 +1359,7 @@ export default function InsuranceManagement() {
                       style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                     >
                       <option value="">Sélectionner un athlète...</option>
-                      {athletes.map(a => (
+                      {enrichedAthletes.map(a => (
                         <option key={a.id} value={a.id}>
                           {(a.nom || '').toUpperCase()} {a.prenom} ({a.groupes?.nom || a.groupe || 'Sans groupe'})
                         </option>
