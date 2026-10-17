@@ -302,27 +302,30 @@ export default function ClubProAppShell({ children }) {
         </nav>
 
         {/* Profil Administrateur en bas */}
-        <div className="p-3.5 border-t border-slate-800 flex items-center justify-between bg-slate-950/40">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <div className="p-3 border-t border-slate-800 flex items-center justify-between bg-slate-950/40 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-xs font-black text-cyan-300 shrink-0">
               {displayName.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-bold text-white truncate leading-none">{displayName}</p>
-              <p className="text-[11px] text-slate-500 truncate mt-0.5">{displayRole}</p>
+              <p className="text-xs font-bold text-white truncate leading-none mb-0">{displayName}</p>
+              <p className="text-[10px] text-slate-500 truncate mt-0.5 mb-0">{displayRole}</p>
             </div>
           </div>
-          <button 
-            onClick={() => {
-              if (window.confirm("Voulez-vous vous déconnecter ?")) {
-                signOut();
-              }
-            }}
-            title="Se déconnecter"
-            className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle className="!px-2 !py-1 !text-[11px]" />
+            <button 
+              onClick={() => {
+                if (window.confirm("Voulez-vous vous déconnecter ?")) {
+                  signOut();
+                }
+              }}
+              title="Se déconnecter"
+              className="p-1.5 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -363,13 +366,14 @@ export default function ClubProAppShell({ children }) {
           </div>
 
           {/* Actions Rapides Terrain */}
-          <div className="flex items-center gap-2.5 ml-auto">
+          <div className="flex items-center gap-2 sm:gap-2.5 ml-auto">
             <Link 
               to="/scanner"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-500 transition shadow-xs cursor-pointer no-underline"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-500 transition shadow-xs cursor-pointer no-underline"
             >
               <QrCode className="w-3.5 h-3.5 text-cyan-400 dark:text-white" />
-              <span>Scanner Carte Accès</span>
+              <span className="hidden sm:inline">Scanner Carte Accès</span>
+              <span className="sm:hidden">Scan</span>
             </Link>
 
             <ThemeToggle />

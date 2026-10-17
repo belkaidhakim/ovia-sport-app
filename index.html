@@ -9,8 +9,35 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Ovia Sport · Aquatic Club Pro</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS CDN Config (Mode Sombre/Clair par classe CSS) -->
+    <script>
+      window.tailwind = window.tailwind || {};
+      window.tailwind.config = {
+        darkMode: 'class'
+      };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      if (window.tailwind) {
+        window.tailwind.config = {
+          darkMode: 'class'
+        };
+      }
+      // Application immédiate du thème anti-flash avant affichage
+      (function() {
+        try {
+          var saved = localStorage.getItem('ovia_theme') || localStorage.getItem('app-theme') || 'light';
+          document.documentElement.setAttribute('data-theme', saved);
+          if (saved === 'dark') {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          } else {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

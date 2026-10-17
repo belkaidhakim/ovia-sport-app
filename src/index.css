@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
-:root {
+:root, [data-theme="dark"], html.dark, .dark {
   /* Thème Bleu Nuit & Blanc Prestigieux */
   --bg-primary: #070d1e;
   --bg-secondary: #0c1633;
@@ -61,7 +61,7 @@
   --transition-smooth: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-[data-theme="light"] {
+[data-theme="light"], html.light, .light {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
   --bg-tertiary: #f1f5f9;
