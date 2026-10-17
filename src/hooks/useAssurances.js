@@ -260,6 +260,68 @@ export function useAssurances() {
     }
 
     toast.success('Assurance supprimée');
+    return true;
+  };
+
+  // Supprimer plusieurs polices (par ID d'athlète ou ID d'assurance)
+  const batchDeleteAssurances = async (athleteOrAssuranceIds = []) => {
+    if (!athleteOrAssuranceIds.length) {
+      toast.error('Aucun athlète sélectionné pour le retrait de l\'assurance.');
+      return false;
+    }
+
+    const toastId = toast.loading(`Retrait de l'assurance pour ${athleteOrAssuranceIds.length} athlète(s)...`);
+    const idSet = new Set(athleteOrAssuranceIds);
+
+    const toDelete = assurances.filter(a => idSet.has(a.athlete_id) || idSet.has(a.id));
+    if (!toDelete.length) {
+      toast.error('Aucune assurance active trouvée pour les éléments sélectionnés.', { id: toastId });
+      return false;
+    }
+
+    const deleteIds = toDelete.map(a => a.id);
+    const updatedList = assurances.filter(a => !idSet.has(a.athlete_id) && !idSet.has(a.id));
+    setAssurances(updatedList);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedList));
+
+    try {
+      await supabase
+        .from('assurances')
+        .delete()
+        .in('id', deleteIds);
+    } catch (err) {
+      console.warn('Sync note (batch delete local saved):', err);
+    }
+
+    toast.success(`${toDelete.length} athlète(s) retiré(s) de la liste d'assurance !`, { id: toastId });
+    return true;
+  };
+
+  // Retirer un athlète de la liste d'assurance
+  const removeAthleteFromInsurance = async (athleteId) => {
+    const existing = assurances.find(a => a.athlete_id === athleteId);
+    if (!existing) {
+      toast.error("Cet athlète n'a pas d'assurance active.");
+      return false;
+    }
+    return await deleteAssurance(existing.id);
+  };
+
+  // Souscription express en 1 clic
+  const quickInsureAthlete = async (athlete, defaults = {}) => {
+    if (!athlete) return false;
+    const ref = `POL-${(athlete.nom || 'ATH').substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+    const record = {
+      athlete_id: athlete.id,
+      compagnie: defaults.compagnie || 'SAA (Société Nationale d\'Assurance)',
+      numero_police: defaults.numero_police || ref,
+      date_debut: defaults.date_debut || new Date().toISOString().split('T')[0],
+      date_fin: defaults.date_fin || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      type_couverture: defaults.type_couverture || 'Responsabilité Civile (RC) + Individuelle Accident (IA)',
+      montant: defaults.montant !== undefined ? defaults.montant : 1500,
+      notes: defaults.notes || 'Souscription rapide individuelle'
+    };
+    return await saveAssurance(record);
   };
 
   // Trouver la police active d'un athlète
@@ -276,6 +338,9 @@ export function useAssurances() {
     saveAssurance,
     batchSouscrire,
     deleteAssurance,
+    batchDeleteAssurances,
+    removeAthleteFromInsurance,
+    quickInsureAthlete,
     getAthleteAssurance,
     calculateInsuranceStatus,
     sqlSetupScript: SQL_SETUP_SCRIPT

@@ -22,7 +22,11 @@ import {
   ExternalLink,
   Phone,
   RefreshCw,
-  X
+  X,
+  UserPlus,
+  UserMinus,
+  UserCheck,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -52,6 +56,9 @@ export default function InsuranceManagement() {
     saveAssurance, 
     batchSouscrire, 
     deleteAssurance,
+    batchDeleteAssurances,
+    removeAthleteFromInsurance,
+    quickInsureAthlete,
     getAthleteAssurance,
     sqlSetupScript,
     fetchAssurances
@@ -64,6 +71,7 @@ export default function InsuranceManagement() {
 
   // Filtres & Recherche
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewTab, setViewTab] = useState('ALL'); // 'ALL' | 'INSURED' | 'NOT_INSURED'
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, A_JOUR, EXPIRE_BIENTOT, NON_ASSURE
   const [groupFilter, setGroupFilter] = useState('ALL');
   const [compagnieFilter, setCompagnieFilter] = useState('ALL');
@@ -75,9 +83,24 @@ export default function InsuranceManagement() {
   // Modales
   const [showSingleModal, setShowSingleModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showAddAthletesModal, setShowAddAthletesModal] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [editingAssurance, setEditingAssurance] = useState(null);
   const [targetAthlete, setTargetAthlete] = useState(null);
+
+  // Formulaire de la modale "Ajouter des Athlètes à la Liste"
+  const [selectedForAdd, setSelectedForAdd] = useState([]);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [modalGroupFilter, setModalGroupFilter] = useState('ALL');
+  const [addModalForm, setAddModalForm] = useState({
+    compagnie: 'SAA (Société Nationale d\'Assurance)',
+    numero_police: `POL-ASSUR-${new Date().getFullYear()}`,
+    date_debut: new Date().toISOString().split('T')[0],
+    date_fin: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    type_couverture: 'Responsabilité Civile (RC) + Individuelle Accident (IA)',
+    montant: 1500,
+    notes: 'Ajout à la liste d\'assurance club'
+  });
 
   // Formulaire d'assurance individuelle
   const [singleForm, setSingleForm] = useState({
@@ -131,7 +154,7 @@ export default function InsuranceManagement() {
     });
   }, [athletes, getAthleteAssurance]);
 
-  // Filtrage combiné
+  // Filtrage combiné (incluant les onglets Liste d'Assurance)
   const filteredAthletes = useMemo(() => {
     return enrichedAthletes.filter(item => {
       const q = searchQuery.toLowerCase().trim();
@@ -139,6 +162,12 @@ export default function InsuranceManagement() {
       const prenom = (item.prenom || '').toLowerCase();
       const police = (item.assurance?.numero_police || '').toLowerCase();
       const matchesSearch = !q || nom.includes(q) || prenom.includes(q) || police.includes(q);
+
+      // Filtre d'onglet Vue de la Liste
+      const matchesTab = 
+        viewTab === 'ALL' ||
+        (viewTab === 'INSURED' && (item.insuranceStatus.code === 'A_JOUR' || item.insuranceStatus.code === 'EXPIRE_BIENTOT')) ||
+        (viewTab === 'NOT_INSURED' && (item.insuranceStatus.code === 'NON_ASSURE' || item.insuranceStatus.code === 'EXPIREE'));
 
       const matchesStatus = 
         statusFilter === 'ALL' || 
@@ -161,9 +190,9 @@ export default function InsuranceManagement() {
         (memberStatusFilter === 'ACTIF' && item.est_actif !== false) ||
         (memberStatusFilter === 'ARCHIVE' && item.est_actif === false);
 
-      return matchesSearch && matchesStatus && matchesGroup && matchesCompagnie && matchesMemberStatus;
+      return matchesSearch && matchesTab && matchesStatus && matchesGroup && matchesCompagnie && matchesMemberStatus;
     });
-  }, [enrichedAthletes, searchQuery, statusFilter, groupFilter, compagnieFilter, memberStatusFilter]);
+  }, [enrichedAthletes, searchQuery, viewTab, statusFilter, groupFilter, compagnieFilter, memberStatusFilter]);
 
   // Métriques & KPIs
   const stats = useMemo(() => {
@@ -178,6 +207,24 @@ export default function InsuranceManagement() {
 
     return { total, aJour, expireBientot, nonAssure, tauxConformite, totalPrimes };
   }, [enrichedAthletes, assurances]);
+
+  // Athlètes candidats à l'ajout dans la liste d'assurance (non assurés ou expirés)
+  const modalCandidateAthletes = useMemo(() => {
+    return enrichedAthletes.filter(ath => {
+      const isCandidate = ath.insuranceStatus.code === 'NON_ASSURE' || ath.insuranceStatus.code === 'EXPIREE';
+      if (!isCandidate) return false;
+
+      const q = modalSearchQuery.toLowerCase().trim();
+      const nom = (ath.nom || '').toLowerCase();
+      const prenom = (ath.prenom || '').toLowerCase();
+      const matchesSearch = !q || nom.includes(q) || prenom.includes(q);
+
+      const grpId = ath.groupe_id ? String(ath.groupe_id) : (ath.groupes?.id ? String(ath.groupes.id) : '');
+      const matchesGroup = modalGroupFilter === 'ALL' || grpId === String(modalGroupFilter);
+
+      return matchesSearch && matchesGroup;
+    });
+  }, [enrichedAthletes, modalSearchQuery, modalGroupFilter]);
 
   // Gestion des sélections multiples
   const handleToggleSelectAll = () => {
@@ -293,6 +340,104 @@ export default function InsuranceManagement() {
     if (success) {
       setShowBatchModal(false);
       setSelectedAthleteIds([]);
+    }
+  };
+
+  // Ouvrir la modale d'ajout d'athlètes à la liste d'assurance
+  const handleOpenAddAthletesModal = () => {
+    // Si des athlètes sont déjà cochés, pré-sélectionner ceux non-assurés
+    if (selectedAthleteIds.length > 0) {
+      const nonAssuresSelected = selectedAthleteIds.filter(id => {
+        const ath = enrichedAthletes.find(a => a.id === id);
+        return ath && (ath.insuranceStatus.code === 'NON_ASSURE' || ath.insuranceStatus.code === 'EXPIREE');
+      });
+      setSelectedForAdd(nonAssuresSelected.length > 0 ? nonAssuresSelected : selectedAthleteIds);
+    } else {
+      // Par défaut tous les non-assurés
+      const nonAssures = enrichedAthletes
+        .filter(a => a.insuranceStatus.code === 'NON_ASSURE' || a.insuranceStatus.code === 'EXPIREE')
+        .map(a => a.id);
+      setSelectedForAdd(nonAssures);
+    }
+    setModalSearchQuery('');
+    setModalGroupFilter('ALL');
+    setShowAddAthletesModal(true);
+  };
+
+  // Soumission de la modale d'ajout d'athlètes à la liste
+  const handleSubmitAddAthletesModal = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedForAdd.length) {
+      toast.error('Veuillez cocher au moins un athlète à ajouter à la liste d\'assurance.');
+      return;
+    }
+
+    const success = await batchSouscrire(selectedForAdd, {
+      compagnie: addModalForm.compagnie,
+      numero_police: addModalForm.numero_police,
+      date_debut: addModalForm.date_debut,
+      date_fin: addModalForm.date_fin,
+      type_couverture: addModalForm.type_couverture,
+      montant: Number(addModalForm.montant) || 0,
+      notes: addModalForm.notes
+    });
+
+    if (success) {
+      setShowAddAthletesModal(false);
+      setSelectedForAdd([]);
+      setSelectedAthleteIds([]);
+    }
+  };
+
+  // Ajout express en 1 clic pour un athlète
+  const handleQuickAddAthlete = async (athlete) => {
+    const toastId = toast.loading(`Ajout de ${athlete.nom} ${athlete.prenom} à l'assurance...`);
+    try {
+      const ok = await quickInsureAthlete(athlete);
+      if (ok) {
+        toast.success(`${athlete.nom} ${athlete.prenom} a été ajouté(e) à la liste d'assurance !`, { id: toastId });
+      }
+    } catch {
+      toast.error("Erreur lors de l'ajout à l'assurance", { id: toastId });
+    }
+  };
+
+  // Retirer un athlète de la liste d'assurance (supprimer la police)
+  const handleRemoveAthleteFromInsurance = async (athlete) => {
+    const existing = athlete.assurance || getAthleteAssurance(athlete.id);
+    if (!existing) {
+      toast.error(`${athlete.nom} ${athlete.prenom} n'a pas d'assurance active.`);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Voulez-vous vraiment retirer ${athlete.nom} ${athlete.prenom} de la liste d'assurance ?\n\nSa police d'assurance sera supprimée et son statut passera à "Non Assuré".`
+    );
+
+    if (confirmed) {
+      await deleteAssurance(existing.id);
+    }
+  };
+
+  // Retirer la sélection de la liste d'assurance (suppression groupée)
+  const handleBatchDeleteSelected = async () => {
+    if (!selectedAthleteIds.length) return;
+    const insuredSelected = selectedAthleteIds.filter(id => !!getAthleteAssurance(id));
+
+    if (!insuredSelected.length) {
+      toast.error("Aucun des athlètes sélectionnés ne possède d'assurance à retirer.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Attention : Vous allez retirer ${insuredSelected.length} athlète(s) de la liste d'assurance.\n\nConfirmez-vous la suppression de leur police d'assurance ?`
+    );
+
+    if (confirmed) {
+      const ok = await batchDeleteAssurances(insuredSelected);
+      if (ok) {
+        setSelectedAthleteIds([]);
+      }
     }
   };
 
@@ -502,11 +647,30 @@ export default function InsuranceManagement() {
           </Button>
 
           <Button 
-            variant="primary"
+            variant="secondary"
             onClick={() => handleOpenSingleModal(null)}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            title="Saisir manuellement une police détaillée"
           >
-            <Plus size={16} /> + Nouvelle Police
+            <Plus size={16} /> Nouvelle Police
+          </Button>
+
+          <Button 
+            variant="primary"
+            onClick={handleOpenAddAthletesModal}
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              backgroundColor: '#10b981',
+              borderColor: '#10b981',
+              color: '#ffffff',
+              fontWeight: 700,
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)'
+            }}
+            title="Ajouter des athlètes à la liste d'assurance du club"
+          >
+            <UserPlus size={16} /> + Ajouter à la Liste d'Assurance
           </Button>
         </div>
       </div>
@@ -672,6 +836,47 @@ export default function InsuranceManagement() {
         />
       </div>
 
+      {/* ONGLETS DE VUE : LISTE D'ASSURANCE / NON ASSURÉS / TOUS */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+        <button
+          onClick={() => setViewTab('ALL')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            viewTab === 'ALL'
+              ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+              : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white border border-[var(--border-color)]'
+          }`}
+        >
+          <Users size={14} />
+          Tous les membres ({stats.total})
+        </button>
+
+        <button
+          onClick={() => setViewTab('INSURED')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            viewTab === 'INSURED'
+              ? 'bg-emerald-600 text-white shadow-sm'
+              : 'bg-[var(--bg-tertiary)] text-emerald-400 hover:text-emerald-300 border border-[var(--border-color)]'
+          }`}
+          title="Afficher uniquement les athlètes présents sur la liste d'assurance"
+        >
+          <ShieldCheck size={14} />
+          🛡️ Liste d'Assurance ({stats.aJour + stats.expireBientot})
+        </button>
+
+        <button
+          onClick={() => setViewTab('NOT_INSURED')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            viewTab === 'NOT_INSURED'
+              ? 'bg-rose-600 text-white shadow-sm'
+              : 'bg-[var(--bg-tertiary)] text-rose-400 hover:text-rose-300 border border-[var(--border-color)]'
+          }`}
+          title="Afficher les athlètes sans assurance à ajouter à la liste"
+        >
+          <ShieldAlert size={14} />
+          ⚠️ Non Assurés / À Ajouter ({stats.nonAssure})
+        </button>
+      </div>
+
       {/* BARRE D'OUTILS ET FILTRES */}
       <Card noPadding className="mb-6">
         <div className="p-4 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
@@ -800,27 +1005,59 @@ export default function InsuranceManagement() {
               </strong>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* BOUTON POUR AJOUTER LA SÉLECTION À L'ASSURANCE */}
               <Button 
-                variant="secondary"
+                variant="primary"
                 onClick={() => {
                   setBatchForm(prev => ({ ...prev, targetType: 'selected' }));
                   setShowBatchModal(true);
                 }}
-                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                style={{ 
+                  fontSize: '0.78rem', 
+                  padding: '0.4rem 0.85rem', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '5px',
+                  backgroundColor: '#10b981',
+                  borderColor: '#10b981',
+                  color: '#ffffff'
+                }}
+                title="Ajouter tous les athlètes sélectionnés à la liste d'assurance"
               >
-                Assurer la sélection en 1 clic
+                <UserPlus size={14} /> + Ajouter la sélection à l'assurance
               </Button>
+
+              {/* BOUTON POUR SUPPRIMER LA SÉLECTION DE L'ASSURANCE */}
+              <Button 
+                variant="secondary"
+                onClick={handleBatchDeleteSelected}
+                style={{ 
+                  fontSize: '0.78rem', 
+                  padding: '0.4rem 0.85rem', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '5px',
+                  borderColor: 'rgba(239, 68, 68, 0.4)', 
+                  color: '#ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)'
+                }}
+                title="Supprimer la police d'assurance des athlètes sélectionnés (Retirer de la liste)"
+              >
+                <Trash2 size={14} /> Supprimer de la liste d'assurance
+              </Button>
+
               <Button 
                 variant="secondary"
                 onClick={() => handleOpenBordereauModal('selected')}
-                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem' }}
+                style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
-                Bordereau PDF ({selectedAthleteIds.length})
+                <FileText size={14} /> Bordereau PDF ({selectedAthleteIds.length})
               </Button>
+
               <button
                 onClick={() => setSelectedAthleteIds([])}
-                className="text-xs text-[var(--text-muted)] hover:text-white px-2 py-1"
+                className="text-xs text-[var(--text-muted)] hover:text-white px-2 py-1 cursor-pointer"
               >
                 Désélectionner
               </button>
@@ -1016,7 +1253,63 @@ export default function InsuranceManagement() {
 
                       {/* Actions */}
                       <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* SI NON ASSURÉ OU EXPIRÉ : BOUTON "+ AJOUTER À L'ASSURANCE" */}
+                          {(!ass || st.code === 'NON_ASSURE' || st.code === 'EXPIREE') ? (
+                            <button
+                              onClick={() => handleQuickAddAthlete(ath)}
+                              title="Ajouter immédiatement cet athlète à la liste d'assurance (Souscription 1 an)"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '5px 11px',
+                                borderRadius: '8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                backgroundColor: '#10b981',
+                                color: '#ffffff',
+                                border: 'none',
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <UserPlus size={13} /> + Ajouter à l'assurance
+                            </button>
+                          ) : (
+                            /* SI ASSURÉ : BOUTON "RETIRER DE LA LISTE" */
+                            <button
+                              onClick={() => handleRemoveAthleteFromInsurance(ath)}
+                              title="Retirer cet athlète de la liste d'assurance (Supprimer sa police)"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '5px 10px',
+                                borderRadius: '8px',
+                                fontSize: '0.73rem',
+                                fontWeight: 700,
+                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              <UserMinus size={13} /> Retirer de la liste
+                            </button>
+                          )}
+
+                          {/* Éditer / Renouveler */}
+                          <button
+                            onClick={() => handleOpenSingleModal(ath)}
+                            title={ass ? "Modifier ou renouveler la police d'assurance" : "Personnaliser les dates ou le contrat"}
+                            className="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-[var(--bg-tertiary)]"
+                          >
+                            <Edit size={15} />
+                          </button>
+
                           {/* Attestation PDF */}
                           <button
                             onClick={() => handleDownloadAttestation(ath)}
@@ -1035,15 +1328,6 @@ export default function InsuranceManagement() {
                             <MessageSquare size={15} />
                           </button>
 
-                          {/* Éditer / Renouveler */}
-                          <button
-                            onClick={() => handleOpenSingleModal(ath)}
-                            title="Éditer ou renouveler l'assurance de ce membre"
-                            className="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-[var(--bg-tertiary)]"
-                          >
-                            <Edit size={15} />
-                          </button>
-
                           {/* Réactiver si archivé */}
                           {ath.est_actif === false && (
                             <button
@@ -1055,21 +1339,6 @@ export default function InsuranceManagement() {
                               className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-[var(--bg-tertiary)]"
                             >
                               <RefreshCw size={15} />
-                            </button>
-                          )}
-
-                          {/* Supprimer si existant */}
-                          {ass && (
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Supprimer l'assurance de ${ath.nom} ${ath.prenom} ?`)) {
-                                  deleteAssurance(ass.id);
-                                }
-                              }}
-                              title="Supprimer cette police d'assurance"
-                              className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-[var(--bg-tertiary)]"
-                            >
-                              <Trash2 size={15} />
                             </button>
                           )}
                         </div>
@@ -1633,6 +1902,278 @@ export default function InsuranceManagement() {
                   </Button>
                   <Button variant="primary" type="submit" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                     <Download size={15} /> Télécharger le Bordereau PDF
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+        {/* MODALE 4 : AJOUTER DES ATHLÈTES À LA LISTE D'ASSURANCE */}
+        {showAddAthletesModal && (
+          <div className="modal-overlay" style={{ zIndex: 100 }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="glass-card modal-content"
+              style={{ maxWidth: '640px', width: '95%' }}
+            >
+              <div className="flex justify-between items-center mb-3">
+                <div className="flex items-center gap-2">
+                  <div style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '10px',
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                    color: '#10b981',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <UserPlus size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
+                      Ajouter à la Liste d'Assurance
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Sélectionnez les athlètes à inscrire au contrat d'assurance du club.
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowAddAthletesModal(false)}
+                  className="text-[var(--text-muted)] hover:text-white cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmitAddAthletesModal} className="flex flex-col gap-3.5">
+                {/* 1. Sélection des athlètes candidats */}
+                <div style={{
+                  padding: '0.85rem',
+                  borderRadius: '12px',
+                  backgroundColor: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)'
+                }}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2.5">
+                    <span className="text-xs font-bold text-[var(--text-primary)]">
+                      1. Choisir les athlètes non assurés ({selectedForAdd.length} sélectionné{selectedForAdd.length > 1 ? 's' : ''})
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedForAdd(modalCandidateAthletes.map(a => a.id))}
+                        className="text-[0.72rem] font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer bg-transparent border-none p-0"
+                      >
+                        Tout cocher ({modalCandidateAthletes.length})
+                      </button>
+                      <span className="text-muted text-[0.7rem]">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedForAdd([])}
+                        className="text-[0.72rem] font-semibold text-[var(--text-muted)] hover:text-white cursor-pointer bg-transparent border-none p-0"
+                      >
+                        Tout décocher
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Filtres internes à la modale */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                      <input 
+                        type="text"
+                        placeholder="Rechercher par nom..."
+                        value={modalSearchQuery}
+                        onChange={(e) => setModalSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs border focus:outline-none"
+                        style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                      />
+                    </div>
+                    <select
+                      value={modalGroupFilter}
+                      onChange={(e) => setModalGroupFilter(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs border focus:outline-none cursor-pointer"
+                      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    >
+                      <option value="ALL">Tous les groupes</option>
+                      {groupes.map(g => (
+                        <option key={g.id} value={g.id}>{g.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Liste scrollable des athlètes candidats */}
+                  <div style={{
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    backgroundColor: 'var(--bg-primary)'
+                  }}>
+                    {modalCandidateAthletes.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-[var(--text-muted)]">
+                        Aucun athlète non assuré ne correspond à ce filtre.
+                      </div>
+                    ) : (
+                      modalCandidateAthletes.map(ath => {
+                        const isChecked = selectedForAdd.includes(ath.id);
+                        return (
+                          <div 
+                            key={ath.id}
+                            onClick={() => {
+                              setSelectedForAdd(prev => 
+                                isChecked ? prev.filter(x => x !== ath.id) : [...prev, ath.id]
+                              );
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '6px 10px',
+                              borderBottom: '1px solid rgba(255,255,255,0.05)',
+                              cursor: 'pointer',
+                              backgroundColor: isChecked ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
+                              transition: 'background-color 0.1s'
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isChecked ? (
+                                <CheckSquare size={16} color="#10b981" />
+                              ) : (
+                                <Square size={16} color="var(--text-muted)" />
+                              )}
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                {(ath.nom || '').toUpperCase()} {ath.prenom}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span style={{
+                                fontSize: '0.68rem',
+                                padding: '1px 6px',
+                                borderRadius: '6px',
+                                backgroundColor: 'var(--bg-tertiary)',
+                                color: 'var(--text-muted)'
+                              }}>
+                                {ath.groupes?.nom || ath.groupe || 'Standard'}
+                              </span>
+                              <span style={{
+                                fontSize: '0.65rem',
+                                padding: '1px 5px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                color: '#ef4444',
+                                fontWeight: 700
+                              }}>
+                                {ath.insuranceStatus.label}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Détails de couverture */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Compagnie d'Assurance *
+                    </label>
+                    <select
+                      value={addModalForm.compagnie}
+                      onChange={(e) => setAddModalForm(prev => ({ ...prev, compagnie: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    >
+                      {COMPAGNIES_ASSURANCE.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Numéro de Police / Référence *
+                    </label>
+                    <input 
+                      type="text"
+                      required
+                      placeholder="Ex: POL-COLL-2026/01"
+                      value={addModalForm.numero_police}
+                      onChange={(e) => setAddModalForm(prev => ({ ...prev, numero_police: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Dates & Prime */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Date de début
+                    </label>
+                    <input 
+                      type="date"
+                      required
+                      value={addModalForm.date_debut}
+                      onChange={(e) => setAddModalForm(prev => ({ ...prev, date_debut: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-xs border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Date de fin (1 an)
+                    </label>
+                    <input 
+                      type="date"
+                      required
+                      value={addModalForm.date_fin}
+                      onChange={(e) => setAddModalForm(prev => ({ ...prev, date_fin: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-xs border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
+                      Prime par athlète (DA)
+                    </label>
+                    <input 
+                      type="number"
+                      min="0"
+                      value={addModalForm.montant}
+                      onChange={(e) => setAddModalForm(prev => ({ ...prev, montant: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl text-xs border focus:outline-none"
+                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-[var(--border-color)]">
+                  <Button variant="secondary" type="button" onClick={() => setShowAddAthletesModal(false)}>
+                    Annuler
+                  </Button>
+                  <Button 
+                    variant="primary" 
+                    type="submit" 
+                    disabled={selectedForAdd.length === 0}
+                    style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '6px',
+                      backgroundColor: selectedForAdd.length === 0 ? 'var(--bg-tertiary)' : '#10b981',
+                      borderColor: selectedForAdd.length === 0 ? 'var(--border-color)' : '#10b981',
+                      color: selectedForAdd.length === 0 ? 'var(--text-muted)' : '#ffffff',
+                      cursor: selectedForAdd.length === 0 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <UserPlus size={15} /> Ajouter ({selectedForAdd.length}) à la Liste d'Assurance
                   </Button>
                 </div>
               </form>
