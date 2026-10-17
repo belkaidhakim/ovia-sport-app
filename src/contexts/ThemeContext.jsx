@@ -5,7 +5,7 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('app-theme') || 'dark';
+    return localStorage.getItem('ovia_theme') || localStorage.getItem('app-theme') || 'light';
   });
 
   useEffect(() => {
@@ -17,6 +17,7 @@ export function ThemeProvider({ children }) {
       document.documentElement.classList.remove('dark');
       document.documentElement.classList.add('light');
     }
+    localStorage.setItem('ovia_theme', theme);
     localStorage.setItem('app-theme', theme);
   }, [theme]);
 

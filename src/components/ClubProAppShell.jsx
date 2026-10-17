@@ -25,6 +25,7 @@ import { supabase } from "../supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { getSwimmingCategory } from "../utils/swimmingCategories";
+import ThemeToggle from "./ThemeToggle";
 import toast from "react-hot-toast";
 
 export default function ClubProAppShell({ children }) {
@@ -59,10 +60,15 @@ export default function ClubProAppShell({ children }) {
           .select('*', { count: 'exact', head: true })
           .eq('statut', 'EN_ATTENTE');
 
+        const { count: sCount } = await supabase
+          .from('cartes_acces')
+          .select('*', { count: 'exact', head: true })
+          .eq('statut', 'SUSPENDUE');
+
         setCounts({
           athletes: aCount || 0,
           inscriptions: iCount || 0,
-          pendingCotis: aCount || 0
+          pendingCotis: sCount || 0
         });
       } catch (e) {
         console.warn("Counts fetch warning:", e);
@@ -178,7 +184,7 @@ export default function ClubProAppShell({ children }) {
     {
       section: "FINANCES",
       items: [
-        { id: "cotisations", label: "Cotisations & Caisse", icon: CreditCard, path: "/finances", badge: counts.athletes ? `${counts.athletes} att.` : null },
+        { id: "cotisations", label: "Cotisations & Caisse", icon: CreditCard, path: "/finances", badge: counts.pendingCotis > 0 ? `${counts.pendingCotis} att.` : null },
         { id: "parametres", label: "Configuration Club", icon: Settings, path: "/users", badge: null },
       ],
     },
@@ -357,7 +363,7 @@ export default function ClubProAppShell({ children }) {
           </div>
 
           {/* Actions Rapides Terrain */}
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-2.5 ml-auto">
             <Link 
               to="/scanner"
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-500 transition shadow-xs cursor-pointer no-underline"
@@ -365,6 +371,8 @@ export default function ClubProAppShell({ children }) {
               <QrCode className="w-3.5 h-3.5 text-cyan-400 dark:text-white" />
               <span>Scanner Carte Accès</span>
             </Link>
+
+            <ThemeToggle />
 
             <Link 
               to="/dashboard"

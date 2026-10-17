@@ -23,7 +23,8 @@ import {
   Activity,
   CalendarDays,
   Copy,
-  ShieldCheck
+  ShieldCheck,
+  Plus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,15 +39,16 @@ import {
   BarChart, 
   Bar, 
   Legend,
-  PieChart,
-  Pie,
-  Cell
+  PieChart, 
+  Pie, 
+  Cell 
 } from 'recharts';
 import { supabase } from '../supabaseClient';
 import { Card, StatCard, Button, Badge, Skeleton } from '../components/ui';
 import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
 import BadgeGenerator from '../components/BadgeGenerator';
 import { formatWhatsAppPhone, calculateAge, formatName, formatDA } from '../utils/formatters';
+import { getSwimmingCategory } from '../utils/swimmingCategories';
 import toast from 'react-hot-toast';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -415,62 +417,65 @@ export default function Dashboard() {
   }, [stats.expiredList]);
 
   return (
-    <div>
-      {/* HEADER DU DASHBOARD */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 p-4 sm:p-6 transition-colors duration-200">
+      
+      {/* 1. HEADER PROPRE ET ALIGNÉ */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
         <div>
-          <h1>Tableau de bord de Gestion</h1>
-          <p style={{ marginBottom: 0 }}>Supervision, assiduité et recouvrement financier.</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-0">
+              Tableau de bord de Gestion
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Inscriptions Ouvertes
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-0">
+            Supervision, assiduité et recouvrement financier · Saison 2026 / 2027
+          </p>
         </div>
+
+        {/* Barre d'actions compacte et hiérarchisée */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <RegistrationStatusToggle />
-          <Link to="/assurances" style={{ textDecoration: 'none' }} title="Accéder au module de gestion des assurances">
-            <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <ShieldCheck size={16} /> Assurances
-            </Button>
-          </Link>
-          <a 
-            href="/inscription" 
-            target="_blank" 
-            rel="noreferrer" 
-            style={{ textDecoration: 'none' }}
-            title="Ouvrir le formulaire d'inscription en ligne public"
-          >
-            <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <ExternalLink size={16} /> Formulaire Public
-            </Button>
-          </a>
-          <Button 
-            variant="secondary"
-            title="Copier le lien d'inscription à partager"
+          <button 
+            type="button"
             onClick={() => {
               const url = `${window.location.origin}/inscription`;
               navigator.clipboard.writeText(url);
               toast.success("Lien d'inscription copié !");
             }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
           >
-            <Copy size={16} /> Copier Lien
-          </Button>
-          <Link to="/scanner" style={{ textDecoration: 'none' }}>
-            <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <ScanLine size={17} /> Scanner QR
-            </Button>
+            <Copy size={14} /> Copier Lien Public
+          </button>
+          
+          <Link to="/assurances" className="no-underline">
+            <button 
+              type="button"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <ShieldCheck size={14} /> Assurances
+            </button>
           </Link>
-          <Link to="/athletes/new" style={{ textDecoration: 'none' }}>
-            <Button variant="primary">
-              + Nouvel Athlète
-            </Button>
+          
+          <Link to="/athletes/new" className="no-underline">
+            <button 
+              type="button"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white shadow-xs shadow-sky-600/20 transition cursor-pointer inline-flex items-center gap-1.5"
+            >
+              <Plus size={14} /> Nouvel Athlète
+            </button>
           </Link>
         </div>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Skeleton height="140px" />
-          <Skeleton height="140px" />
-          <Skeleton height="140px" />
-          <Skeleton height="140px" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          <Skeleton height="130px" className="rounded-2xl" />
+          <Skeleton height="130px" className="rounded-2xl" />
+          <Skeleton height="130px" className="rounded-2xl" />
+          <Skeleton height="130px" className="rounded-2xl" />
         </div>
       ) : (
         <motion.div 
@@ -478,81 +483,101 @@ export default function Dashboard() {
           initial="hidden" 
           animate="visible"
         >
-          {/* STAT CARDS DU HAUT */}
-          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-            <StatCard
-              icon={<Users size={20} />}
-              iconBg="rgba(99, 102, 241, 0.1)"
-              iconColor="var(--accent-primary)"
-              glowColor="rgba(99, 102, 241, 0.15)"
-              label="Total Athlètes Inscrits"
-              value={stats.total}
-            />
-            <StatCard
-              icon={<ScanLine size={20} />}
-              iconBg="rgba(34, 211, 238, 0.1)"
-              iconColor="var(--accent-secondary)"
-              glowColor="rgba(34, 211, 238, 0.15)"
-              label="Présences Aujourd'hui"
-              value={`${stats.todayPresences} nageur(s)`}
-              subtitle={stats.expectedToday > 0 ? `${stats.todayPresences} sur ${stats.expectedToday} attendus` : `Sur ${stats.active} actifs`}
-            />
-            {/* Phase 4: Indicateur Financier Remplacé */}
-            <StatCard
-              icon={<Wallet size={20} />}
-              iconBg="rgba(239, 68, 68, 0.1)"
-              iconColor="#ef4444"
-              glowColor="rgba(239, 68, 68, 0.15)"
-              label="Manque à gagner (Impayés)"
-              value={formatDA(stats.missingRevenue)}
-              subtitle={`${stats.expiredList.length} cotisations suspendues`}
-            />
-            <StatCard
-              icon={<CreditCard size={20} />}
-              iconBg="rgba(16, 185, 129, 0.1)"
-              iconColor="var(--accent-success)"
-              glowColor="rgba(16, 185, 129, 0.15)"
-              label="Cotisations à Jour"
-              value={stats.active}
-              subtitle={`${stats.expiringSoon.length} arrivent à échéance`}
-            />
+          {/* 2. LES 4 CARTES KPI (Contraste 100% lisible en clair & sombre) */}
+          <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+            
+            {/* Carte 1 : Total Athlètes */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Total Athlètes Inscrits</span>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Users size={20} />
+                </div>
+              </div>
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white">{stats.total}</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-0">Effectif global saison active</p>
+            </div>
+
+            {/* Carte 2 : Présences */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Présences Aujourd'hui</span>
+                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                  <ScanLine size={20} />
+                </div>
+              </div>
+              <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                {stats.todayPresences} <span className="text-lg font-semibold text-slate-500">nageur(s)</span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-0">
+                {stats.expectedToday > 0 ? `${stats.todayPresences} sur ${stats.expectedToday} attendus` : `Sur ${stats.total} athlètes actifs`}
+              </p>
+            </div>
+
+            {/* Carte 3 : Impayés */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Manque à gagner (Impayés)</span>
+                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <Wallet size={20} />
+                </div>
+              </div>
+              <div className="text-3xl font-extrabold text-rose-600 dark:text-rose-400">{formatDA(stats.missingRevenue)}</div>
+              <p className="text-xs text-rose-600/80 dark:text-rose-400/80 font-medium mt-2 mb-0">
+                {stats.expiredList.length} cotisation(s) suspendue(s)
+              </p>
+            </div>
+
+            {/* Carte 4 : Cotisations à jour */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Cotisations à Jour</span>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <CreditCard size={20} />
+                </div>
+              </div>
+              <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">{stats.active}</div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-0">
+                {stats.expiringSoon.length} arrivent à échéance (&lt; 7j)
+              </p>
+            </div>
+
           </motion.div>
 
-          {/* CENTRE D'ALERTES & PLANNING (PHASE 4) */}
+          {/* 3. CENTRE D'ALERTES & PLANNING BASSIN */}
           <motion.div variants={itemVariants} className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
             
             {/* ALERTES (Occupe 2 colonnes sur grand écran) */}
             {(stats.expiredList.length > 0 || stats.expiringSoon.length > 0 || stats.incompleteFiles.length > 0) && (
-              <Card className="p-5 xl:col-span-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.04)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div className="p-5 xl:col-span-2 bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-900/30 rounded-2xl shadow-xs">
                 <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div style={{ padding: '7px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                    <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400">
                       <AlertOctagon size={20} />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold mb-0" style={{ color: '#ef4444' }}>
+                      <h3 className="text-base font-bold text-rose-600 dark:text-rose-400 mb-0">
                         Centre d'Alertes
                       </h3>
-                      <span className="text-xs text-muted">
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
                         Actions requises pour le recouvrement
                       </span>
                     </div>
                   </div>
                   
-                  {/* Phase 4: Bouton Relances Groupées */}
                   {athletesWithPhoneToExpire.length > 0 && (
-                    <Button 
-                      variant="primary" 
+                    <button 
+                      type="button"
                       onClick={() => setShowBulkWA(!showBulkWA)}
-                      style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', backgroundColor: '#25D366', color: 'white', borderColor: '#25D366' }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xs inline-flex items-center gap-1.5 transition cursor-pointer"
                     >
-                      <MessageCircle size={14} style={{ marginRight: '6px', display: 'inline-block' }} /> 
+                      <MessageCircle size={14} /> 
                       {showBulkWA ? "Fermer l'outil WhatsApp" : "Outil Relances Groupées"}
-                    </Button>
+                    </button>
                   )}
                 </div>
 
-                {/* INTERFACE RELANCES GROUPÉES */}
+                {/* Interface WhatsApp relance groupée */}
                 <AnimatePresence>
                   {showBulkWA && (
                     <motion.div 
@@ -561,11 +586,13 @@ export default function Dashboard() {
                       exit={{ height: 0, opacity: 0 }}
                       className="mb-4 overflow-hidden"
                     >
-                      <div className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(37, 211, 102, 0.05)', border: '1px solid rgba(37, 211, 102, 0.2)' }}>
-                        <h4 className="text-sm font-bold mb-2 flex items-center gap-2 text-[#25D366]">
-                          <MessageCircle size={16} /> Envoi en chaîne WhatsApp ({athletesWithPhoneToExpire.length} cibles)
+                      <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40">
+                        <h4 className="text-xs font-bold mb-2 flex items-center gap-2 text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
+                          <MessageCircle size={15} /> Envoi en chaîne WhatsApp ({athletesWithPhoneToExpire.length} cibles)
                         </h4>
-                        <p className="text-xs text-muted mb-3">Cliquez successivement sur chaque bouton pour ouvrir WhatsApp pré-rempli avec le message de relance.</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+                          Cliquez successivement sur chaque contact pour ouvrir la discussion WhatsApp pré-remplie.
+                        </p>
                         <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
                           {athletesWithPhoneToExpire.map(athlete => {
                             const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.contact_urgence || athlete.telephone_tuteur);
@@ -577,14 +604,13 @@ export default function Dashboard() {
                                 href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(msg)}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold hover:opacity-80 transition-opacity"
-                                style={{ backgroundColor: '#25D366', color: 'white', textDecoration: 'none' }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#25D366] text-white hover:opacity-90 transition no-underline"
                                 onClick={(e) => {
-                                  // Visuellement marquer comme cliqué
                                   e.currentTarget.style.opacity = '0.5';
                                 }}
                               >
-                                {athlete.nom} {athlete.prenom} <ExternalLink size={12}/>
+                                <span className="uppercase">{athlete.nom}</span> <span className="capitalize">{athlete.prenom?.toLowerCase()}</span>
+                                <ExternalLink size={12}/>
                               </a>
                             );
                           })}
@@ -596,26 +622,36 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* ALERTE 1 : COTISATIONS EXPIRÉES */}
-                  <div className="p-4 rounded-xl flex flex-col justify-between" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                  <div className="p-4 rounded-xl flex flex-col justify-between bg-slate-50 dark:bg-slate-950/40 border border-rose-200 dark:border-rose-900/40">
                     <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ef4444' }}>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
                           ❌ Expirées ({stats.expiredList.length})
                         </span>
-                        <Badge status="SUSPENDED">Bloqué</Badge>
+                        {/* Correction formelle: Badge BLOQUÉ en ROUGE et non vert */}
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400">
+                          BLOQUÉ
+                        </span>
                       </div>
-                      <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
-                        {stats.expiredList.slice(0, 5).map(athlete => {
+                      <div className="flex flex-col gap-2 max-h-44 overflow-y-auto pr-1">
+                        {stats.expiredList.slice(0, 6).map(athlete => {
                           const wpPhone = formatWhatsAppPhone(athlete.telephone || athlete.contact_urgence || athlete.telephone_tuteur);
                           return (
-                            <div key={athlete.id} className="flex justify-between items-center p-2 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                            <div key={athlete.id} className="flex justify-between items-center p-2 rounded-lg text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                               <div>
-                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{athlete.nom} {athlete.prenom}</span>
-                                <div style={{ fontSize: '0.7rem', color: '#ef4444' }}>Expiré ({athlete.endDateStr || 'Échu'})</div>
+                                <span className="font-semibold uppercase text-slate-900 dark:text-white">{athlete.nom}</span>{' '}
+                                <span className="capitalize text-slate-700 dark:text-slate-300">{athlete.prenom?.toLowerCase()}</span>
+                                <div className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">Expiré ({athlete.endDateStr || 'Échu'})</div>
                               </div>
                               <div className="flex items-center gap-1">
                                 {wpPhone ? (
-                                  <a href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${athlete.prenom || ''}...`)}`} target="_blank" rel="noreferrer" style={{ padding: '4px 6px', borderRadius: '6px', backgroundColor: 'rgba(37, 211, 102, 0.15)', color: '#25D366' }}>
+                                  <a 
+                                    href={`https://wa.me/${wpPhone}?text=${encodeURIComponent(`Bonjour ${athlete.prenom || ''}, votre adhésion à Ovia Sport a expiré. Merci de vous rapprocher de l'accueil pour régularisation.`)}`} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition"
+                                    title="Relancer par WhatsApp"
+                                  >
                                     <MessageCircle size={14} />
                                   </a>
                                 ) : null}
@@ -628,23 +664,24 @@ export default function Dashboard() {
                   </div>
 
                   {/* ALERTE 2 : RENOUVELLEMENTS SOUS 7 JOURS */}
-                  <div className="p-4 rounded-xl flex flex-col justify-between" style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                  <div className="p-4 rounded-xl flex flex-col justify-between bg-slate-50 dark:bg-slate-950/40 border border-amber-200 dark:border-amber-900/40">
                     <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f59e0b' }}>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
                           ⏳ Imminents ({stats.expiringSoon.length})
                         </span>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)', padding: '2px 8px', borderRadius: '9999px' }}>
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 rounded-full">
                           &lt; 7 jours
                         </span>
                       </div>
-                      <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
-                        {stats.expiringSoon.slice(0, 5).map(athlete => {
+                      <div className="flex flex-col gap-2 max-h-44 overflow-y-auto pr-1">
+                        {stats.expiringSoon.slice(0, 6).map(athlete => {
                           return (
-                            <div key={athlete.id} className="flex justify-between items-center p-2 rounded-lg text-xs" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                            <div key={athlete.id} className="flex justify-between items-center p-2 rounded-lg text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                               <div>
-                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{athlete.nom} {athlete.prenom}</span>
-                                <div style={{ fontSize: '0.7rem', color: '#f59e0b' }}>Dans {athlete.daysLeft}j</div>
+                                <span className="font-semibold uppercase text-slate-900 dark:text-white">{athlete.nom}</span>{' '}
+                                <span className="capitalize text-slate-700 dark:text-slate-300">{athlete.prenom?.toLowerCase()}</span>
+                                <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">Dans {athlete.daysLeft}j</div>
                               </div>
                             </div>
                           );
@@ -653,68 +690,85 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
             )}
 
-            {/* PHASE 4: PLANNING SPORTIF */}
-            <Card className="p-5 xl:col-span-1 border-l-4" style={{ borderLeftColor: 'var(--accent-primary)' }}>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <div style={{ padding: '6px', borderRadius: '8px', backgroundColor: 'rgba(99, 102, 241, 0.1)', color: 'var(--accent-primary)' }}>
-                    <CalendarDays size={18} />
+            {/* PLANNING BASSIN PRO */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs xl:col-span-1 border-l-4 border-l-sky-500 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                      <CalendarDays size={18} />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white mb-0">Planning Bassin</h3>
                   </div>
-                  <h3 className="text-base font-bold mb-0">Planning Bassin</h3>
+                </div>
+
+                <div className="mb-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Aujourd'hui</h4>
+                  {stats.planningToday.length === 0 ? (
+                    <div className="flex flex-col items-start gap-2 py-1">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-0">Aucune séance prévue aujourd'hui.</p>
+                      <Link to="/planning" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 dark:bg-sky-950/50 text-sky-600 dark:text-sky-400 hover:bg-sky-100 dark:hover:bg-sky-900/50 border border-sky-200 dark:border-sky-800 transition no-underline">
+                        <Plus size={13} /> + Planifier une séance
+                      </Link>
+                    </div>
+                  ) : (
+                    <ul className="flex flex-col gap-2 p-0 list-none m-0">
+                      {stats.planningToday.map((seance, idx) => (
+                        <li key={`td-${idx}`} className="flex justify-between items-center text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50">
+                          <span className="font-semibold text-slate-900 dark:text-white">{seance.nom}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono bg-sky-50 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 px-1.5 py-0.5 rounded font-bold">{seance.heure}</span>
+                            <span className="text-xs text-slate-500 dark:text-slate-400">({seance.inscrits} inscrits)</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Demain</h4>
+                  {stats.planningTomorrow.length === 0 ? (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-0">Aucune séance prévue.</p>
+                  ) : (
+                    <ul className="flex flex-col gap-2 p-0 list-none m-0">
+                      {stats.planningTomorrow.map((seance, idx) => (
+                        <li key={`tm-${idx}`} className="flex justify-between items-center text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/50 dark:border-slate-700/50">
+                          <span className="font-medium text-slate-700 dark:text-slate-300">{seance.nom}</span>
+                          <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{seance.heure}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 
-              <div className="mb-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Aujourd'hui</h4>
-                {stats.planningToday.length === 0 ? (
-                  <p className="text-sm text-muted">Aucune séance prévue.</p>
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {stats.planningToday.map((seance, idx) => (
-                      <li key={`td-${idx}`} className="flex justify-between items-center text-sm p-2 rounded-md" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                        <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{seance.nom}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono bg-indigo-500/10 text-indigo-500 px-1.5 py-0.5 rounded">{seance.heure}</span>
-                          <span className="text-xs text-muted">({seance.inscrits} inscrits)</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                <Link to="/planning" className="text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center justify-between no-underline">
+                  <span>Accéder au calendrier hebdomadaire</span>
+                  <span>→</span>
+                </Link>
               </div>
-
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted mb-2">Demain</h4>
-                {stats.planningTomorrow.length === 0 ? (
-                  <p className="text-sm text-muted">Aucune séance prévue.</p>
-                ) : (
-                  <ul className="flex flex-col gap-2">
-                    {stats.planningTomorrow.map((seance, idx) => (
-                      <li key={`tm-${idx}`} className="flex justify-between items-center text-sm p-2 rounded-md" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                        <span className="font-medium text-muted">{seance.nom}</span>
-                        <span className="text-xs text-muted">{seance.heure}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </Card>
+            </div>
           </motion.div>
 
-          {/* GRAPHIQUES D'ANALYSE */}
+          {/* 4. GRAPHIQUES D'ANALYSE (Assiduité & Jauges) */}
           <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* PHASE 4: COURBE DE FRÉQUENTATION DÉTAILLÉE PAR GROUPE */}
-            <Card className="p-5 lg:col-span-2">
+            
+            {/* Assiduité par type de groupe */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs lg:col-span-2">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-base font-bold mb-0" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Activity size={18} color="var(--accent-secondary)" />
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-0 flex items-center gap-2">
+                    <Activity size={18} className="text-sky-500" />
                     Assiduité par type de groupe
                   </h3>
-                  <span className="text-xs text-muted">Répartition des passages (Initiation, Apprentissage, Élite)</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Répartition des passages (Initiation, Apprentissage, Élite)
+                  </span>
                 </div>
               </div>
 
@@ -735,11 +789,18 @@ export default function Dashboard() {
                         <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0}/>
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"} vertical={false} />
+                    <XAxis dataKey="name" stroke={isDark ? "#94a3b8" : "#64748b"} fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke={isDark ? "#94a3b8" : "#64748b"} fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.95)', border: '1px solid var(--border-color)', borderRadius: '10px', fontSize: '0.85rem' }}
+                      contentStyle={{ 
+                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)', 
+                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0', 
+                        color: isDark ? '#fff' : '#0f172a',
+                        borderRadius: '12px', 
+                        fontSize: '0.85rem',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                     <Area type="monotone" name="Initiation" dataKey="Initiation" stackId="1" stroke="#10b981" strokeWidth={2} fill="url(#colorInit)" />
@@ -748,87 +809,89 @@ export default function Dashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-48 text-muted text-sm">Données en cours de synchronisation...</div>
+                <div className="flex items-center justify-center h-48 text-slate-400 text-sm">
+                  Données en cours de synchronisation...
+                </div>
               )}
-            </Card>
+            </div>
 
             {/* JAUGE DE REMPLISSAGE */}
-            <Card className="p-5">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-base font-bold mb-0">Remplissage Groupes</h3>
-                  <span className="text-xs text-muted">Taux d'occupation global : {stats.globalFillRate}%</span>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-0">Remplissage Groupes</h3>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Taux d'occupation global : {stats.globalFillRate}%</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-3.5 mt-2 overflow-y-auto pr-1" style={{ maxHeight: '250px' }}>
+              <div className="flex flex-col gap-3 mt-2 overflow-y-auto pr-1" style={{ maxHeight: '250px' }}>
                 {stats.groupCapacityStats.map(g => (
-                  <div key={g.id} className="p-2.5 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
+                  <div key={g.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800/60">
                     <div className="flex justify-between items-center text-xs mb-1.5">
-                      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{g.nom}</span>
-                      <span style={{ fontWeight: 800, color: g.fillRate >= 90 ? '#ef4444' : g.fillRate >= 70 ? '#f59e0b' : '#10b981' }}>
+                      <span className="font-bold text-slate-900 dark:text-white">{g.nom}</span>
+                      <span className="font-extrabold" style={{ color: g.fillRate >= 90 ? '#ef4444' : g.fillRate >= 70 ? '#f59e0b' : '#10b981' }}>
                         {g.count}/{g.max} ({g.fillRate}%)
                       </span>
                     </div>
-                    <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ 
-                        height: '100%', 
-                        width: `${g.fillRate}%`, 
-                        backgroundColor: g.fillRate >= 90 ? '#ef4444' : g.fillRate >= 70 ? '#f59e0b' : '#10b981',
-                        borderRadius: '3px'
-                      }} />
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-300" 
+                        style={{ 
+                          width: `${Math.min(100, g.fillRate)}%`, 
+                          backgroundColor: g.fillRate >= 90 ? '#ef4444' : g.fillRate >= 70 ? '#f59e0b' : '#10b981'
+                        }} 
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
           </motion.div>
 
-          {/* TABLEAUX DES ADHÉRENTS */}
+          {/* 5. TABLEAUX DES ADHÉRENTS NORMALISÉ */}
           <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="p-5 lg:col-span-3">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs lg:col-span-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
                 <div>
-                  <h3 className="text-base font-bold mb-0">Adhérents du Club ({filteredInscrits.length})</h3>
-                  <span className="text-xs text-muted">Filtres dynamiques et actions rapides</span>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white mb-0">Adhérents du Club ({filteredInscrits.length})</h3>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Listing officiel des adhérents, catégories fédérales et expiration</span>
                 </div>
                 <div className="flex flex-wrap gap-2 items-center">
                   <input
                     type="text"
-                    placeholder="🔍 Nom..."
+                    placeholder="🔍 Nom ou prénom..."
                     value={inscritsSearch}
                     onChange={(e) => setInscritsSearch(e.target.value)}
-                    className="form-input"
-                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', width: '150px' }}
+                    className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600 transition"
+                    style={{ width: '180px' }}
                   />
                   <select
                     value={inscritsFilterStatus}
                     onChange={(e) => setInscritsFilterStatus(e.target.value)}
-                    className="form-select"
-                    style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', width: '130px' }}
+                    className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600 transition"
                   >
                     <option value="ALL">Tous statuts</option>
                     <option value="ACTIVE">✅ À jour</option>
-                    <option value="SUSPENDED">❌ Suspendu</option>
+                    <option value="SUSPENDED">❌ Suspendu / Bloqué</option>
                   </select>
                 </div>
               </div>
 
-              <div className="table-responsive">
-                <table style={{ minWidth: '800px' }}>
+              <div className="table-responsive overflow-x-auto">
+                <table className="w-full text-left border-collapse" style={{ minWidth: '800px' }}>
                   <thead>
-                    <tr>
-                      <th>Adhérent</th>
-                      <th>Catégorie</th>
-                      <th>Groupe</th>
-                      <th>Expiration</th>
-                      <th>Statut</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">
+                      <th className="py-3 px-3">Adhérent</th>
+                      <th className="py-3 px-3">Catégorie</th>
+                      <th className="py-3 px-3">Groupe</th>
+                      <th className="py-3 px-3">Expiration</th>
+                      <th className="py-3 px-3">Statut</th>
+                      <th className="py-3 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
                     {filteredInscrits.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="text-center text-muted" style={{ padding: '2rem 0' }}>
+                        <td colSpan="6" className="text-center text-slate-500 dark:text-slate-400 py-8">
                           Aucun athlète ne correspond aux filtres.
                         </td>
                       </tr>
@@ -838,51 +901,106 @@ export default function Dashboard() {
                         const statut = card?.statut || 'SUSPENDUE';
                         const age = calculateAge(athlete.date_naissance);
                         const grp = Array.isArray(athlete.groupes) ? athlete.groupes[0] : athlete.groupes;
+                        const swimmingCat = getSwimmingCategory(athlete);
                         
-                        // Phase 4: Mise en évidence visuelle des suspendus
-                        const rowStyle = statut !== 'ACTIVE' 
-                          ? { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' } 
-                          : {};
-
+                        // Expiration réelle calculée
                         const validCotisDates = Array.isArray(athlete.cotisations)
                           ? athlete.cotisations
                               .map(c => c?.periode_couverte_fin ? new Date(c.periode_couverte_fin).getTime() : NaN)
                               .filter(t => !isNaN(t))
                           : [];
-                        const lastCotisStr = validCotisDates.length > 0
-                          ? new Date(Math.max(...validCotisDates)).toLocaleDateString('fr-FR')
-                          : '-';
+                        
+                        let expirationDisplay = '-';
+                        let isExpired = false;
+                        if (validCotisDates.length > 0) {
+                          const maxDate = new Date(Math.max(...validCotisDates));
+                          expirationDisplay = maxDate.toLocaleDateString('fr-FR');
+                          if (maxDate < new Date()) isExpired = true;
+                        } else if (card?.date_dernier_paiement) {
+                          const payDate = new Date(card.date_dernier_paiement);
+                          const estEndDate = new Date(payDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                          if (!isNaN(estEndDate.getTime())) {
+                            expirationDisplay = estEndDate.toLocaleDateString('fr-FR');
+                            if (estEndDate < new Date()) isExpired = true;
+                          }
+                        } else if (statut === 'ACTIVE') {
+                          expirationDisplay = 'À jour (Saison)';
+                        } else {
+                          expirationDisplay = 'Non réglé';
+                          isExpired = true;
+                        }
+
+                        const isBlocked = statut !== 'ACTIVE' || isExpired;
 
                         return (
-                          <tr key={athlete.id} style={rowStyle}>
-                            <td style={{ fontWeight: 600 }}>
-                              <Link to={`/athletes/edit/${athlete.id}`} style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>
-                                {athlete.nom} {athlete.prenom}
-                              </Link>
+                          <tr 
+                            key={athlete.id} 
+                            className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
+                              isBlocked ? 'bg-rose-50/30 dark:bg-rose-950/10' : ''
+                            }`}
+                          >
+                            <td className="py-3 px-3 font-medium">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  window.dispatchEvent(new CustomEvent('open-athlete-drawer', { detail: athlete }));
+                                }}
+                                className="text-left bg-transparent border-0 p-0 cursor-pointer group"
+                              >
+                                <span className="uppercase font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition">
+                                  {athlete.nom}
+                                </span>{' '}
+                                <span className="capitalize text-slate-700 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-cyan-400 transition">
+                                  {athlete.prenom?.toLowerCase()}
+                                </span>
+                              </button>
                             </td>
-                            <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                              {age ? `${age} ans` : '-'}
+                            <td className="py-3 px-3">
+                              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                {swimmingCat.simpleName || 'ÉCOLE'}
+                              </span>{' '}
+                              <span className="text-slate-400 text-[11px]">
+                                ({age ? `${age} ans` : '-'})
+                              </span>
                             </td>
-                            <td>{grp?.nom || athlete.groupe || '-'}</td>
-                            <td style={{ fontSize: '0.8rem', color: statut !== 'ACTIVE' ? '#ef4444' : 'var(--text-secondary)' }}>
-                              {lastCotisStr}
+                            <td className="py-3 px-3 text-slate-600 dark:text-slate-400 font-medium">
+                              {grp?.nom || athlete.groupe || '-'}
                             </td>
-                            <td>
-                              <Badge status={statut}>
-                                {statut === 'ACTIVE' ? 'À jour' : 'Suspendu'}
-                              </Badge>
+                            <td className={`py-3 px-3 font-semibold ${
+                              isBlocked ? 'text-rose-600 dark:text-rose-400' : 'text-slate-600 dark:text-slate-400'
+                            }`}>
+                              {expirationDisplay}
                             </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <Link to={`/finances?search=${encodeURIComponent(athlete.nom)}`} style={{ textDecoration: 'none', marginRight: '6px' }}>
-                                <button className="btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '6px' }} title="Voir finances">
+                            <td className="py-3 px-3">
+                              {isBlocked ? (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40">
+                                  BLOQUÉ
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40">
+                                  À JOUR
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Link 
+                                  to={`/finances?search=${encodeURIComponent(athlete.nom)}`} 
+                                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                                  title="Consulter les cotisations"
+                                >
                                   <CreditCard size={14} />
+                                </Link>
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    window.dispatchEvent(new CustomEvent('open-athlete-drawer', { detail: athlete }));
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition cursor-pointer"
+                                >
+                                  Fiche
                                 </button>
-                              </Link>
-                              <Link to={`/athletes/edit/${athlete.id}`} style={{ textDecoration: 'none' }}>
-                                <button className="btn-secondary" style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderRadius: '6px' }}>
-                                  Voir
-                                </button>
-                              </Link>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -891,10 +1009,10 @@ export default function Dashboard() {
                   </tbody>
                 </table>
               </div>
-            </Card>
+            </div>
           </motion.div>
         </motion.div>
       )}
-    </div>
+    </main>
   );
 }
