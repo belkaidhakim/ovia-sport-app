@@ -981,12 +981,12 @@ export default function MemberPortal() {
                     />
                     <div>
                       <span className="text-xs font-black text-white tracking-widest block">OVIA SPORT</span>
-                      <span className="text-[9px] text-sky-400 font-bold uppercase tracking-wider block">Aquatic Center</span>
+                      <span className="text-[9px] text-sky-400 font-bold uppercase tracking-wider block">Club Sportif Professionnel</span>
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/10 text-white border border-white/20">
-                    MEMBRE VIP
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    SECTION NATATION
                   </span>
                 </div>
 
@@ -1052,8 +1052,8 @@ export default function MemberPortal() {
 
                 {/* Footer Carte */}
                 <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-center text-[10px] text-slate-400">
-                  <span>Valide : {latestCotis ? new Date(latestCotis.periode_couverte_fin).toLocaleDateString('fr-FR') : '-'}</span>
-                  <span className="font-mono text-slate-400 font-bold">OVS-PASS-2026</span>
+                  <span className="font-bold text-slate-300">CARTE OFFICIELLE DU CLUB OVIA SPORT</span>
+                  <span>{latestCotis ? `Valide : ${new Date(latestCotis.periode_couverte_fin).toLocaleDateString('fr-FR')}` : 'Saison 2026/2027'}</span>
                 </div>
               </div>
 

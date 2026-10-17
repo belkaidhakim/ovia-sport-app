@@ -96,10 +96,10 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setTextColor(255, 255, 255);
     doc.text('OVIA SPORT', x + 14, y + 6.2);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.2);
     doc.setTextColor(52, 211, 153);
-    doc.text('CARTE D\'ACCÈS ATHLÈTE · MODÈLE FANA', x + 14, y + 10.2);
+    doc.text('CLUB SPORTIF PROFESSIONNEL · SECTION NATATION', x + 14, y + 10.2);
 
     // Photo d'identité (ou placeholder)
     const photoX = x + 3.5;
@@ -198,10 +198,10 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setDrawColor(226, 232, 240);
     doc.line(x, y + cardH - 8, x + cardW, y + cardH - 8);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(5.2);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Carte officielle de membre · Modèle FANA · Ovia Sport', x + cardW / 2, y + cardH - 3, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('CARTE OFFICIELLE DU CLUB OVIA SPORT · SAISON 2026/2027', x + cardW / 2, y + cardH - 3, { align: 'center' });
 
     currentCardIndex++;
   }

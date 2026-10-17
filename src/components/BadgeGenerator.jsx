@@ -63,8 +63,8 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
             src="/logo.jpg" 
             alt="Logo Ovia Sport" 
             style={{ 
-              width: '34px', 
-              height: '34px', 
+              width: '36px', 
+              height: '36px', 
               borderRadius: '50%', 
               border: '2px solid #ffffff', 
               objectFit: 'cover', 
@@ -73,29 +73,31 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
             }} 
           />
           <div>
-            <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.04em', color: '#ffffff', lineHeight: 1.1 }}>
+            <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, letterSpacing: '0.04em', color: '#ffffff', lineHeight: 1.1 }}>
               OVIA SPORT
             </h2>
-            <div style={{ fontSize: '0.65rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.05em' }}>Club Professionnel · Bouira</div>
+            <div style={{ fontSize: '0.62rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Club Sportif Professionnel
+            </div>
           </div>
         </div>
         <div style={{ 
           fontSize: '0.65rem', 
-          fontWeight: 700, 
+          fontWeight: 800, 
           letterSpacing: '0.08em', 
-          background: 'rgba(255, 255, 255, 0.12)', 
-          color: '#ffffff', 
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          padding: '3px 8px', 
+          background: 'rgba(56, 189, 248, 0.15)', 
+          color: '#38bdf8', 
+          border: '1px solid rgba(56, 189, 248, 0.35)',
+          padding: '4px 10px', 
           borderRadius: '20px', 
           whiteSpace: 'nowrap',
           textTransform: 'uppercase',
           display: 'flex',
           alignItems: 'center',
-          gap: '4px'
+          gap: '5px'
         }}>
-          <ShieldCheck size={12} />
-          CARTE D'ACCÈS · MODÈLE FANA
+          <Waves size={13} />
+          SECTION NATATION
         </div>
       </div>
       
@@ -208,25 +210,25 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
       {/* Footer Security Ribbon */}
       <div style={{ 
         backgroundColor: '#f8fafc', 
-        padding: '0.4rem 1.25rem', 
+        padding: '0.45rem 1.25rem', 
         borderTop: '1px solid #e2e8f0', 
         display: 'flex', 
         justify: 'space-between', 
         alignItems: 'center', 
         fontSize: '0.625rem', 
         color: '#64748b', 
-        fontWeight: 600,
+        fontWeight: 700,
         zIndex: 1 
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
-          Carte officielle de membre · Modèle FANA · Ovia Sport
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#0f172a', letterSpacing: '0.04em' }}>
+          <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+          <span>CARTE OFFICIELLE DU CLUB OVIA SPORT</span>
         </div>
         <div>
           {showEndDate && endDateStr ? (
-            <span style={{ color: '#e11d48', fontWeight: 700 }}>Valide jusqu'au : {endDateStr}</span>
+            <span style={{ color: '#e11d48', fontWeight: 800 }}>Valide jusqu'au : {endDateStr}</span>
           ) : (
-            <span style={{ color: '#0284c7', fontWeight: 700 }}>Saison 2026 / 2027</span>
+            <span style={{ color: '#0284c7', fontWeight: 800 }}>Saison 2026 / 2027</span>
           )}
         </div>
       </div>
