@@ -34,7 +34,8 @@ const getAgeAndCategory = (dateNaissance, sexe = null) => {
   const cat = getSwimmingCategory(dateNaissance, sexe);
   return { 
     age: cat.age, 
-    category: cat.label, 
+    category: cat.simpleName, 
+    catBadge: cat.catBadge,
     fanaCategory: cat.fanaCategory, 
     dateStr: birth.toLocaleDateString('fr-FR') 
   };

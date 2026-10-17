@@ -9,22 +9,44 @@ import { calculateAge } from './formatters';
  * Liste officielle des catégories d'âge FANA (Fédération Algérienne de Natation)
  */
 export const FANA_CATEGORIES = [
-  { code: 'AVE', name: 'Avenirs', simpleName: 'AVENIR', ageBracket: '9 ans et moins', label: 'Avenirs (≤ 9 ans)', catBadge: 'CAT: AVENIR', color: '#38bdf8', badgeBg: 'rgba(56, 189, 248, 0.15)' },
-  { code: 'POU', name: 'Poussins', simpleName: 'POUSSIN', ageBracket: '10 - 11 ans', label: 'Poussins (10-11 ans)', catBadge: 'CAT: POUSSIN', color: '#818cf8', badgeBg: 'rgba(129, 140, 248, 0.15)' },
-  { code: 'BEN', name: 'Benjamins', simpleName: 'BENJAMIN', ageBracket: '12 - 13 ans', label: 'Benjamins (12-13 ans)', catBadge: 'CAT: BENJAMIN', color: '#34d399', badgeBg: 'rgba(52, 211, 153, 0.15)' },
-  { code: 'MIN', name: 'Minimes', simpleName: 'MINIME', ageBracket: '14 - 15 ans', label: 'Minimes (14-15 ans)', catBadge: 'CAT: MINIME', color: '#fbbf24', badgeBg: 'rgba(251, 191, 36, 0.15)' },
-  { code: 'CAD', name: 'Cadets', simpleName: 'CADET', ageBracket: '16 - 17 ans', label: 'Cadets (16-17 ans)', catBadge: 'CAT: CADET', color: '#fb923c', badgeBg: 'rgba(251, 146, 60, 0.15)' },
-  { code: 'JUN', name: 'Juniors', simpleName: 'JUNIOR', ageBracket: '18 - 19 ans', label: 'Juniors (18-19 ans)', catBadge: 'CAT: JUNIOR', color: '#f43f5e', badgeBg: 'rgba(244, 63, 94, 0.15)' },
-  { code: 'SEN', name: 'Seniors', simpleName: 'SENIOR', ageBracket: '20 - 34 ans', label: 'Seniors (20-34 ans)', catBadge: 'CAT: SENIOR', color: '#a855f7', badgeBg: 'rgba(168, 85, 247, 0.15)' },
-  { code: 'MAS', name: 'Masters', simpleName: 'MASTER', ageBracket: '35 ans et +', label: 'Masters (+35 ans)', catBadge: 'CAT: MASTER', color: '#06b6d4', badgeBg: 'rgba(6, 182, 212, 0.15)' },
+  { code: 'ECOLE', name: 'École', simpleName: 'ÉCOLE', ageBracket: '2017 et +', label: 'École (2017+)', catBadge: 'CAT: ÉCOLE', color: '#38bdf8', badgeBg: 'rgba(56, 189, 248, 0.15)' },
+  { code: 'POU', name: 'Poussin', simpleName: 'POUSSIN', ageBracket: '2016', label: 'Poussin (2016)', catBadge: 'CAT: POUSSIN', color: '#818cf8', badgeBg: 'rgba(129, 140, 248, 0.15)' },
+  { code: 'BEN', name: 'Benjamin', simpleName: 'BENJAMIN', ageBracket: '2014 - 2015', label: 'Benjamin (2014-2015)', catBadge: 'CAT: BENJAMIN', color: '#34d399', badgeBg: 'rgba(52, 211, 153, 0.15)' },
+  { code: 'MIN', name: 'Minime', simpleName: 'MINIME', ageBracket: '2012 - 2013', label: 'Minime (2012-2013)', catBadge: 'CAT: MINIME', color: '#fbbf24', badgeBg: 'rgba(251, 191, 36, 0.15)' },
+  { code: 'CAD', name: 'Cadet', simpleName: 'CADET', ageBracket: '2010 - 2011', label: 'Cadet (2010-2011)', catBadge: 'CAT: CADET', color: '#fb923c', badgeBg: 'rgba(251, 146, 60, 0.15)' },
+  { code: 'JUN', name: 'Junior', simpleName: 'JUNIOR', ageBracket: '2008 - 2009', label: 'Junior (2008-2009)', catBadge: 'CAT: JUNIOR', color: '#f43f5e', badgeBg: 'rgba(244, 63, 94, 0.15)' },
+  { code: 'SEN', name: 'Senior', simpleName: 'SENIOR', ageBracket: '2007 et avant', label: 'Senior (2007 et avant)', catBadge: 'CAT: SENIOR', color: '#a855f7', badgeBg: 'rgba(168, 85, 247, 0.15)' },
 ];
 
 /**
- * Retourne la catégorie officielle de natation selon le modèle officiel FANA
- * (Fédération Algérienne de Natation / World Aquatics)
+ * Extrait l'année de naissance de manière robuste quel que soit le format
+ * @param {string|number|Date} dateInput 
+ * @returns {number|null}
+ */
+export const extractBirthYear = (dateInput) => {
+  if (!dateInput) return null;
+  if (typeof dateInput === 'number') return dateInput;
+  if (dateInput instanceof Date && !isNaN(dateInput.getTime())) return dateInput.getFullYear();
+  if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim();
+    if (/^\d{4}$/.test(trimmed)) return parseInt(trimmed, 10);
+    const matchYMD = trimmed.match(/^(\d{4})[-/]/);
+    if (matchYMD) return parseInt(matchYMD[1], 10);
+    const matchDMY = trimmed.match(/[-/](\d{4})$/);
+    if (matchDMY) return parseInt(matchDMY[1], 10);
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) return parsed.getFullYear();
+  }
+  return null;
+};
+
+/**
+ * Retourne la catégorie officielle de natation selon la formule exacte du club :
+ * =SI(D15>=2017;"école";SI(D15=2016;"Poussin";SI(D15>=2014;"Benjamin";SI(D15>=2012;"Minime";SI(D15>=2010;"Cadet";SI(D15>=2008;"Junior";SI(D15<=2007;"Sinior";)))))))
+ * 
  * @param {string|Date|object} dateOrAthlete - Date de naissance ou objet athlète
  * @param {string} [explicitSexe] - 'M' ou 'F' (optionnel)
- * @returns {{ code: string, fanaCode: string, label: string, shortLabel: string, simpleName: string, catBadge: string, fanaCategory: string, ageBracket: string, age: number|null, sportingAge: number|null, color: string, badgeBg: string }}
+ * @returns {{ code: string, fanaCode: string, label: string, shortLabel: string, simpleName: string, catBadge: string, fanaCategory: string, ageBracket: string, birthYear: number|null, age: number|null, sportingAge: number|null, color: string, badgeBg: string }}
  */
 export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
   let dateNaissance = dateOrAthlete;
@@ -35,34 +57,20 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
     sexe = explicitSexe || dateOrAthlete.sexe;
   }
 
-  if (!dateNaissance) {
+  const birthYear = extractBirthYear(dateNaissance);
+
+  if (!birthYear) {
     return { 
       code: 'NA', 
       fanaCode: 'NA', 
+      name: 'Non renseignée',
       label: 'Non renseignée', 
       shortLabel: 'N/A', 
       simpleName: 'N/A',
       catBadge: 'CAT: N/A',
       fanaCategory: 'Non renseignée',
       ageBracket: '-', 
-      age: null, 
-      sportingAge: null, 
-      color: '#94a3b8', 
-      badgeBg: 'rgba(148, 163, 184, 0.15)' 
-    };
-  }
-
-  const birth = new Date(dateNaissance);
-  if (isNaN(birth.getTime())) {
-    return { 
-      code: 'NA', 
-      fanaCode: 'NA', 
-      label: 'Date invalide', 
-      shortLabel: 'N/A', 
-      simpleName: 'N/A',
-      catBadge: 'CAT: N/A',
-      fanaCategory: 'Date invalide',
-      ageBracket: '-', 
+      birthYear: null,
       age: null, 
       sportingAge: null, 
       color: '#94a3b8', 
@@ -71,154 +79,137 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
   }
 
   const currentYear = new Date().getFullYear();
-  const birthYear = birth.getFullYear();
-  // Millésime fédéral FANA : l'âge au 31 décembre de la saison sportive en cours
   const sportingAge = currentYear - birthYear;
   const civilAge = calculateAge(dateNaissance) ?? sportingAge;
-  const age = sportingAge >= 0 ? sportingAge : civilAge;
 
-  const isFemale = typeof sexe === 'string' && (sexe.trim().toUpperCase() === 'F' || sexe.trim().toUpperCase() === 'FEMME' || sexe.trim().toUpperCase() === 'FILLE');
+  // Logique exacte spécifiée :
+  // D15 >= 2017 -> école
+  // D15 = 2016  -> Poussin
+  // D15 >= 2014 -> Benjamin (2014 - 2015)
+  // D15 >= 2012 -> Minime (2012 - 2013)
+  // D15 >= 2010 -> Cadet (2010 - 2011)
+  // D15 >= 2008 -> Junior (2008 - 2009)
+  // D15 <= 2007 -> Sinior (Senior)
 
-  if (age < 7) {
+  if (birthYear >= 2017) {
     return { 
-      code: 'AVE', 
+      code: 'ECOLE', 
       fanaCode: 'AVE', 
-      label: 'Avenirs (Baby Nat)', 
-      shortLabel: 'Avenirs', 
-      simpleName: 'AVENIR',
-      catBadge: 'CAT: AVENIR',
-      fanaCategory: 'Avenirs',
-      ageBracket: '< 7 ans', 
-      age: civilAge, 
-      sportingAge, 
-      color: '#ec4899', 
-      badgeBg: 'rgba(236, 72, 153, 0.15)' 
-    };
-  } else if (age <= 9) {
-    return { 
-      code: 'AVE', 
-      fanaCode: 'AVE', 
-      label: 'Avenirs (≤ 9 ans)', 
-      shortLabel: 'Avenirs', 
-      simpleName: 'AVENIR',
-      catBadge: 'CAT: AVENIR',
-      fanaCategory: 'Avenirs',
-      ageBracket: '9 ans et -', 
+      name: 'École',
+      label: 'École (2017+)', 
+      shortLabel: 'École', 
+      simpleName: 'ÉCOLE',
+      catBadge: 'CAT: ÉCOLE',
+      fanaCategory: 'École',
+      ageBracket: '2017 et +', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#38bdf8', 
       badgeBg: 'rgba(56, 189, 248, 0.15)' 
     };
-  } else if (age <= 11) {
-    const name = isFemale ? 'Poussines' : 'Poussins';
-    const simpleName = isFemale ? 'POUSSINE' : 'POUSSIN';
+  } else if (birthYear === 2016) {
     return { 
       code: 'POU', 
       fanaCode: 'POU', 
-      label: `${name} (10-11 ans)`, 
-      shortLabel: name, 
-      simpleName,
-      catBadge: `CAT: ${simpleName}`,
-      fanaCategory: 'Poussins',
-      ageBracket: '10 - 11 ans', 
+      name: 'Poussin',
+      label: 'Poussin (2016)', 
+      shortLabel: 'Poussin', 
+      simpleName: 'POUSSIN',
+      catBadge: 'CAT: POUSSIN',
+      fanaCategory: 'Poussin',
+      ageBracket: '2016', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#818cf8', 
       badgeBg: 'rgba(129, 140, 248, 0.15)' 
     };
-  } else if (age <= 13) {
-    const name = isFemale ? 'Benjamines' : 'Benjamins';
-    const simpleName = isFemale ? 'BENJAMINE' : 'BENJAMIN';
+  } else if (birthYear >= 2014) {
     return { 
       code: 'BEN', 
       fanaCode: 'BEN', 
-      label: `${name} (12-13 ans)`, 
-      shortLabel: name, 
-      simpleName,
-      catBadge: `CAT: ${simpleName}`,
-      fanaCategory: 'Benjamins',
-      ageBracket: '12 - 13 ans', 
+      name: 'Benjamin',
+      label: 'Benjamin (2014-2015)', 
+      shortLabel: 'Benjamin', 
+      simpleName: 'BENJAMIN',
+      catBadge: 'CAT: BENJAMIN',
+      fanaCategory: 'Benjamin',
+      ageBracket: '2014 - 2015', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#34d399', 
       badgeBg: 'rgba(52, 211, 153, 0.15)' 
     };
-  } else if (age <= 15) {
+  } else if (birthYear >= 2012) {
     return { 
       code: 'MIN', 
       fanaCode: 'MIN', 
-      label: 'Minimes (14-15 ans)', 
-      shortLabel: 'Minimes', 
+      name: 'Minime',
+      label: 'Minime (2012-2013)', 
+      shortLabel: 'Minime', 
       simpleName: 'MINIME',
       catBadge: 'CAT: MINIME',
-      fanaCategory: 'Minimes',
-      ageBracket: '14 - 15 ans', 
+      fanaCategory: 'Minime',
+      ageBracket: '2012 - 2013', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#fbbf24', 
       badgeBg: 'rgba(251, 191, 36, 0.15)' 
     };
-  } else if (age <= 17) {
-    const name = isFemale ? 'Cadettes' : 'Cadets';
-    const simpleName = isFemale ? 'CADETTE' : 'CADET';
+  } else if (birthYear >= 2010) {
     return { 
       code: 'CAD', 
       fanaCode: 'CAD', 
-      label: `${name} (16-17 ans)`, 
-      shortLabel: name, 
-      simpleName,
-      catBadge: `CAT: ${simpleName}`,
-      fanaCategory: 'Cadets',
-      ageBracket: '16 - 17 ans', 
+      name: 'Cadet',
+      label: 'Cadet (2010-2011)', 
+      shortLabel: 'Cadet', 
+      simpleName: 'CADET',
+      catBadge: 'CAT: CADET',
+      fanaCategory: 'Cadet',
+      ageBracket: '2010 - 2011', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#fb923c', 
       badgeBg: 'rgba(251, 146, 60, 0.15)' 
     };
-  } else if (age <= 19) {
+  } else if (birthYear >= 2008) {
     return { 
       code: 'JUN', 
       fanaCode: 'JUN', 
-      label: 'Juniors (18-19 ans)', 
-      shortLabel: 'Juniors', 
+      name: 'Junior',
+      label: 'Junior (2008-2009)', 
+      shortLabel: 'Junior', 
       simpleName: 'JUNIOR',
       catBadge: 'CAT: JUNIOR',
-      fanaCategory: 'Juniors',
-      ageBracket: '18 - 19 ans', 
+      fanaCategory: 'Junior',
+      ageBracket: '2008 - 2009', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#f43f5e', 
       badgeBg: 'rgba(244, 63, 94, 0.15)' 
     };
-  } else if (age < 35) {
+  } else {
+    // birthYear <= 2007 : Sinior / Senior
     return { 
       code: 'SEN', 
       fanaCode: 'SEN', 
-      label: 'Seniors (20-34 ans)', 
-      shortLabel: 'Seniors', 
+      name: 'Senior',
+      label: 'Senior (<=2007)', 
+      shortLabel: 'Senior', 
       simpleName: 'SENIOR',
       catBadge: 'CAT: SENIOR',
-      fanaCategory: 'Seniors',
-      ageBracket: '20 - 34 ans', 
+      fanaCategory: 'Senior',
+      ageBracket: '2007 et avant', 
+      birthYear,
       age: civilAge, 
       sportingAge, 
       color: '#a855f7', 
       badgeBg: 'rgba(168, 85, 247, 0.15)' 
-    };
-  } else {
-    return { 
-      code: 'MAS', 
-      fanaCode: 'MAS', 
-      label: 'Masters (+35 ans)', 
-      shortLabel: 'Masters', 
-      simpleName: 'MASTER',
-      catBadge: 'CAT: MASTER',
-      fanaCategory: 'Masters',
-      ageBracket: '35 ans et +', 
-      age: civilAge, 
-      sportingAge, 
-      color: '#06b6d4', 
-      badgeBg: 'rgba(6, 182, 212, 0.15)' 
     };
   }
 };
