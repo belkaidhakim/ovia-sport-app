@@ -857,9 +857,10 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
 
                   <div className="grid grid-cols-2 gap-3 mt-4 text-sm" style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px' }}>
                     <div>
-                      <span className="text-muted block text-xs">Date de Naissance :</span>
+                      <span className="text-muted block text-xs">Date & Lieu de Naissance :</span>
                       <strong>
                         {selectedInscription.date_naissance ? new Date(selectedInscription.date_naissance).toLocaleDateString('fr-FR') : '-'}
+                        {selectedInscription.lieu_naissance ? ` à ${selectedInscription.lieu_naissance}` : ''}
                         {calculateAge(selectedInscription.date_naissance) !== null && (
                           <span style={{ color: '#10b981', marginLeft: '4px' }}>({calculateAge(selectedInscription.date_naissance)} ans)</span>
                         )}

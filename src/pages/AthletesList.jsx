@@ -268,6 +268,7 @@ export default function AthletesList() {
       sexe: a.sexe || '',
       groupe: a.groupes?.nom || a.groupe || '',
       date_naissance: a.date_naissance ? new Date(a.date_naissance).toLocaleDateString('fr-FR') : '',
+      lieu_naissance: a.lieu_naissance || '',
       telephone: a.telephone || '',
       certificat_medical_valide: a.certificat_medical_valide ? 'OUI' : 'NON',
       numero_licence: a.numero_licence || '',
@@ -298,6 +299,8 @@ export default function AthletesList() {
       prenom: a.prenom,
       sexe: a.sexe || '',
       groupe: a.groupes?.nom || a.groupe || '',
+      date_naissance: a.date_naissance ? new Date(a.date_naissance).toLocaleDateString('fr-FR') : '',
+      lieu_naissance: a.lieu_naissance || '',
       telephone: a.telephone || '',
       certificat_medical_valide: a.certificat_medical_valide ? 'OUI' : 'NON',
       numero_licence: a.numero_licence || ''
@@ -1001,7 +1004,7 @@ export default function AthletesList() {
                                       {swimCat.label}
                                     </span>
                                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                      {age !== null ? `${age} ans` : ''} ({dateStr})
+                                      {age !== null ? `${age} ans` : ''} ({dateStr}{athlete.lieu_naissance ? ` à ${athlete.lieu_naissance}` : ''})
                                     </span>
                                   </div>
                                 </div>

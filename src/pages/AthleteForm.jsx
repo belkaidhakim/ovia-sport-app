@@ -13,6 +13,7 @@ const athleteSchema = z.object({
   nom: z.string().min(2, 'Le nom doit faire au moins 2 caractères'),
   prenom: z.string().min(2, 'Le prénom doit faire au moins 2 caractères'),
   date_naissance: z.string().nullable().optional(),
+  lieu_naissance: z.string().nullable().optional(),
   telephone: z.string().regex(/^(0)[5-7][0-9]{8}$/, 'Numéro de téléphone invalide (ex: 0550123456)').or(z.literal('')).nullable().optional(),
   contact_urgence: z.string().regex(/^(0)[5-7][0-9]{8}$/, 'Numéro d\'urgence invalide (ex: 0550123456)').or(z.literal('')).nullable().optional(),
   observations_medicales: z.string().nullable().optional(),
@@ -29,6 +30,7 @@ export default function AthleteForm() {
     nom: '',
     prenom: '',
     date_naissance: '',
+    lieu_naissance: '',
     telephone: '',
     contact_urgence: '',
     observations_medicales: '',
@@ -60,6 +62,7 @@ export default function AthleteForm() {
             nom: data.nom || '',
             prenom: data.prenom || '',
             date_naissance: data.date_naissance ? data.date_naissance.split('T')[0] : '',
+            lieu_naissance: data.lieu_naissance || '',
             telephone: data.telephone || '',
             contact_urgence: data.contact_urgence || data.telephone_urgence || '',
             observations_medicales: data.observations_medicales || data.remarques_medicales || '',
@@ -166,6 +169,7 @@ export default function AthleteForm() {
         nom: formData.nom,
         prenom: formData.prenom,
         date_naissance: formData.date_naissance || null,
+        lieu_naissance: formData.lieu_naissance ? formData.lieu_naissance.trim() : null,
         telephone: formData.telephone || null,
         contact_urgence: formData.contact_urgence || null,
         observations_medicales: formData.observations_medicales || null,
@@ -188,6 +192,7 @@ export default function AthleteForm() {
         if (error && error.message.includes('column')) {
           delete payload.contact_urgence;
           delete payload.observations_medicales;
+          delete payload.lieu_naissance;
           const retry = await supabase.from('athletes').update(payload).eq('id', id);
           if (retry.error) throw retry.error;
         } else if (error) {
@@ -207,6 +212,7 @@ export default function AthleteForm() {
         if (error && error.message.includes('column')) {
           delete payload.contact_urgence;
           delete payload.observations_medicales;
+          delete payload.lieu_naissance;
           const retry = await supabase.from('athletes').insert([payload]);
           if (retry.error) throw retry.error;
         } else if (error) {
@@ -277,6 +283,20 @@ export default function AthleteForm() {
             />
           </div>
           <div className="form-group">
+            <label className="form-label">Lieu de naissance</label>
+            <input 
+              type="text" 
+              name="lieu_naissance" 
+              placeholder="ex: Alger, Bouira, Oran..."
+              value={formData.lieu_naissance} 
+              onChange={handleChange} 
+              className="form-input" 
+            />
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="form-group">
             <label className="form-label">Téléphone Personnel</label>
             <input 
               type="tel" 
@@ -286,6 +306,19 @@ export default function AthleteForm() {
               onChange={handleChange} 
               className="form-input" 
             />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Sexe</label>
+            <select 
+              name="sexe" 
+              value={formData.sexe} 
+              onChange={handleChange} 
+              className="form-select"
+            >
+              <option value="">Sélectionner le sexe</option>
+              <option value="Homme">Homme</option>
+              <option value="Femme">Femme</option>
+            </select>
           </div>
         </div>
 
@@ -313,19 +346,6 @@ export default function AthleteForm() {
             {groupes.find(g => g.id === formData.groupe_id)?.athletes?.length >= (groupes.find(g => g.id === formData.groupe_id)?.capacite_max || 20) && (
               <div className="text-xs text-warning mt-1">⚠️ Ce groupe est plein. L'athlète sera quand même inscrit (forcé).</div>
             )}
-          </div>
-          <div className="form-group">
-            <label className="form-label">Sexe</label>
-            <select 
-              name="sexe" 
-              value={formData.sexe} 
-              onChange={handleChange} 
-              className="form-select"
-            >
-              <option value="">Sélectionner le sexe</option>
-              <option value="Homme">Homme</option>
-              <option value="Femme">Femme</option>
-            </select>
           </div>
         </div>
 

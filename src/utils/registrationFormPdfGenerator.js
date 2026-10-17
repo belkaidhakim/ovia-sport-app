@@ -161,7 +161,7 @@ export async function generateOfficialRegistrationFormPdf({
       47, s1Y + 12
     );
 
-    // Ligne 2 : Date de naissance & Sexe & Âge
+    // Ligne 2 : Date de naissance & Lieu & Sexe & Âge
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
@@ -169,19 +169,31 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(birthDateStr || '...... / ...... / ............', 37, s1Y + 19);
+    doc.text(birthDateStr || '..../..../........', 34, s1Y + 19);
 
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text("SEXE :", 75, s1Y + 19);
+    doc.text("À :", 56, s1Y + 19);
     doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
     doc.setTextColor(15, 23, 42);
-    doc.text((!isBlank && data.sexe) ? data.sexe : '[  ] Masc.   [  ] Fém.', 87, s1Y + 19);
+    doc.text((!isBlank && data.lieu_naissance) ? data.lieu_naissance.substring(0, 18) : '................', 61, s1Y + 19);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text("SEXE :", 93, s1Y + 19);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text((!isBlank && data.sexe) ? data.sexe : '[ ]M [ ]F', 104, s1Y + 19);
 
     if (ageStr) {
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
       doc.setTextColor(5, 150, 105);
-      doc.text(`Âge : ${ageStr}`, 120, s1Y + 19);
+      doc.text(`Âge : ${ageStr}`, 130, s1Y + 19);
     }
 
     // Ligne 3 : Groupe & Adresse

@@ -1144,6 +1144,7 @@ export default function InsuranceManagement() {
                             </div>
                             <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                               {ath.telephone || 'Sans numéro'}
+                              {ath.date_naissance && ` • Né(e) le ${new Date(ath.date_naissance).toLocaleDateString('fr-FR')}${ath.lieu_naissance ? ` à ${ath.lieu_naissance}` : ''}`}
                             </span>
                           </div>
                         </div>

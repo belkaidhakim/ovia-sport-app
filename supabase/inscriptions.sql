@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS public.inscriptions (
   nom TEXT NOT NULL,
   prenom TEXT NOT NULL,
   date_naissance DATE NOT NULL,
+  lieu_naissance TEXT,
   sexe TEXT CHECK (sexe IN ('Homme', 'Femme')),
   adresse TEXT,
   telephone TEXT NOT NULL,

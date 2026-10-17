@@ -4,6 +4,7 @@ CREATE TABLE public.athletes (
   nom TEXT NOT NULL,
   prenom TEXT NOT NULL,
   date_naissance DATE,
+  lieu_naissance TEXT,
   telephone TEXT,
   groupe TEXT,
   sexe TEXT,

@@ -121,6 +121,7 @@ export function useInscriptions() {
       delete toInsert.certificat_medical;
       delete toInsert.autorisation_parentale;
       delete toInsert.extrait_naissance;
+      delete toInsert.lieu_naissance;
 
       let retry = await supabase.from('athletes').insert([toInsert]).select().maybeSingle();
       if (retry.error && retry.error.message?.includes('column')) {
@@ -145,6 +146,7 @@ export function useInscriptions() {
         nom: (inscription.nom || '').trim().toUpperCase(),
         prenom: (inscription.prenom || '').trim(),
         date_naissance: inscription.date_naissance || null,
+        lieu_naissance: inscription.lieu_naissance || null,
         sexe: inscription.sexe || null,
         telephone: inscription.telephone || null,
         contact_urgence: inscription.telephone_parent || null,

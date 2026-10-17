@@ -99,15 +99,15 @@ export async function generateBordereauCollectifPdf({
     const rowHeight = 7.5;
     const cols = [
       { header: 'N°', x: 14, w: 12, align: 'center' },
-      { header: 'Nom', x: 26, w: 35, align: 'left' },
-      { header: 'Prénom', x: 61, w: 35, align: 'left' },
-      { header: 'Sexe', x: 96, w: 14, align: 'center' },
-      { header: 'Né(e) le', x: 110, w: 26, align: 'center' },
-      { header: 'Âge', x: 136, w: 16, align: 'center' },
-      { header: 'Groupe / Niveau', x: 152, w: 45, align: 'left' },
-      { header: 'Téléphone', x: 197, w: 32, align: 'left' },
-      { header: 'Police Individuelle', x: 229, w: 36, align: 'left' },
-      { header: 'Prime', x: 265, w: 18, align: 'right' }
+      { header: 'Nom', x: 26, w: 32, align: 'left' },
+      { header: 'Prénom', x: 58, w: 32, align: 'left' },
+      { header: 'Sexe', x: 90, w: 12, align: 'center' },
+      { header: 'Date & Lieu Naiss.', x: 102, w: 38, align: 'center' },
+      { header: 'Âge', x: 140, w: 14, align: 'center' },
+      { header: 'Groupe / Niveau', x: 154, w: 42, align: 'left' },
+      { header: 'Téléphone', x: 196, w: 30, align: 'left' },
+      { header: 'Police Individuelle', x: 226, w: 36, align: 'left' },
+      { header: 'Prime', x: 262, w: 21, align: 'right' }
     ];
 
     const drawTableHeader = (y) => {
@@ -148,7 +148,9 @@ export async function generateBordereauCollectifPdf({
       doc.line(14, currentY + rowHeight, pageWidth - 14, currentY + rowHeight);
 
       // Calcul des données
-      const birthStr = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '-';
+      const datePart = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '';
+      const lieuPart = ath.lieu_naissance ? ath.lieu_naissance.substring(0, 10) : '';
+      const birthStr = (datePart && lieuPart) ? `${datePart} (${lieuPart})` : (datePart || lieuPart || '-');
       let age = '-';
       if (ath.date_naissance) {
         const b = new Date(ath.date_naissance);

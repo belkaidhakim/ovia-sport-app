@@ -212,6 +212,7 @@ export default function ArchivesManagement() {
       'Sexe': a.sexe || '',
       'Groupe / Niveau': a.groupes?.nom || a.groupe || 'Non assigné',
       'Date de Naissance': a.date_naissance ? new Date(a.date_naissance).toLocaleDateString('fr-FR') : '',
+      'Lieu de Naissance': a.lieu_naissance || '',
       'Âge': calculateAge(a.date_naissance) || '',
       'Téléphone': a.telephone || '',
       'Contact Urgence': a.contact_urgence || a.telephone_tuteur || '',
@@ -638,8 +639,11 @@ export default function ArchivesManagement() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted mt-0.5">
+                            <div className="flex items-center gap-2 text-xs text-muted mt-0.5 flex-wrap">
                               {age !== null && <span>{age} ans</span>}
+                              {athlete.date_naissance && (
+                                <span>• Né(e) le {new Date(athlete.date_naissance).toLocaleDateString('fr-FR')}{athlete.lieu_naissance ? ` à ${athlete.lieu_naissance}` : ''}</span>
+                              )}
                               {athlete.numero_licence && (
                                 <span>• Lic: {athlete.numero_licence}</span>
                               )}
@@ -888,9 +892,10 @@ export default function ArchivesManagement() {
                       <strong className="text-white">{inspectAthlete.sexe || 'Non renseigné'}</strong>
                     </div>
                     <div>
-                      <span className="text-muted block text-xs">Date de Naissance</span>
+                      <span className="text-muted block text-xs">Date & Lieu de Naissance</span>
                       <strong className="text-white">
                         {inspectAthlete.date_naissance ? new Date(inspectAthlete.date_naissance).toLocaleDateString('fr-FR') : 'Non renseigné'}
+                        {inspectAthlete.lieu_naissance ? ` à ${inspectAthlete.lieu_naissance}` : ''}
                       </strong>
                     </div>
                     <div>

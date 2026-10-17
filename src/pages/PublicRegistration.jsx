@@ -42,6 +42,7 @@ const registrationSchema = z.object({
   nom: z.string().trim().min(2, 'Le nom doit comporter au moins 2 caractères'),
   prenom: z.string().trim().min(2, 'Le prénom doit comporter au moins 2 caractères'),
   date_naissance: z.string().min(1, 'La date de naissance est obligatoire'),
+  lieu_naissance: z.string().optional(),
   sexe: z.enum(['Homme', 'Femme'], { errorMap: () => ({ message: 'Veuillez sélectionner le sexe' }) }),
   adresse: z.string().optional(),
   telephone: z.string().regex(/^(0)[5-7][0-9]{8}$/, 'Numéro invalide (doit comporter 10 chiffres, ex: 05 50 12 34 56)'),
@@ -66,6 +67,7 @@ export default function PublicRegistration() {
     nom: '',
     prenom: '',
     date_naissance: '',
+    lieu_naissance: '',
     sexe: 'Homme',
     adresse: '',
     telephone: '',
@@ -259,6 +261,7 @@ export default function PublicRegistration() {
         nom: formData.nom.trim().toUpperCase(),
         prenom: formData.prenom.trim(),
         date_naissance: formData.date_naissance,
+        lieu_naissance: formData.lieu_naissance ? formData.lieu_naissance.trim() : null,
         sexe: formData.sexe,
         adresse: formData.adresse ? formData.adresse.trim() : null,
         telephone: rawPhone,
@@ -521,6 +524,7 @@ export default function PublicRegistration() {
                       nom: '',
                       prenom: '',
                       date_naissance: '',
+                      lieu_naissance: '',
                       sexe: 'Homme',
                       adresse: '',
                       telephone: '',
@@ -659,6 +663,30 @@ export default function PublicRegistration() {
                     {errors.date_naissance && (
                       <span className="text-red-500 text-xs font-semibold mt-1 block">{errors.date_naissance}</span>
                     )}
+                  </div>
+
+                  {/* Lieu de Naissance */}
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Lieu de Naissance
+                    </label>
+                    <input 
+                      type="text" 
+                      name="lieu_naissance" 
+                      value={formData.lieu_naissance} 
+                      onChange={handleChange} 
+                      placeholder="ex: Alger, Bouira, Oran..." 
+                      style={{
+                        width: '100%',
+                        padding: '0.7rem 0.9rem',
+                        borderRadius: '8px',
+                        border: '1.5px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '0.9rem',
+                        outline: 'none'
+                      }}
+                    />
                   </div>
 
                   {/* Sexe */}
