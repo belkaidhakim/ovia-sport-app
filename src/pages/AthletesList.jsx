@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
-  Plus, Search, QrCode, Edit, Printer, Download, Upload, Trash2, Mail, 
-  MessageSquare, Send, CheckSquare, UserPlus, Timer, Users, Award, Waves, 
-  FileText, HeartPulse, Shield, AlertTriangle, RotateCcw, Check, Ban, 
-  CreditCard, Sparkles, X, CheckCircle2, ExternalLink, Copy, ShieldCheck
+  Search, Upload, Download, Link2, ShieldCheck, Plus, Users, 
+  CreditCard, Zap, Timer, MoreVertical, CheckCircle2, Clock, 
+  AlertCircle, Phone, QrCode, Archive, UserCheck, ExternalLink,
+  Edit, Printer, Trash2, Mail, MessageSquare, Send, CheckSquare,
+  Check, Ban, RotateCcw, X, FileText, Sparkles, ChevronDown
 } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import BadgeGenerator from '../components/BadgeGenerator';
 import AthletePerformancesModal from '../components/AthletePerformancesModal';
@@ -16,16 +17,10 @@ import toast from 'react-hot-toast';
 import Papa from 'papaparse';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
-import { Card, Button, Badge, Skeleton } from '../components/ui';
-import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
+import { useRegistrationSettings } from '../hooks/useRegistrationSettings';
 import PendingInscriptions from './PendingInscriptions';
 
-const getInitials = (nom = '', prenom = '') => {
-  const n = (nom || '').trim().charAt(0).toUpperCase();
-  const p = (prenom || '').trim().charAt(0).toUpperCase();
-  return `${n}${p}` || '?';
-};
-
+// Utilitaires de statut & calculs
 const getAgeAndCategory = (dateNaissance, sexe = null) => {
   if (!dateNaissance) return { age: null, category: 'N/A', dateStr: '-' };
   const birth = new Date(dateNaissance);
@@ -43,7 +38,7 @@ const getAgeAndCategory = (dateNaissance, sexe = null) => {
 
 const getCotisationStatus = (cotisationsArr, cardStatut) => {
   if (!cotisationsArr || cotisationsArr.length === 0) {
-    return { type: 'pending', label: 'Cotis. En attente', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)' };
+    return { type: 'pending', label: 'En attente' };
   }
   const sorted = [...cotisationsArr].sort((a, b) => new Date(b.periode_couverte_fin) - new Date(a.periode_couverte_fin));
   const latest = sorted[0];
@@ -54,25 +49,12 @@ const getCotisationStatus = (cotisationsArr, cardStatut) => {
   const monthName = monthNames[endDate.getMonth()];
 
   if (endDate < now || cardStatut === 'EXPIREE' || cardStatut === 'SUSPENDUE') {
-    return { type: 'expired', label: `Expiré (${monthName})`, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)' };
+    return { type: 'expired', label: `Expiré (${monthName})` };
   } else {
-    return { type: 'paid', label: `Payé (${monthName})`, color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' };
+    return { type: 'paid', label: `Payé (${monthName})` };
   }
 };
 
-const getPresenceGauge = (presencesArr) => {
-  const count = Array.isArray(presencesArr) ? presencesArr.length : 0;
-  const target = 8;
-  const percent = Math.min(100, Math.round((count / target) * 100));
-  
-  let color = '#10b981';
-  if (percent < 50) color = '#ef4444';
-  else if (percent < 75) color = '#f59e0b';
-
-  return { count, target, percent, color };
-};
-
-// 🟢 Smart Access métrique : 3 états dynamiques (Phase 2)
 const getSmartAccess = (athlete) => {
   const cardStatut = athlete.cartes_acces?.statut || (Array.isArray(athlete.cartes_acces) && athlete.cartes_acces[0]?.statut) || 'ACTIVE';
   const presencesCount = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
@@ -85,90 +67,81 @@ const getSmartAccess = (athlete) => {
   if (cardStatut === 'SUSPENDUE' || cardStatut === 'BLOQUE') {
     return {
       code: 'BLOQUE',
-      label: 'Bloqué',
+      label: 'Accès Bloqué',
       sublabel: 'Carte suspendue',
-      color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.12)',
-      borderColor: 'rgba(239, 68, 68, 0.35)'
+      variant: 'danger'
     };
   }
 
   if (presencesCount >= 8) {
     return {
       code: 'BLOQUE',
-      label: 'Bloqué',
-      sublabel: 'Forfait 8/8 épuisé',
-      color: '#ef4444',
-      bg: 'rgba(239, 68, 68, 0.12)',
-      borderColor: 'rgba(239, 68, 68, 0.35)'
+      label: 'Accès Bloqué',
+      sublabel: 'Quota 8/8 épuisé',
+      variant: 'danger'
     };
   }
 
   if (isCotisPaid) {
     return {
       code: 'AUTORISE',
-      label: 'Autorisé',
+      label: 'Accès Autorisé',
       sublabel: `${Math.max(0, 8 - presencesCount)} séance(s) rest.`,
-      color: '#10b981',
-      bg: 'rgba(16, 185, 129, 0.12)',
-      borderColor: 'rgba(16, 185, 129, 0.35)'
+      variant: 'success'
     };
   }
 
-  // Tolérance pour impayé mais <= 2 séances
   if (presencesCount <= 2) {
     return {
       code: 'TOLERANCE',
-      label: 'Tolérance',
-      sublabel: `Essai (${presencesCount}/2)`,
-      color: '#f59e0b',
-      bg: 'rgba(245, 158, 11, 0.12)',
-      borderColor: 'rgba(245, 158, 11, 0.35)'
+      label: `Tolérance Essai (${presencesCount}/2)`,
+      sublabel: 'Période d\'essai',
+      variant: 'warning'
     };
   }
 
   return {
     code: 'BLOQUE',
-    label: 'Bloqué',
+    label: 'Accès Bloqué',
     sublabel: 'Cotis. impayée',
-    color: '#ef4444',
-    bg: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.35)'
+    variant: 'danger'
   };
 };
 
 export default function AthletesList() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Données de base
   const { 
     athletes, 
-    archivedAthletes,
+    archivedAthletes, 
     loading, 
-    loadingArchived,
+    loadingArchived, 
     fetchAthletes, 
-    fetchArchivedAthletes,
+    fetchArchivedAthletes, 
     archiveAthlete, 
     restoreAthlete,
-    toggleAccessStatus,
-    bulkUpdateGroup,
-    bulkToggleAccess,
-    bulkValidateCotisation
+    bulkToggleAccess
   } = useAthletes();
 
   const { groupes } = useGroupes();
+  const { isOpen: inscriptionsOuvertes, toggleInscriptions } = useRegistrationSettings();
 
-  // Navigation par onglets (Phase 3)
-  const initialTab = searchParams.get('tab') === 'inscriptions' ? 'inscriptions' : 'membres';
-  const [activeMainTab, setActiveMainTab] = useState(initialTab);
+  // Onglet actif : 'tous', 'attente', 'archives'
+  const initialTab = searchParams.get('tab') === 'inscriptions' ? 'attente' : 
+                     searchParams.get('tab') === 'archives' ? 'archives' : 'tous';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Filtres (Phase 1)
-  const [searchQuery, setSearchQuery] = useState('');
-  const [groupFilter, setGroupFilter] = useState('all');
-  const [cotisationFilter, setCotisationFilter] = useState('all'); // Toutes, a_jour, en_attente, quota_epuise, expire
-  const [statusFilter, setStatusFilter] = useState('all'); // all, AUTORISE, TOLERANCE, BLOQUE
-  const [genderFilter, setGenderFilter] = useState('all');
+  // Filtres
+  const [search, setSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState('');
+  const [cotisationFilter, setCotisationFilter] = useState('');
+  const [accessFilter, setAccessFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
 
-  // Sélection & Actions groupées (Phase 1)
+  // Sélections & Actions groupées
   const [selectedAthletes, setSelectedAthletes] = useState([]);
   const [showBulkGroupModal, setShowBulkGroupModal] = useState(false);
   const [selectedBulkGroup, setSelectedBulkGroup] = useState('');
@@ -176,29 +149,30 @@ export default function AthletesList() {
   const [bulkCotisMontant, setBulkCotisMontant] = useState(3000);
   const [bulkCotisMode, setBulkCotisMode] = useState('Espèces');
 
-  // Modales existantes
+  // Modales
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [performanceAthlete, setPerformanceAthlete] = useState(null);
-  const [showBulkPrint, setShowBulkPrint] = useState(false);
   const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
   const [messageSubject, setMessageSubject] = useState("Ovia Sport - Information");
   const [messageBody, setMessageBody] = useState("");
   const [messageTemplate, setMessageTemplate] = useState("horaire");
+  const [activeMenuAthleteId, setActiveMenuAthleteId] = useState(null);
+
   const fileInputRef = useRef(null);
 
   // Détection des fratries
   const siblingMap = useMemo(() => detectSiblingGroups(athletes), [athletes]);
 
-  // Synchronisation URL param tab
+  // Synchronisation avec l'URL
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam === 'inscriptions') {
-      setActiveMainTab('inscriptions');
+      setActiveTab('attente');
     } else if (tabParam === 'archives') {
-      setActiveMainTab('archives');
+      setActiveTab('archives');
       fetchArchivedAthletes();
     } else {
-      setActiveMainTab('membres');
+      setActiveTab('tous');
     }
   }, [searchParams, fetchArchivedAthletes]);
 
@@ -216,45 +190,37 @@ export default function AthletesList() {
       } catch {}
     };
     fetchPending();
-  }, [activeMainTab]);
+  }, [activeTab]);
 
   useEffect(() => {
     fetchAthletes();
   }, [fetchAthletes]);
 
+  // Fermer le menu d'action en cliquant ailleurs
   useEffect(() => {
-    const gParam = searchParams.get('groupe');
-    const sParam = searchParams.get('search');
-    if (gParam) {
-      setGroupFilter(gParam);
-      setSearchQuery('');
-    } else if (sParam) {
-      setGroupFilter(sParam);
-      setSearchQuery('');
-    }
-  }, [searchParams]);
+    const handleClickOutside = () => setActiveMenuAthleteId(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
 
-  const handleTemplateChange = (templateType) => {
-    setMessageTemplate(templateType);
-    if (templateType === "horaire") {
-      setMessageSubject("Ovia Sport - Changement d'horaire d'entraînement");
-      setMessageBody("Bonjour,\n\nNous vous informons qu'un changement d'horaire aura lieu pour les prochains entraînements. Merci de consulter le planning mis à jour auprès du club.\n\nSportivement,\nL'équipe d'Ovia Sport");
-    } else if (templateType === "paiement") {
-      setMessageSubject("Ovia Sport - Rappel de cotisation mensuelle");
-      setMessageBody("Bonjour,\n\nCeci est un rappel concernant votre cotisation du mois. Merci de régulariser votre paiement auprès du secrétariat du club.\n\nCordialement,\nL'administration");
-    } else if (templateType === "convocation") {
-      setMessageSubject("Ovia Sport - Convocation Compétition");
-      setMessageBody("Bonjour,\n\nVous êtes convoqué(e) à la prochaine rencontre sportive du club. Merci de valider votre présence auprès de votre entraîneur.\n\nSportivement,\nLe Staff Technique");
-    }
+  // Copier le lien public
+  const handleCopyPublicLink = () => {
+    const url = `${window.location.origin}/inscription`;
+    navigator.clipboard.writeText(url);
+    toast.success("Lien du formulaire public copié ! 🔗", {
+      icon: '📋',
+      duration: 3000
+    });
   };
 
-  const handleDelete = async (athleteId) => {
-    if (!window.confirm("Voulez-vous vraiment archiver ce membre ? Vous pourrez le retrouver et le restaurer à tout moment dans l'onglet Archives.")) return;
-    await archiveAthlete(athleteId);
-  };
-
+  // Exporter en CSV
   const handleExport = () => {
-    const exportData = filteredAthletes.map(a => ({
+    const listToExport = filteredAthletes;
+    if (listToExport.length === 0) {
+      toast.error("Aucun athlète à exporter.");
+      return;
+    }
+    const exportData = listToExport.map(a => ({
       nom: a.nom,
       prenom: a.prenom,
       sexe: a.sexe || '',
@@ -271,61 +237,16 @@ export default function AthletesList() {
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `export_athletes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `export_athletes_ovia_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success(`${listToExport.length} athlètes exportés en CSV`);
   };
 
-  const handleExportSelected = () => {
-    const selectedList = athletes.filter(a => selectedAthletes.includes(a.id));
-    if (selectedList.length === 0) {
-      toast.error('Aucun membre sélectionné');
-      return;
-    }
-    const exportData = selectedList.map(a => ({
-      nom: a.nom,
-      prenom: a.prenom,
-      sexe: a.sexe || '',
-      groupe: a.groupes?.nom || a.groupe || '',
-      date_naissance: a.date_naissance ? new Date(a.date_naissance).toLocaleDateString('fr-FR') : '',
-      lieu_naissance: a.lieu_naissance || '',
-      telephone: a.telephone || '',
-      certificat_medical_valide: a.certificat_medical_valide ? 'OUI' : 'NON',
-      numero_licence: a.numero_licence || ''
-    }));
-    const csv = Papa.unparse(exportData, { delimiter: ";" });
-    const BOM = "\uFEFF";
-    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `selection_membres_${selectedList.length}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Export de ${selectedList.length} membre(s) téléchargé`);
-  };
-
-  const handleExportBadgeSheet = async (targetList = null) => {
-    const list = targetList || athletes.filter(a => selectedAthletes.includes(a.id));
-    if (!list || list.length === 0) {
-      toast.error('Sélectionnez au moins un athlète pour exporter la planche de badges.');
-      return;
-    }
-    const toastId = toast.loading(`Génération de la planche PDF (${list.length} badges CR80)...`);
-    try {
-      await generateBadgeSheetPDF(list, `Planche_Badges_OVS_${list.length}_membres.pdf`);
-      toast.success('Planche de badges générée avec succès ! 🖨️', { id: toastId });
-    } catch (err) {
-      console.error('Error generating badge sheet PDF:', err);
-      toast.error('Erreur lors de la génération de la planche PDF.', { id: toastId });
-    }
-  };
-
+  // Importer CSV
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -355,7 +276,7 @@ export default function AthletesList() {
             continue;
           }
 
-          const token_qr = `CLUB-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          const token_qr = `OVS-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
           let date_naissance = null;
           if (row.date_naissance) {
             const parts = row.date_naissance.split('/');
@@ -386,7 +307,7 @@ export default function AthletesList() {
           }
         }
 
-        toast.success(`${importedCount} athlètes importés avec succès. ${skippedCount > 0 ? `(${skippedCount} ignorés car doublons)` : ''}`, { id: toastId });
+        toast.success(`${importedCount} athlètes importés avec succès. ${skippedCount > 0 ? `(${skippedCount} doublons ignorés)` : ''}`, { id: toastId });
         if (fileInputRef.current) fileInputRef.current.value = '';
         fetchAthletes();
       },
@@ -397,263 +318,387 @@ export default function AthletesList() {
     });
   };
 
-  // Filtrage combiné (Phase 1)
+  // Bascule du certificat médical
+  const toggleMedicalCert = async (athleteId, currentStatus) => {
+    try {
+      const newStatus = !currentStatus;
+      const { error } = await supabase
+        .from('athletes')
+        .update({ certificat_medical_valide: newStatus })
+        .eq('id', athleteId);
+
+      if (error) throw error;
+      toast.success(newStatus ? "Certificat médical validé !" : "Certificat médical marqué comme manquant.");
+      fetchAthletes();
+    } catch (err) {
+      toast.error("Erreur mise à jour certificat");
+    }
+  };
+
+  // Export Planche PDF
+  const handleExportBadgeSheet = async () => {
+    const list = selectedAthletes.length > 0 
+      ? athletes.filter(a => selectedAthletes.includes(a.id))
+      : filteredAthletes;
+
+    if (!list || list.length === 0) {
+      toast.error("Sélectionnez au moins un athlète.");
+      return;
+    }
+
+    const toastId = toast.loading(`Génération de la planche PDF (${list.length} badges)...`);
+    try {
+      await generateBadgeSheetPDF(list, `Planche_Badges_OviaSport_${list.length}_membres.pdf`);
+      toast.success('Planche de badges générée avec succès ! 🖨️', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Erreur lors de la génération de la planche PDF.', { id: toastId });
+    }
+  };
+
+  // Filtrage combiné
   const filteredAthletes = useMemo(() => {
     return athletes.filter(athlete => {
       const nom = (athlete.nom || '').toLowerCase();
       const prenom = (athlete.prenom || '').toLowerCase();
       const groupeNom = (athlete.groupes?.nom || athlete.groupe || '').toLowerCase();
-      const q = searchQuery.toLowerCase().trim();
+      const telephone = (athlete.telephone || '').replace(/\s+/g, '');
+      const q = search.toLowerCase().trim().replace(/\s+/g, '');
 
-      const matchesSearch = !q || nom.includes(q) || prenom.includes(q) || groupeNom.includes(q);
+      const matchesSearch = !q || nom.includes(q) || prenom.includes(q) || groupeNom.includes(q) || telephone.includes(q);
 
       const gFilter = groupFilter.toLowerCase().trim();
-      const matchesGroup = groupFilter === 'all' || 
+      const matchesGroup = !groupFilter || 
                            groupeNom === gFilter || 
                            groupeNom.includes(gFilter) ||
                            String(athlete.groupe_id) === String(groupFilter);
 
-      // Smart Access (3 statuts : AUTORISE, TOLERANCE, BLOQUE)
+      // Smart Access
       const smartAccess = getSmartAccess(athlete);
-      const matchesStatus = statusFilter === 'all' || smartAccess.code === statusFilter;
+      let matchesAccess = true;
+      if (accessFilter === 'autorise') matchesAccess = smartAccess.code === 'AUTORISE';
+      else if (accessFilter === 'essai') matchesAccess = smartAccess.code === 'TOLERANCE';
+      else if (accessFilter === 'bloque') matchesAccess = smartAccess.code === 'BLOQUE';
 
-      // Filtre 4 : Cotisation
+      // Cotisation
       const cotisInfo = getCotisationStatus(athlete.cotisations, athlete.cartes_acces?.statut);
       const presenceCount = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
       let matchesCotisation = true;
-      if (cotisationFilter === 'a_jour') {
-        matchesCotisation = cotisInfo.type === 'paid';
-      } else if (cotisationFilter === 'en_attente') {
-        matchesCotisation = cotisInfo.type === 'pending';
-      } else if (cotisationFilter === 'quota_epuise') {
-        matchesCotisation = presenceCount >= 8;
-      } else if (cotisationFilter === 'expire') {
-        matchesCotisation = cotisInfo.type === 'expired';
-      }
+      if (cotisationFilter === 'paye') matchesCotisation = cotisInfo.type === 'paid';
+      else if (cotisationFilter === 'attente') matchesCotisation = cotisInfo.type === 'pending';
+      else if (cotisationFilter === 'epuise') matchesCotisation = presenceCount >= 8;
 
-      // Filtre par sexe (M / F)
+      // Sexe
       const sexe = (athlete.sexe || '').trim().toUpperCase();
-      const matchesGender = genderFilter === 'all' || sexe === genderFilter;
+      const matchesGender = !genderFilter || sexe === genderFilter;
 
-      return matchesSearch && matchesGroup && matchesStatus && matchesCotisation && matchesGender;
+      return matchesSearch && matchesGroup && matchesAccess && matchesCotisation && matchesGender;
     });
-  }, [athletes, searchQuery, groupFilter, statusFilter, cotisationFilter, genderFilter]);
+  }, [athletes, search, groupFilter, accessFilter, cotisationFilter, genderFilter]);
+
+  // Statistiques KPI Directeur Sportif
+  const totalActifs = athletes.length;
+  const payeCount = athletes.filter(a => getCotisationStatus(a.cotisations, a.cartes_acces?.statut).type === 'paid').length;
+  const enAttenteCount = totalActifs - payeCount;
+  const autorisesAccessCount = athletes.filter(a => getSmartAccess(a).code === 'AUTORISE').length;
+  const essaiAccessCount = athletes.filter(a => getSmartAccess(a).code === 'TOLERANCE').length;
+  const medicalCount = athletes.filter(a => a.certificat_medical_valide).length;
+  const medicalPercent = totalActifs > 0 ? Math.round((medicalCount / totalActifs) * 100) : 0;
+
+  // Gestion de la sélection par case à cocher
+  const toggleSelectAll = () => {
+    if (selectedAthletes.length === filteredAthletes.length) {
+      setSelectedAthletes([]);
+    } else {
+      setSelectedAthletes(filteredAthletes.map(a => a.id));
+    }
+  };
+
+  const toggleSelectAthlete = (id) => {
+    setSelectedAthletes(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
 
   return (
-    <div>
-      <div className="no-print">
-        
-        {/* HEADER DU MODULE ATHLÈTES */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
-          <div>
-            <h1>Gestion des Membres</h1>
-            <p style={{ marginBottom: 0 }}>Annuaire sportif, profils, suivi médical et assiduité en bassin.</p>
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 p-6 lg:p-8 space-y-6 font-sans text-slate-900 dark:text-slate-100 transition-colors">
+      
+      {/* Input fichier caché pour import CSV */}
+      <input 
+        type="file" 
+        accept=".csv" 
+        ref={fileInputRef} 
+        onChange={handleImport} 
+        style={{ display: 'none' }} 
+      />
+
+      {/* =========================================================
+          1. EN-TÊTE EXÉCUTIF (1 SEULE LIGNE)
+      ========================================================= */}
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              Gestion des Membres
+            </h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400"></span>
+              {totalActifs} Actifs
+            </span>
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            <input 
-              type="file" 
-              accept=".csv" 
-              ref={fileInputRef} 
-              onChange={handleImport} 
-              style={{ display: 'none' }} 
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
+            Annuaire sportif, suivi médical, cotisations et contrôle d'accès en bassin.
+          </p>
+        </div>
+
+        {/* Barre d'outils unifiée */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Toggle Inscriptions */}
+          <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg shadow-sm">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                inscriptionsOuvertes ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+              }`}
             />
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-              <Upload size={16} /> Importer CSV
-            </Button>
-            <Button variant="secondary" onClick={handleExport}>
-              <Download size={16} /> Exporter CSV
-            </Button>
-
-            <RegistrationStatusToggle />
-
-            <Link to="/assurances" style={{ textDecoration: 'none' }} title="Module de gestion des assurances">
-              <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <ShieldCheck size={16} /> Assurances
-              </Button>
-            </Link>
-
-            <a 
-              href="/inscription" 
-              target="_blank" 
-              rel="noreferrer" 
-              style={{ textDecoration: 'none' }}
-              title="Ouvrir le formulaire d'inscription en ligne public"
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              {inscriptionsOuvertes ? "Inscriptions Ouvertes" : "Inscriptions Fermées"}
+            </span>
+            <button
+              onClick={() => toggleInscriptions()}
+              className={`text-xs font-semibold px-2 py-0.5 rounded transition cursor-pointer ${
+                inscriptionsOuvertes
+                  ? "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100"
+              }`}
             >
-              <Button variant="secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                <ExternalLink size={16} /> Formulaire Public
-              </Button>
-            </a>
-            <Button 
-              variant="secondary"
-              title="Copier le lien d'inscription à partager"
-              onClick={() => {
-                const url = `${window.location.origin}/inscription`;
-                navigator.clipboard.writeText(url);
-                toast.success("Lien d'inscription copié !");
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Copy size={16} /> Copier Lien
-            </Button>
+              {inscriptionsOuvertes ? "Fermer" : "Ouvrir"}
+            </button>
+          </div>
 
-            <Link to="/athletes/new" style={{ textDecoration: 'none' }}>
-              <Button variant="primary">
-                <Plus size={16} /> + Nouvel Athlète
-              </Button>
-            </Link>
+          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
+
+          {/* Actions secondaires */}
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer"
+          >
+            <Upload className="w-3.5 h-3.5 text-slate-500" />
+            Importer CSV
+          </button>
+          
+          <button 
+            onClick={handleExport}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            Exporter
+          </button>
+
+          <button 
+            onClick={handleCopyPublicLink}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-sm cursor-pointer"
+          >
+            <Link2 className="w-3.5 h-3.5 text-slate-500" />
+            Copier Lien
+          </button>
+
+          {/* Bouton Primaire Unique */}
+          <Link 
+            to="/athletes/new"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Nouvel Athlète
+          </Link>
+        </div>
+      </div>
+
+      {/* =========================================================
+          2. CARTES KPI RAPIDES (VUE DIRECTEUR SPORTIF)
+      ========================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Effectif */}
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Effectif Total</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {totalActifs} <span className="text-xs font-normal text-slate-500">nageurs</span>
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/60 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <Users className="w-5 h-5" />
           </div>
         </div>
 
-        {/* SYSTÈME D'ONGLETS SUPÉRIEUR (PHASE 3) */}
-        <div className="flex items-center gap-2 mb-6 border-b border-[var(--border-color)] pb-3 overflow-x-auto no-print">
-          <button
-            onClick={() => {
-              setActiveMainTab('membres');
-              setSearchParams({});
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-              activeMainTab === 'membres'
-                ? 'bg-[var(--accent-primary)] text-white shadow-md'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--table-row-hover)]'
-            }`}
-            style={{ border: 'none' }}
-          >
-            <Users size={16} />
-            <span>Tous les membres</span>
-            <span style={{ 
-              fontSize: '0.72rem', 
-              fontWeight: 800, 
-              padding: '1px 7px', 
-              borderRadius: '10px', 
-              backgroundColor: activeMainTab === 'membres' ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)' 
-            }}>
-              {athletes.length}
-            </span>
-          </button>
+        {/* KPI 2: Cotisations */}
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cotisations à jour</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {payeCount} / {totalActifs}{" "}
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                ({enAttenteCount} en attente)
+              </span>
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/60 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <CreditCard className="w-5 h-5" />
+          </div>
+        </div>
 
-          <button
-            onClick={() => {
-              setActiveMainTab('inscriptions');
-              setSearchParams({ tab: 'inscriptions' });
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-              activeMainTab === 'inscriptions'
-                ? 'bg-[#f59e0b] text-black shadow-md font-bold'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--table-row-hover)]'
-            }`}
-            style={{ border: 'none' }}
-          >
-            <UserPlus size={16} />
-            <span>Inscriptions en attente</span>
-            {pendingCount > 0 && (
-              <span style={{ 
-                fontSize: '0.72rem', 
-                fontWeight: 800, 
-                padding: '1px 7px', 
-                borderRadius: '10px', 
-                backgroundColor: activeMainTab === 'inscriptions' ? '#000' : '#f59e0b', 
-                color: activeMainTab === 'inscriptions' ? '#fff' : '#000' 
-              }}>
+        {/* KPI 3: Smart Access */}
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Smart Access (Bassin)</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+              {autorisesAccessCount}{" "}
+              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                ({essaiAccessCount} en période d'essai)
+              </span>
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <Zap className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* KPI 4: Dossiers Médicaux */}
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dossiers Médicaux</p>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+              {medicalPercent}% <span className="text-xs font-normal text-slate-500">Conformes</span>
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* =========================================================
+          3. NAVIGATION PAR ONGLETS + FILTRES SUR UNE SEULE LIGNE
+      ========================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        
+        {/* Sous-navigation (Tabs + Raccourcis) */}
+        <div className="flex flex-wrap items-center justify-between px-4 pt-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 gap-4">
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => {
+                setActiveTab("tous");
+                setSearchParams({});
+              }}
+              className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "tous"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Tous les membres
+              <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
+                activeTab === "tous" ? "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900" : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+              }`}>
+                {totalActifs}
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("attente");
+                setSearchParams({ tab: 'inscriptions' });
+              }}
+              className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "attente"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Inscriptions en attente
+              <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
+                pendingCount > 0 ? "bg-amber-500 text-slate-950" : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+              }`}>
                 {pendingCount}
               </span>
-            )}
-          </button>
+            </button>
 
-          <button
-            onClick={() => {
-              setActiveMainTab('archives');
-              setSearchParams({ tab: 'archives' });
-              fetchArchivedAthletes();
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-              activeMainTab === 'archives'
-                ? 'bg-[var(--accent-primary)] text-white shadow-md'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--table-row-hover)]'
-            }`}
-            style={{ border: 'none' }}
-          >
-            <RotateCcw size={16} />
-            <span>Archives / Anciens</span>
-            {archivedAthletes.length > 0 && (
-              <span style={{ 
-                fontSize: '0.72rem', 
-                fontWeight: 800, 
-                padding: '1px 7px', 
-                borderRadius: '10px', 
-                backgroundColor: 'rgba(255,255,255,0.15)' 
-              }}>
+            <button
+              onClick={() => {
+                setActiveTab("archives");
+                setSearchParams({ tab: 'archives' });
+                fetchArchivedAthletes();
+              }}
+              className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "archives"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Archives / Anciens
+              <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                 {archivedAthletes.length}
               </span>
-            )}
-          </button>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 pb-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
+            <Link to="/assurances" className="hover:text-blue-600 flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5" /> Assurances
+            </Link>
+            <span>•</span>
+            <a href="/inscription" target="_blank" rel="noreferrer" className="hover:text-blue-600 flex items-center gap-1">
+              Formulaire Public <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
 
-        {/* ONGLET 2 : INSCRIPTIONS EN ATTENTE EMBARQUÉES */}
-        {activeMainTab === 'inscriptions' && (
-          <div className="mt-2">
+        {/* CONTENU SELON L'ONGLET ACTIF */}
+        {activeTab === 'attente' ? (
+          <div className="p-4">
             <PendingInscriptions embedded={true} />
           </div>
-        )}
-
-        {/* ONGLET 3 : ARCHIVES / ANCIENS */}
-        {activeMainTab === 'archives' && (
-          <Card noPadding>
-            <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--border-color)' }}>
+        ) : activeTab === 'archives' ? (
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)' }}>Membres archivés ou inactifs</h3>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ces membres ne peuvent plus accéder au bassin via le Scanner QR. Vous pouvez les restaurer à tout moment.</p>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Membres Archivés</h3>
+                <p className="text-xs text-slate-500">Ces athlètes n'ont plus accès au pointage. Vous pouvez les restaurer d'un simple clic.</p>
               </div>
-              <Button
-                variant="secondary"
-                onClick={() => navigate('/archives')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-              >
-                <span>Ouvrir le module complet Archives</span>
-                <ExternalLink size={14} />
-              </Button>
+              <Link to="/archives" className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
+                Module complet Archives <ExternalLink className="w-3 h-3" />
+              </Link>
             </div>
+
             {loadingArchived ? (
-              <div className="p-6 flex flex-col gap-3">
-                <Skeleton height="40px" />
-                <Skeleton height="40px" />
-              </div>
+              <div className="p-8 text-center text-sm text-slate-500">Chargement des archives...</div>
             ) : archivedAthletes.length === 0 ? (
-              <div className="p-12 text-center text-muted">
-                <RotateCcw size={32} className="mx-auto mb-2 opacity-30" />
-                Aucun membre dans les archives.
-              </div>
+              <div className="p-8 text-center text-sm text-slate-500">Aucun athlète dans les archives.</div>
             ) : (
-              <div className="table-responsive">
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
                   <thead>
-                    <tr style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '0.85rem 1rem' }}>Membre</th>
-                      <th style={{ padding: '0.85rem 1rem' }}>Dernier Groupe</th>
-                      <th style={{ padding: '0.85rem 1rem' }}>Date d'inscription</th>
-                      <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>Action</th>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 uppercase">
+                      <th className="py-2.5 px-4">Membre</th>
+                      <th className="py-2.5 px-4">Groupe</th>
+                      <th className="py-2.5 px-4">Date Inscription</th>
+                      <th className="py-2.5 px-4 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                     {archivedAthletes.map(arch => (
-                      <tr key={arch.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <strong style={{ color: 'var(--text-primary)' }}>{arch.nom} {arch.prenom}</strong>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{arch.telephone || 'Sans tél'}</div>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem' }}>
-                          <span className="text-sm font-semibold">{arch.groupes?.nom || arch.groupe || 'Non assigné'}</span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      <tr key={arch.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="py-3 px-4 font-bold">{arch.nom} {arch.prenom}</td>
+                        <td className="py-3 px-4">{arch.groupes?.nom || arch.groupe || '-'}</td>
+                        <td className="py-3 px-4 text-xs text-slate-500">
                           {arch.date_inscription ? new Date(arch.date_inscription).toLocaleDateString('fr-FR') : '-'}
                         </td>
-                        <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                          <Button 
-                            variant="secondary"
+                        <td className="py-3 px-4 text-right">
+                          <button
                             onClick={() => restoreAthlete(arch.id)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                            className="px-2.5 py-1 text-xs font-bold rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition"
                           >
-                            <RotateCcw size={14} /> Réactiver le membre
-                          </Button>
+                            Réactiver le membre
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -661,823 +706,637 @@ export default function AthletesList() {
                 </table>
               </div>
             )}
-          </Card>
-        )}
-
-        {/* ONGLET 1 : TOUS LES MEMBRES (TABLE PRINCIPALE) */}
-        {activeMainTab === 'membres' && (
+          </div>
+        ) : (
           <>
-            {/* BANDEAU D'ACTIONS EN LOT (BULK ACTIONS - PHASE 1) */}
-            {selectedAthletes.length > 0 && (
-              <div 
-                className="p-3 px-5 mb-4 rounded-xl flex flex-wrap justify-between items-center gap-3 no-print"
-                style={{
-                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
-                  border: '1px solid rgba(99, 102, 241, 0.35)',
-                  boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <CheckSquare size={20} style={{ color: 'var(--accent-primary-hover)' }} />
-                  <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
-                    {selectedAthletes.length} membre{selectedAthletes.length > 1 ? 's' : ''} sélectionné{selectedAthletes.length > 1 ? 's' : ''}
-                  </span>
-                  <button 
-                    onClick={() => setSelectedAthletes([])} 
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
-                  >
-                    Désélectionner tout
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-2 items-center">
-                  {/* Changer de groupe */}
-                  <Button 
-                    variant="secondary"
-                    onClick={() => setShowBulkGroupModal(true)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, backgroundColor: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)' }}
-                    title="Changer le groupe des athlètes sélectionnés"
-                  >
-                    <Users size={15} /> Changer groupe
-                  </Button>
-
-                  {/* Valider cotisation */}
-                  <Button 
-                    variant="secondary"
-                    onClick={() => setShowBulkCotisModal(true)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}
-                    title="Valider la cotisation mensuelle pour la sélection"
-                  >
-                    <CreditCard size={15} /> Valider cotisation
-                  </Button>
-
-                  {/* Suspendre accès */}
-                  <Button 
-                    variant="secondary"
-                    onClick={() => bulkToggleAccess(selectedAthletes, 'SUSPENDUE')}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, backgroundColor: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
-                    title="Suspendre temporairement l'accès"
-                  >
-                    <Ban size={15} /> Suspendre accès
-                  </Button>
-
-                  {/* Activer accès */}
-                  <Button 
-                    variant="secondary"
-                    onClick={() => bulkToggleAccess(selectedAthletes, 'ACTIVE')}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}
-                    title="Réactiver l'accès en bassin"
-                  >
-                    <Check size={15} /> Activer accès
-                  </Button>
-
-                  {/* Planche PDF Badges CR80 */}
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => handleExportBadgeSheet()}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                  >
-                    <Printer size={15} /> Planche Badges CR80
-                  </Button>
-
-                  {/* Exporter CSV sélection */}
-                  <Button 
-                    variant="secondary" 
-                    onClick={handleExportSelected}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                  >
-                    <Download size={15} /> Exporter CSV
-                  </Button>
-
-                  {/* Relance WhatsApp / Email */}
-                  <Button 
-                    variant="primary" 
-                    onClick={() => {
-                      handleTemplateChange('horaire');
-                      setShowBulkMessageModal(true);
-                    }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
-                  >
-                    <MessageSquare size={15} /> Message / Relance ({selectedAthletes.length})
-                  </Button>
-                </div>
+            {/* Barre de Recherche & Filtres alignés horizontalement */}
+            <div className="p-3.5 flex flex-col lg:flex-row items-center gap-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher un nageur par nom, prénom, téléphone, groupe..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition text-slate-900 dark:text-white placeholder:text-slate-400"
+                />
               </div>
-            )}
 
-            <Card noPadding>
-              {/* BARRE DE FILTRES REFONDUE (GRILLE CSS FLEXIBLE - PHASE 1) */}
-              <div className="p-4 flex flex-wrap gap-3 items-center" style={{ borderBottom: '1px solid var(--border-color)' }}>
-                {/* 1. Recherche par nom / prénom / groupe */}
-                <div className="relative" style={{ minWidth: '220px', flex: '1 1 220px' }}>
-                  <Search size={17} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="text" 
-                    placeholder="Rechercher par nom, groupe..." 
-                    className="form-input" 
-                    style={{ paddingLeft: '2.4rem' }}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                {/* 2. Filtre Groupe */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full lg:w-auto">
                 <select 
-                  className="form-select" 
-                  style={{ minWidth: '170px', flex: '0 1 auto' }}
                   value={groupFilter}
                   onChange={(e) => setGroupFilter(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-slate-300 focus:border-blue-600 outline-none cursor-pointer"
                 >
-                  <option value="all">👥 Tous les groupes</option>
+                  <option value="">Tous les groupes</option>
                   {groupes.map(g => (
                     <option key={g.id} value={g.nom}>{g.nom}</option>
                   ))}
                 </select>
 
-                {/* 3. Filtre Cotisation (4ème filtre ajouté - Phase 1) */}
                 <select 
-                  className="form-select" 
-                  style={{ minWidth: '175px', flex: '0 1 auto' }}
                   value={cotisationFilter}
                   onChange={(e) => setCotisationFilter(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-slate-300 focus:border-blue-600 outline-none cursor-pointer"
                 >
-                  <option value="all">💳 Toutes cotisations</option>
-                  <option value="a_jour">🟢 À jour (Payé)</option>
-                  <option value="en_attente">🟠 En attente</option>
-                  <option value="quota_epuise">🔴 Quota épuisé (8/8)</option>
-                  <option value="expire">⚠️ Expirée</option>
+                  <option value="">Toutes cotisations</option>
+                  <option value="paye">À jour (Payé)</option>
+                  <option value="attente">En attente</option>
+                  <option value="epuise">Quota épuisé (8/8)</option>
                 </select>
 
-                {/* 4. Filtre Statut d'Accès Dynamique (Smart Access - Phase 2) */}
                 <select 
-                  className="form-select" 
-                  style={{ minWidth: '160px', flex: '0 1 auto' }}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  value={accessFilter}
+                  onChange={(e) => setAccessFilter(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-slate-300 focus:border-blue-600 outline-none cursor-pointer"
                 >
-                  <option value="all">⚡ Tous accès</option>
-                  <option value="AUTORISE">🟢 Autorisé</option>
-                  <option value="TOLERANCE">🟠 Tolérance / Essai</option>
-                  <option value="BLOQUE">🔴 Bloqué</option>
+                  <option value="">Tous accès</option>
+                  <option value="autorise">Autorisé</option>
+                  <option value="essai">Tolérance / Essai</option>
+                  <option value="bloque">Bloqué</option>
                 </select>
 
-                {/* 5. Filtre Sexe */}
                 <select 
-                  className="form-select" 
-                  style={{ minWidth: '135px', flex: '0 1 auto' }}
                   value={genderFilter}
                   onChange={(e) => setGenderFilter(e.target.value)}
+                  className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:border-slate-300 focus:border-blue-600 outline-none cursor-pointer"
                 >
-                  <option value="all">🚻 Tous sexes</option>
-                  <option value="M">👨 Masculin (M)</option>
-                  <option value="F">👩 Féminin (F)</option>
+                  <option value="">Tous sexes</option>
+                  <option value="M">Masculin (M)</option>
+                  <option value="F">Féminin (F)</option>
                 </select>
               </div>
+            </div>
 
-              {loading ? (
-                <div className="p-8 flex flex-col gap-4">
-                  <Skeleton height="42px" />
-                  <Skeleton height="42px" />
-                  <Skeleton height="42px" />
+            {/* BANDEAU D'ACTIONS GROUPÉES QUAND DES CASES SONT COCHÉES */}
+            {selectedAthletes.length > 0 && (
+              <div className="p-3 px-4 bg-indigo-50 dark:bg-indigo-950/40 border-b border-indigo-200 dark:border-indigo-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-indigo-900 dark:text-indigo-200">
+                    {selectedAthletes.length} membre(s) sélectionné(s)
+                  </span>
+                  <button 
+                    onClick={() => setSelectedAthletes([])}
+                    className="text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                  >
+                    Désélectionner tout
+                  </button>
                 </div>
-              ) : (
-                <>
-                  {/* TABLEAU DES DONNÉES AVEC COLONNE FUSIONNÉE PROFIL SPORTIF (PHASE 1) */}
-                  <div className="responsive-table-desktop table-responsive">
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '920px' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                          <th style={{ padding: '0.85rem 1rem', width: '40px' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={filteredAthletes.length > 0 && selectedAthletes.length === filteredAthletes.length}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedAthletes(filteredAthletes.map(a => a.id));
-                                } else {
-                                  setSelectedAthletes([]);
-                                }
-                              }}
-                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                            />
-                          </th>
-                          <th style={{ padding: '0.85rem 1rem', fontWeight: '600' }}>Membre & Dossier</th>
-                          {/* COLONNE FUSIONNÉE : PROFIL SPORTIF (GROUPE + CATÉGORIE) */}
-                          <th style={{ padding: '0.85rem 1rem', fontWeight: '600' }}>Profil Sportif</th>
-                          <th style={{ padding: '0.85rem 1rem', fontWeight: '600' }}>Cotisation</th>
-                          <th style={{ padding: '0.85rem 1rem', fontWeight: '600' }}>Assiduité (Séances)</th>
-                          <th style={{ padding: '0.85rem 1rem', fontWeight: '600' }}>Smart Access</th>
-                          <th style={{ padding: '0.85rem 1rem', fontWeight: '600', textAlign: 'right' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredAthletes.length === 0 ? (
-                          <tr>
-                            <td colSpan="7" className="p-8 text-center text-muted">Aucun membre ne correspond à vos critères de recherche.</td>
-                          </tr>
-                        ) : filteredAthletes.map(athlete => {
-                          const { age, category, dateStr } = getAgeAndCategory(athlete.date_naissance, athlete.sexe);
-                          const swimCat = getSwimmingCategory(athlete);
-                          const cotisInfo = getCotisationStatus(athlete.cotisations, athlete.cartes_acces?.statut);
-                          const presence = getPresenceGauge(athlete.presences);
-                          const smartAccess = getSmartAccess(athlete);
 
-                          return (
-                            <tr key={athlete.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                              {/* Checkbox */}
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={selectedAthletes.includes(athlete.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedAthletes(prev => [...prev, athlete.id]);
-                                    } else {
-                                      setSelectedAthletes(prev => prev.filter(id => id !== athlete.id));
-                                    }
-                                  }}
-                                  style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                                />
-                              </td>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button 
+                    onClick={() => setShowBulkGroupModal(true)}
+                    className="px-2.5 py-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-bold hover:bg-slate-100 transition"
+                  >
+                    Changer groupe
+                  </button>
+                  <button 
+                    onClick={() => setShowBulkCotisModal(true)}
+                    className="px-2.5 py-1.5 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition"
+                  >
+                    Valider cotisation
+                  </button>
+                  <button 
+                    onClick={() => handleExportBadgeSheet()}
+                    className="px-2.5 py-1.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700 transition flex items-center gap-1"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Planche Badges CR80
+                  </button>
+                  <button 
+                    onClick={() => setShowBulkMessageModal(true)}
+                    className="px-2.5 py-1.5 rounded bg-purple-600 text-white font-bold hover:bg-purple-700 transition flex items-center gap-1"
+                  >
+                    <Mail className="w-3.5 h-3.5" /> Message Groupé
+                  </button>
+                </div>
+              </div>
+            )}
 
-                              {/* Membre + Dossier Médical / Licence (Phase 2) */}
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <div className="flex items-center gap-3">
-                                  {(athlete.photo || athlete.photo_url) ? (
-                                    <img 
-                                      src={athlete.photo || athlete.photo_url} 
-                                      alt={`${athlete.nom} ${athlete.prenom}`} 
-                                      style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--accent-primary-hover)', flexShrink: 0 }} 
-                                    />
-                                  ) : (
-                                    <div 
-                                      style={{ 
-                                        width: '38px', 
-                                        height: '38px', 
-                                        borderRadius: '50%', 
-                                        backgroundColor: 'rgba(99, 102, 241, 0.15)', 
-                                        border: '1.5px solid rgba(99, 102, 241, 0.3)', 
-                                        color: 'var(--accent-primary-hover)',
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        justifyContent: 'center', 
-                                        fontWeight: 700, 
-                                        fontSize: '0.85rem',
-                                        flexShrink: 0
-                                      }}
-                                    >
-                                      {getInitials(athlete.nom, athlete.prenom)}
-                                    </div>
-                                  )}
-                                  <div>
-                                    <div className="font-bold" style={{ color: 'var(--text-primary)', fontSize: '0.92rem' }}>
-                                      {athlete.nom} {athlete.prenom}
-                                    </div>
-                                    <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                                      {athlete.sexe || '-'} • {athlete.telephone || 'Sans tél'}
-                                    </div>
-                                    
-                                    {/* Indicateurs Suivi Médical & Licence (Phase 2) */}
-                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                      {athlete.certificat_medical_valide ? (
-                                        <span 
-                                          title="Certificat médical conforme et validé"
-                                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.67rem', fontWeight: 700, color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.12)', padding: '1px 6px', borderRadius: '4px' }}
-                                        >
-                                          <HeartPulse size={11} /> Médical OK
-                                        </span>
-                                      ) : (
-                                        <span 
-                                          title="Certificat médical manquant ou à renouveler"
-                                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.67rem', fontWeight: 700, color: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.12)', padding: '1px 6px', borderRadius: '4px' }}
-                                        >
-                                          <AlertTriangle size={11} /> Médical manquant
-                                        </span>
-                                      )}
+            {/* =========================================================
+                4. TABLEAU DES ATHLÈTES (DATA GRID PRO)
+            ========================================================= */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <th className="py-3.5 pl-4 pr-2 w-10">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedAthletes.length > 0 && selectedAthletes.length === filteredAthletes.length}
+                        onChange={toggleSelectAll}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
+                      />
+                    </th>
+                    <th className="py-3.5 px-4">Membre & Dossier</th>
+                    <th className="py-3.5 px-4">Profil Sportif</th>
+                    <th className="py-3.5 px-4">Cotisation</th>
+                    <th className="py-3.5 px-4">Assiduité (Séances)</th>
+                    <th className="py-3.5 px-4">Smart Access</th>
+                    <th className="py-3.5 pl-4 pr-6 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800/70 text-sm">
+                  {loading ? (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-slate-400">
+                        Chargement des nageurs...
+                      </td>
+                    </tr>
+                  ) : filteredAthletes.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-slate-400">
+                        Aucun membre trouvé correspondant aux filtres.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAthletes.map((athlete) => {
+                      const initiales = `${(athlete.nom?.[0] || '').toUpperCase()}${(athlete.prenom?.[0] || '').toUpperCase()}`;
+                      const seancesEffectuees = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
+                      const seancesMax = 8;
+                      const pourcentageSeances = Math.min(100, Math.round((seancesEffectuees / seancesMax) * 100));
 
-                                      {athlete.numero_licence && (
-                                        <span 
-                                          title={`Licence fédérale: ${athlete.numero_licence}`}
-                                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '0.67rem', fontWeight: 700, color: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.12)', padding: '1px 6px', borderRadius: '4px' }}
-                                        >
-                                          <Shield size={11} /> Lic. {athlete.numero_licence}
-                                        </span>
-                                      )}
-
-                                      {siblingMap.has(athlete.id) && (
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '1px 6px', borderRadius: '4px', fontSize: '0.67rem', fontWeight: 700, backgroundColor: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
-                                          👨‍👩‍👧‍👦 Fratrie ({siblingMap.get(athlete.id).siblingIndex}e enf.{siblingMap.get(athlete.id).discountPercent > 0 ? ` -${siblingMap.get(athlete.id).discountPercent}%` : ''})
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* COLONNE FUSIONNÉE : PROFIL SPORTIF (GROUPE + CATÉGORIE FINA) */}
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <div className="flex flex-col gap-1">
-                                  <div className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                                    {athlete.groupes?.nom || athlete.groupe || 'Non assigné'}
-                                  </div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span style={{ 
-                                      padding: '2px 7px', 
-                                      borderRadius: '6px', 
-                                      backgroundColor: swimCat.badgeBg, 
-                                      fontSize: '0.7rem', 
-                                      fontWeight: 700, 
-                                      color: swimCat.color,
-                                      border: `1px solid ${swimCat.color}35`,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '3px'
-                                    }}>
-                                      {swimCat.label}
-                                    </span>
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                      {age !== null ? `${age} ans` : ''} ({dateStr}{athlete.lieu_naissance ? ` à ${athlete.lieu_naissance}` : ''})
-                                    </span>
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* Cotisation */}
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <span style={{ padding: '3px 10px', borderRadius: '12px', backgroundColor: cotisInfo.bg, color: cotisInfo.color, fontSize: '0.75rem', fontWeight: 700, display: 'inline-block' }}>
-                                  {cotisInfo.label}
-                                </span>
-                              </td>
-
-                              {/* Assiduité (Séances) */}
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <div style={{ minWidth: '105px' }}>
-                                  <div className="flex justify-between text-xs mb-1" style={{ fontSize: '0.74rem' }}>
-                                    <span style={{ fontWeight: 600 }}>{presence.count}/{presence.target}</span>
-                                    <span style={{ color: presence.color, fontWeight: 700 }}>{presence.percent}%</span>
-                                  </div>
-                                  <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${presence.percent}%`, backgroundColor: presence.color, borderRadius: '3px' }} />
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* Smart Access (3 États Dynamiques - Phase 2) */}
-                              <td style={{ padding: '0.85rem 1rem' }}>
-                                <button 
-                                  onClick={() => toggleAccessStatus(athlete.id, athlete.cartes_acces)}
-                                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
-                                  title="Cliquer pour suspendre ou réactiver manuellement la carte"
-                                >
-                                  <div style={{
-                                    display: 'inline-flex',
-                                    flexDirection: 'column',
-                                    padding: '3px 8px',
-                                    borderRadius: '8px',
-                                    backgroundColor: smartAccess.bg,
-                                    border: `1px solid ${smartAccess.borderColor}`,
-                                    color: smartAccess.color
-                                  }}>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: smartAccess.color }} />
-                                      {smartAccess.label}
-                                    </span>
-                                    <span style={{ fontSize: '0.65rem', opacity: 0.85 }}>
-                                      {smartAccess.sublabel}
-                                    </span>
-                                  </div>
-                                </button>
-                              </td>
-
-                              {/* Actions Dégagées et Confortables */}
-                              <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                                <div className="flex justify-end gap-1.5">
-                                  <Button 
-                                    variant="secondary" 
-                                    style={{ padding: '0.4rem 0.65rem', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}
-                                    onClick={() => setPerformanceAthlete(athlete)}
-                                    title="Suivi des chronos et temps de référence en natation"
-                                  >
-                                    <Timer size={14} /> Chronos
-                                  </Button>
-                                  <Link to={`/athletes/edit/${athlete.id}`}>
-                                    <Button variant="secondary" style={{ padding: '0.4rem 0.65rem' }} title="Modifier la fiche athlète">
-                                      <Edit size={14} />
-                                    </Button>
-                                  </Link>
-                                  <Button 
-                                    variant="secondary" 
-                                    style={{ padding: '0.4rem 0.65rem' }}
-                                    onClick={() => setSelectedAthlete(athlete)}
-                                    title="Générer / Imprimer le Badge QR"
-                                  >
-                                    <QrCode size={14} />
-                                  </Button>
-                                  <Button 
-                                    variant="secondary" 
-                                    style={{ padding: '0.4rem 0.55rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                                    onClick={() => handleDelete(athlete.id)}
-                                    title="Archiver ce membre"
-                                  >
-                                    <Trash2 size={14} />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Version Mobile Ergonomique */}
-                  <div className="responsive-cards-mobile">
-                    {filteredAthletes.length === 0 ? (
-                      <div className="p-8 text-center text-muted">Aucun membre trouvé.</div>
-                    ) : filteredAthletes.map(athlete => {
                       const { age, dateStr } = getAgeAndCategory(athlete.date_naissance, athlete.sexe);
                       const swimCat = getSwimmingCategory(athlete);
                       const cotisInfo = getCotisationStatus(athlete.cotisations, athlete.cartes_acces?.statut);
-                      const presence = getPresenceGauge(athlete.presences);
                       const smartAccess = getSmartAccess(athlete);
+                      const siblingInfo = siblingMap.get(athlete.id);
+                      const isSelected = selectedAthletes.includes(athlete.id);
 
                       return (
-                        <div 
+                        <tr
                           key={athlete.id}
-                          className="p-4 rounded-xl flex flex-col gap-3"
-                          style={{
-                            backgroundColor: 'var(--bg-secondary)',
-                            border: '1px solid var(--border-color)',
-                            borderRadius: 'var(--radius-md)',
-                            boxShadow: 'var(--shadow-sm)'
-                          }}
+                          className={`transition-colors group ${
+                            isSelected 
+                              ? 'bg-blue-50/50 dark:bg-blue-950/20' 
+                              : 'hover:bg-blue-50/30 dark:hover:bg-slate-800/40'
+                          }`}
                         >
-                          <div className="flex items-center justify-between w-full pb-2" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          {/* Checkbox */}
+                          <td className="py-3.5 pl-4 pr-2 align-middle">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectAthlete(athlete.id)}
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </td>
+
+                          {/* 1. Membre & Dossier */}
+                          <td className="py-3.5 px-4 align-middle">
                             <div className="flex items-center gap-3">
-                              <input 
-                                type="checkbox" 
-                                checked={selectedAthletes.includes(athlete.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedAthletes(prev => [...prev, athlete.id]);
-                                  } else {
-                                    setSelectedAthletes(prev => prev.filter(id => id !== athlete.id));
-                                  }
-                                }}
-                                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-                              />
-                              <div>
-                                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                                  {athlete.nom} {athlete.prenom}
+                              {athlete.photo ? (
+                                <img 
+                                  src={athlete.photo} 
+                                  alt={athlete.prenom} 
+                                  className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-300 dark:border-slate-700"
+                                />
+                              ) : (
+                                <div
+                                  className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 border ${
+                                    athlete.sexe === "F"
+                                      ? "bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800"
+                                      : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                                  }`}
+                                >
+                                  {initiales || 'OS'}
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                  {athlete.groupes?.nom || athlete.groupe || 'Non assigné'}
+                              )}
+
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Link 
+                                    to={`/athletes/${athlete.id}`}
+                                    className="font-black text-slate-900 dark:text-white hover:text-blue-600 transition"
+                                  >
+                                    {athlete.nom?.toUpperCase()} {athlete.prenom}
+                                  </Link>
+                                  
+                                  {/* Certificat Médical Toggle rapide */}
+                                  <button
+                                    onClick={() => toggleMedicalCert(athlete.id, athlete.certificat_medical_valide)}
+                                    title={athlete.certificat_medical_valide ? "Certificat Médical Conforme (Cliquer pour désactiver)" : "Certificat Médical Manquant (Cliquer pour valider)"}
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer transition ${
+                                      athlete.certificat_medical_valide
+                                        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-300 dark:border-slate-700 hover:border-amber-400"
+                                    }`}
+                                  >
+                                    <CheckCircle2 className={`w-3 h-3 ${athlete.certificat_medical_valide ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
+                                    {athlete.certificat_medical_valide ? "Médical OK" : "Sans Certif"}
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                  <a 
+                                    href={`tel:${athlete.telephone}`}
+                                    className="inline-flex items-center gap-1 font-medium hover:text-blue-600 transition"
+                                  >
+                                    <Phone className="w-3 h-3 text-slate-400" />
+                                    {athlete.telephone || 'Non renseigné'}
+                                  </a>
+
+                                  {siblingInfo && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                                      Fratrie ({siblingInfo.siblingIndex}e enf.{" "}
+                                      <strong className="text-violet-900 dark:text-violet-200">
+                                        -{siblingInfo.discountPercent}%
+                                      </strong>)
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
+                          </td>
 
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: '8px',
-                              fontSize: '0.72rem',
-                              fontWeight: 800,
-                              backgroundColor: smartAccess.bg,
-                              color: smartAccess.color
-                            }}>
-                              {smartAccess.label}
-                            </span>
-                          </div>
+                          {/* 2. Profil Sportif */}
+                          <td className="py-3.5 px-4 align-middle">
+                            <div className="flex flex-col items-start gap-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-xs font-bold ${
+                                    athlete.groupes?.nom?.toLowerCase().includes('compétition') || athlete.groupes?.nom?.toLowerCase().includes('entraînement')
+                                      ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                                      : "bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800"
+                                  }`}
+                                >
+                                  {athlete.groupes?.nom || athlete.groupe || 'Section Natation'}
+                                </span>
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                  • {swimCat.simpleName || 'CAT: -'}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {age !== null ? `${age} ans` : '-'} ({dateStr}{athlete.lieu_naissance ? ` à ${athlete.lieu_naissance}` : ''})
+                              </span>
+                            </div>
+                          </td>
 
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span style={{ padding: '2px 8px', borderRadius: '8px', backgroundColor: swimCat.badgeBg, color: swimCat.color, fontSize: '0.72rem', fontWeight: 700 }}>
-                              {swimCat.label} {age !== null ? `(${age} ans)` : ''}
-                            </span>
-                            <span style={{ padding: '2px 8px', borderRadius: '8px', backgroundColor: cotisInfo.bg, color: cotisInfo.color, fontSize: '0.72rem', fontWeight: 700 }}>
-                              {cotisInfo.label}
-                            </span>
-                            {athlete.certificat_medical_valide ? (
-                              <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                <HeartPulse size={12} /> Certificat OK
+                          {/* 3. Cotisation */}
+                          <td className="py-3.5 px-4 align-middle">
+                            {cotisInfo.type === 'paid' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                À jour (Payé)
                               </span>
                             ) : (
-                              <span style={{ fontSize: '0.7rem', color: '#f59e0b', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                                <AlertTriangle size={12} /> Sans Certificat
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                                En attente
                               </span>
                             )}
-                          </div>
+                          </td>
 
-                          <div style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '6px' }}>
-                            <div className="flex justify-between text-xs mb-1">
-                              <span style={{ color: 'var(--text-muted)' }}>Assiduité : <strong>{presence.count}/{presence.target} séances</strong></span>
-                              <span style={{ color: presence.color, fontWeight: 700 }}>{presence.percent}%</span>
+                          {/* 4. Assiduité (Jauge 8 séances) */}
+                          <td className="py-3.5 px-4 align-middle">
+                            <div className="w-36">
+                              <div className="flex items-center justify-between text-xs mb-1.5 font-bold">
+                                <span className="text-slate-800 dark:text-slate-200">
+                                  {seancesEffectuees} / {seancesMax}
+                                </span>
+                                <span className="text-slate-500 dark:text-slate-400">{pourcentageSeances}%</span>
+                              </div>
+                              {/* 8 segments visuels */}
+                              <div className="grid grid-cols-8 gap-1">
+                                {Array.from({ length: seancesMax }).map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`h-1.5 rounded-xs transition-all ${
+                                      idx < seancesEffectuees
+                                        ? "bg-blue-600 dark:bg-blue-500"
+                                        : "bg-slate-200 dark:bg-slate-800"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
                             </div>
-                            <div style={{ width: '100%', height: '5px', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${presence.percent}%`, backgroundColor: presence.color, borderRadius: '3px' }} />
-                            </div>
-                          </div>
+                          </td>
 
-                          <div className="flex justify-center gap-2 w-full pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                            <Button 
-                              variant="secondary" 
-                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', color: '#38bdf8' }}
-                              onClick={() => setPerformanceAthlete(athlete)}
-                            >
-                              <Timer size={14} /> Chronos
-                            </Button>
-                            <Link to={`/athletes/edit/${athlete.id}`}>
-                              <Button variant="secondary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}>
-                                <Edit size={14} /> Modifier
-                              </Button>
-                            </Link>
-                            <Button 
-                              variant="secondary" 
-                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
-                              onClick={() => setSelectedAthlete(athlete)}
-                            >
-                              <QrCode size={14} /> Badge
-                            </Button>
-                            <Button 
-                              variant="secondary" 
-                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', color: '#ef4444' }}
-                              onClick={() => handleDelete(athlete.id)}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </div>
+                          {/* 5. Smart Access */}
+                          <td className="py-3.5 px-4 align-middle">
+                            {smartAccess.code === 'AUTORISE' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                Accès Autorisé
+                              </span>
+                            ) : smartAccess.code === 'TOLERANCE' ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                {smartAccess.label}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                {smartAccess.label}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 6. Actions */}
+                          <td className="py-3.5 pl-4 pr-6 align-middle text-right">
+                            <div className="inline-flex items-center justify-end gap-1.5 relative">
+                              <button
+                                onClick={() => setPerformanceAthlete(athlete)}
+                                title="Performances & Chronos"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 transition shadow-sm cursor-pointer"
+                              >
+                                <Timer className="w-3.5 h-3.5" />
+                                Chronos
+                              </button>
+
+                              <button
+                                onClick={() => setSelectedAthlete(athlete)}
+                                title="Carte QR Code d'accès"
+                                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                              >
+                                <QrCode className="w-4 h-4" />
+                              </button>
+
+                              {/* Menu 3 points */}
+                              <div className="relative">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuAthleteId(activeMenuAthleteId === athlete.id ? null : athlete.id);
+                                  }}
+                                  title="Plus d'actions"
+                                  className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+
+                                {activeMenuAthleteId === athlete.id && (
+                                  <div 
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-30 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300"
+                                  >
+                                    <Link 
+                                      to={`/athletes/edit/${athlete.id}`}
+                                      className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" /> Modifier la fiche
+                                    </Link>
+                                    
+                                    <button 
+                                      onClick={async () => {
+                                        setActiveMenuAthleteId(null);
+                                        try {
+                                          toast.loading("Génération de la fiche PDF...", { id: 'dossier' });
+                                          await generateOfficialRegistrationFormPdf({
+                                            data: athlete,
+                                            photoBase64: athlete.photo || athlete.photo_url,
+                                            selectedGroupeNom: athlete.groupes?.nom || athlete.groupe
+                                          });
+                                          toast.success("Fiche d'inscription téléchargée !", { id: 'dossier' });
+                                        } catch (e) {
+                                          toast.error("Erreur PDF: " + e.message, { id: 'dossier' });
+                                        }
+                                      }}
+                                      className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 cursor-pointer"
+                                    >
+                                      <FileText className="w-3.5 h-3.5" /> Fiche officielle PDF
+                                    </button>
+
+                                    <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
+
+                                    <button 
+                                      onClick={() => {
+                                        setActiveMenuAthleteId(null);
+                                        if (window.confirm(`Confirmer l'archivage de ${athlete.nom} ${athlete.prenom} ?`)) {
+                                          archiveAthlete(athlete.id);
+                                        }
+                                      }}
+                                      className="w-full text-left flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" /> Archiver le membre
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
                       );
-                    })}
-                  </div>
-                </>
-              )}
-            </Card>
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
+
       </div>
 
-      {/* MODALE CHANGEMENT DE GROUPE EN LOT (PHASE 1) */}
-      {showBulkGroupModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass-panel p-6" style={{ width: '450px', maxWidth: '95vw', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-            <h3 className="mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <Users size={20} style={{ color: '#38bdf8' }} /> Changer de groupe ({selectedAthletes.length} membres)
-            </h3>
-            <p className="text-muted text-xs mb-4">
-              Sélectionnez le nouveau groupe auquel affecter les membres cochés :
-            </p>
-            <div className="mb-4">
-              <label className="form-label text-xs font-semibold text-muted mb-1 block">Nouveau groupe cible :</label>
-              <select 
-                className="form-select w-full"
-                value={selectedBulkGroup}
-                onChange={(e) => setSelectedBulkGroup(e.target.value)}
-              >
-                <option value="">-- Choisir un groupe --</option>
-                {groupes.map(g => (
-                  <option key={g.id} value={g.id}>{g.nom}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-              <Button variant="secondary" onClick={() => setShowBulkGroupModal(false)}>Annuler</Button>
-              <Button 
-                variant="primary"
-                disabled={!selectedBulkGroup}
-                onClick={async () => {
-                  const grp = groupes.find(g => String(g.id) === String(selectedBulkGroup));
-                  if (grp) {
-                    await bulkUpdateGroup(selectedAthletes, grp.id, grp.nom);
-                    setShowBulkGroupModal(false);
-                    setSelectedAthletes([]);
-                  }
-                }}
-              >
-                Appliquer la réaffectation
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* =========================================================
+          5. MODALES INTERACTIVES DU MODULE
+      ========================================================= */}
 
-      {/* MODALE VALIDATION COTISATION EN LOT (PHASE 1) */}
-      {showBulkCotisModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass-panel p-6" style={{ width: '450px', maxWidth: '95vw', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-            <h3 className="mb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <CreditCard size={20} style={{ color: '#10b981' }} /> Valider cotisation ({selectedAthletes.length} membres)
-            </h3>
-            <p className="text-muted text-xs mb-4">
-              Cette action enregistre un règlement de cotisation et prolonge la validité de l'accès de 30 jours pour tous les membres sélectionnés.
-            </p>
-            <div className="mb-3">
-              <label className="form-label text-xs font-semibold text-muted mb-1 block">Montant unitaire (DA) :</label>
-              <input 
-                type="number" 
-                className="form-input w-full"
-                value={bulkCotisMontant}
-                onChange={(e) => setBulkCotisMontant(Number(e.target.value))}
-              />
-            </div>
-            <div className="mb-4">
-              <label className="form-label text-xs font-semibold text-muted mb-1 block">Mode de paiement :</label>
-              <select 
-                className="form-select w-full"
-                value={bulkCotisMode}
-                onChange={(e) => setBulkCotisMode(e.target.value)}
-              >
-                <option value="Espèces">Espèces</option>
-                <option value="Virement CCP / BaridiMob">Virement CCP / BaridiMob</option>
-                <option value="Chèque">Chèque</option>
-              </select>
-            </div>
-            <div className="flex justify-end gap-2 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-              <Button variant="secondary" onClick={() => setShowBulkCotisModal(false)}>Annuler</Button>
-              <Button 
-                variant="primary"
-                onClick={async () => {
-                  await bulkValidateCotisation(selectedAthletes, bulkCotisMontant, bulkCotisMode);
-                  setShowBulkCotisModal(false);
-                  setSelectedAthletes([]);
-                }}
-              >
-                Confirmer le règlement ({selectedAthletes.length})
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODALE BADGE D'ACCÈS INDIVIDUEL */}
+      {/* MODALE BADGE INDIVIDUEL */}
       {selectedAthlete && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass-panel p-6" style={{ width: '540px', maxWidth: '95vw', position: 'relative' }}>
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full relative shadow-2xl">
             <button 
               onClick={() => setSelectedAthlete(null)} 
-              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.5rem' }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white text-xl cursor-pointer"
             >
               &times;
             </button>
-            <h2 className="mb-4 text-center">Badge d'accès</h2>
+            <h2 className="text-lg font-bold text-white mb-4 text-center">Badge d'Accès Officiel</h2>
             <BadgeGenerator athlete={selectedAthlete} />
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button variant="secondary" onClick={() => setSelectedAthlete(null)}>Fermer</Button>
-              <Button 
-                variant="secondary"
-                onClick={async () => {
-                  try {
-                    toast.loading("Génération de la fiche d'inscription officielle...", { id: 'athlete-dossier' });
-                    await generateOfficialRegistrationFormPdf({
-                      data: selectedAthlete,
-                      photoBase64: selectedAthlete.photo || selectedAthlete.photo_url,
-                      selectedGroupeNom: selectedAthlete.groupes?.nom || selectedAthlete.groupe
-                    });
-                    toast.success("Fiche PDF générée et téléchargée !", { id: 'athlete-dossier' });
-                  } catch (e) {
-                    toast.error("Erreur: " + e.message, { id: 'athlete-dossier' });
-                  }
-                }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              <button 
+                onClick={() => setSelectedAthlete(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 font-semibold text-xs hover:bg-slate-700 transition"
               >
-                <FileText size={16} /> Fiche d'adhésion (PDF)
-              </Button>
-              <Button variant="primary" onClick={() => window.print()}>
-                <Printer size={16} /> Imprimer le badge
-              </Button>
+                Fermer
+              </button>
+              <button 
+                onClick={() => window.print()}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition flex items-center gap-2 shadow-lg shadow-blue-500/25"
+              >
+                <Printer className="w-4 h-4" /> Imprimer le Badge
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODALE DE COMMUNICATION GROUPÉE */}
-      {showBulkMessageModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="glass-panel p-6" style={{ width: '650px', maxWidth: '95vw', position: 'relative', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-            <button 
-              onClick={() => setShowBulkMessageModal(false)} 
-              style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.5rem' }}
-            >
-              &times;
-            </button>
-
-            <h2 className="mb-1 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <MessageSquare size={22} style={{ color: 'var(--accent-primary-hover)' }} /> Communication Groupée
-            </h2>
-            <p className="text-muted text-sm mb-4">
-              Envoi d'un message aux <strong>{selectedAthletes.length} membres</strong> sélectionnés.
-            </p>
-
-            <div className="mb-4">
-              <label className="form-label text-xs font-semibold text-muted mb-2 block">Modèles rapides :</label>
-              <div className="flex flex-wrap gap-2">
-                <Button 
-                  variant={messageTemplate === 'horaire' ? 'primary' : 'secondary'} 
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                  onClick={() => handleTemplateChange('horaire')}
-                >
-                  📢 Horaire
-                </Button>
-                <Button 
-                  variant={messageTemplate === 'paiement' ? 'primary' : 'secondary'} 
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                  onClick={() => handleTemplateChange('paiement')}
-                >
-                  💳 Cotisation
-                </Button>
-                <Button 
-                  variant={messageTemplate === 'convocation' ? 'primary' : 'secondary'} 
-                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-                  onClick={() => handleTemplateChange('convocation')}
-                >
-                  🏆 Convocation
-                </Button>
-              </div>
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label text-xs font-semibold text-muted mb-1 block">Sujet de l'e-mail / Titre :</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                value={messageSubject} 
-                onChange={(e) => setMessageSubject(e.target.value)} 
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="form-label text-xs font-semibold text-muted mb-1 block">Contenu du message :</label>
-              <textarea 
-                className="form-input" 
-                rows={5} 
-                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
-                value={messageBody}
-                onChange={(e) => setMessageBody(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-wrap justify-between items-center gap-3 pt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
-              <Button 
-                variant="secondary" 
-                onClick={() => {
-                  const selectedList = athletes.filter(a => selectedAthletes.includes(a.id));
-                  const phoneNumbers = selectedList.map(a => a.telephone).filter(Boolean).join(', ');
-                  navigator.clipboard.writeText(`Destinataires: ${phoneNumbers}\n\n${messageBody}`);
-                  toast.success(`${selectedList.length} numéros et message copiés !`);
-                }}
-              >
-                <MessageSquare size={16} /> Copier Numéros & SMS ({selectedAthletes.length})
-              </Button>
-
-              <Button 
-                variant="primary"
-                onClick={() => {
-                  const selectedList = athletes.filter(a => selectedAthletes.includes(a.id));
-                  const emails = selectedList.map(a => a.email).filter(Boolean).join(',');
-                  if (!emails) {
-                    toast.error("Aucune adresse e-mail trouvée parmi les membres sélectionnés.");
-                    return;
-                  }
-                  const mailtoUrl = `mailto:?bcc=${encodeURIComponent(emails)}&subject=${encodeURIComponent(messageSubject)}&body=${encodeURIComponent(messageBody)}`;
-                  window.location.href = mailtoUrl;
-                  toast.success("Client e-mail ouvert avec les destinataires en CCI !");
-                }}
-              >
-                <Mail size={16} /> Envoyer par E-mail Groupé
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PLANCHE DE BADGES EN APERÇU IMPRESSION */}
-      {showBulkPrint && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'var(--bg-color)', zIndex: 100, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-          <div className="p-4 flex justify-between items-center no-print" style={{ backgroundColor: 'var(--panel-bg)', borderBottom: '1px solid var(--border-color)', position: 'sticky', top: 0, zIndex: 10 }}>
-            <h2>Impression multiple ({selectedAthletes.length} badges)</h2>
-            <div className="flex gap-4">
-              <Button variant="secondary" onClick={() => setShowBulkPrint(false)}>Annuler</Button>
-              <Button variant="primary" onClick={() => window.print()}>
-                <Printer size={18} /> Lancer l'impression
-              </Button>
-            </div>
-          </div>
-          
-          <div className="p-8 print-container flex flex-wrap gap-8 justify-center items-start" style={{ minHeight: '100vh', backgroundColor: '#e2e8f0' }}>
-            {athletes.filter(a => selectedAthletes.includes(a.id)).map(athlete => (
-              <div key={athlete.id} className="badge-wrapper-print" style={{ pageBreakInside: 'avoid' }}>
-                <BadgeGenerator athlete={athlete} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* MODALE DE SUIVI DES CHRONOS ET PERFORMANCES */}
+      {/* MODALE CHRONOS & PERFORMANCES */}
       {performanceAthlete && (
         <AthletePerformancesModal
           athlete={performanceAthlete}
           onClose={() => setPerformanceAthlete(null)}
         />
       )}
+
+      {/* MODALE CHANGEMENT DE GROUPE EN MASSE */}
+      {showBulkGroupModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Changer le groupe d'entraînement</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Sélectionnez le nouveau groupe pour les <strong>{selectedAthletes.length} membres</strong> sélectionnés.
+            </p>
+            <select
+              value={selectedBulkGroup}
+              onChange={(e) => setSelectedBulkGroup(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm mb-4"
+            >
+              <option value="">Sélectionner un groupe...</option>
+              {groupes.map(g => (
+                <option key={g.id} value={g.id}>{g.nom}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowBulkGroupModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={async () => {
+                  if (!selectedBulkGroup) {
+                    toast.error("Veuillez sélectionner un groupe.");
+                    return;
+                  }
+                  try {
+                    const g = groupes.find(item => item.id === selectedBulkGroup);
+                    const { error } = await supabase
+                      .from('athletes')
+                      .update({ groupe_id: selectedBulkGroup, groupe: g?.nom || null })
+                      .in('id', selectedAthletes);
+                    if (error) throw error;
+                    toast.success("Groupes mis à jour !");
+                    setShowBulkGroupModal(false);
+                    setSelectedAthletes([]);
+                    fetchAthletes();
+                  } catch (e) {
+                    toast.error("Erreur: " + e.message);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+              >
+                Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE VALIDATION COTISATION EN MASSE */}
+      {showBulkCotisModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Règlement groupé des cotisations</h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Valider la cotisation mensuelle pour les <strong>{selectedAthletes.length} membres</strong> sélectionnés.
+            </p>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Montant par nageur (DA) :</label>
+                <input 
+                  type="number" 
+                  value={bulkCotisMontant}
+                  onChange={(e) => setBulkCotisMontant(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Mode de règlement :</label>
+                <select
+                  value={bulkCotisMode}
+                  onChange={(e) => setBulkCotisMode(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+                >
+                  <option value="Espèces">Espèces</option>
+                  <option value="Virement">Virement bancaire</option>
+                  <option value="Chèque">Chèque</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowBulkCotisModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const now = new Date();
+                    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+                    const records = selectedAthletes.map(athleteId => ({
+                      athlete_id: athleteId,
+                      montant_paye: bulkCotisMontant,
+                      date_paiement: now.toISOString(),
+                      periode_couverte_fin: nextMonth.toISOString(),
+                      mode_paiement: bulkCotisMode
+                    }));
+                    const { error } = await supabase.from('cotisations').insert(records);
+                    if (error) throw error;
+                    toast.success(`Cotisations validées pour ${selectedAthletes.length} membres !`);
+                    setShowBulkCotisModal(false);
+                    setSelectedAthletes([]);
+                    fetchAthletes();
+                  } catch (e) {
+                    toast.error("Erreur: " + e.message);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700"
+              >
+                Confirmer le règlement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE DE MESSAGE GROUPÉ */}
+      {showBulkMessageModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-purple-600" /> Communication Groupée
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Envoi aux <strong>{selectedAthletes.length} membres</strong> sélectionnés.
+            </p>
+            <div className="mb-3">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Message :</label>
+              <textarea 
+                rows={4}
+                value={messageBody}
+                onChange={(e) => setMessageBody(e.target.value)}
+                placeholder="Écrivez votre annonce ou consigne ici..."
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm"
+              />
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <button
+                onClick={() => {
+                  const selectedList = athletes.filter(a => selectedAthletes.includes(a.id));
+                  const phones = selectedList.map(a => a.telephone).filter(Boolean).join(', ');
+                  navigator.clipboard.writeText(`Numéros : ${phones}\n\n${messageBody}`);
+                  toast.success("Numéros copiés dans le presse-papier !");
+                }}
+                className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+              >
+                Copier SMS & Numéros
+              </button>
+              <button
+                onClick={() => setShowBulkMessageModal(false)}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+
+export { AthletesList as AthletesAdminPro };
