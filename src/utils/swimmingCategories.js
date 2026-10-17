@@ -9,14 +9,14 @@ import { calculateAge } from './formatters';
  * Liste officielle des catégories d'âge FANA (Fédération Algérienne de Natation)
  */
 export const FANA_CATEGORIES = [
-  { code: 'AVE', name: 'Avenirs', ageBracket: '9 ans et moins', label: 'Avenirs (≤ 9 ans)', color: '#38bdf8', badgeBg: 'rgba(56, 189, 248, 0.15)' },
-  { code: 'POU', name: 'Poussins', ageBracket: '10 - 11 ans', label: 'Poussins (10-11 ans)', color: '#818cf8', badgeBg: 'rgba(129, 140, 248, 0.15)' },
-  { code: 'BEN', name: 'Benjamins', ageBracket: '12 - 13 ans', label: 'Benjamins (12-13 ans)', color: '#34d399', badgeBg: 'rgba(52, 211, 153, 0.15)' },
-  { code: 'MIN', name: 'Minimes', ageBracket: '14 - 15 ans', label: 'Minimes (14-15 ans)', color: '#fbbf24', badgeBg: 'rgba(251, 191, 36, 0.15)' },
-  { code: 'CAD', name: 'Cadets', ageBracket: '16 - 17 ans', label: 'Cadets (16-17 ans)', color: '#fb923c', badgeBg: 'rgba(251, 146, 60, 0.15)' },
-  { code: 'JUN', name: 'Juniors', ageBracket: '18 - 19 ans', label: 'Juniors (18-19 ans)', color: '#f43f5e', badgeBg: 'rgba(244, 63, 94, 0.15)' },
-  { code: 'SEN', name: 'Seniors', ageBracket: '20 - 34 ans', label: 'Seniors (20-34 ans)', color: '#a855f7', badgeBg: 'rgba(168, 85, 247, 0.15)' },
-  { code: 'MAS', name: 'Masters', ageBracket: '35 ans et +', label: 'Masters (+35 ans)', color: '#06b6d4', badgeBg: 'rgba(6, 182, 212, 0.15)' },
+  { code: 'AVE', name: 'Avenirs', simpleName: 'AVENIR', ageBracket: '9 ans et moins', label: 'Avenirs (≤ 9 ans)', catBadge: 'CAT: AVENIR', color: '#38bdf8', badgeBg: 'rgba(56, 189, 248, 0.15)' },
+  { code: 'POU', name: 'Poussins', simpleName: 'POUSSIN', ageBracket: '10 - 11 ans', label: 'Poussins (10-11 ans)', catBadge: 'CAT: POUSSIN', color: '#818cf8', badgeBg: 'rgba(129, 140, 248, 0.15)' },
+  { code: 'BEN', name: 'Benjamins', simpleName: 'BENJAMIN', ageBracket: '12 - 13 ans', label: 'Benjamins (12-13 ans)', catBadge: 'CAT: BENJAMIN', color: '#34d399', badgeBg: 'rgba(52, 211, 153, 0.15)' },
+  { code: 'MIN', name: 'Minimes', simpleName: 'MINIME', ageBracket: '14 - 15 ans', label: 'Minimes (14-15 ans)', catBadge: 'CAT: MINIME', color: '#fbbf24', badgeBg: 'rgba(251, 191, 36, 0.15)' },
+  { code: 'CAD', name: 'Cadets', simpleName: 'CADET', ageBracket: '16 - 17 ans', label: 'Cadets (16-17 ans)', catBadge: 'CAT: CADET', color: '#fb923c', badgeBg: 'rgba(251, 146, 60, 0.15)' },
+  { code: 'JUN', name: 'Juniors', simpleName: 'JUNIOR', ageBracket: '18 - 19 ans', label: 'Juniors (18-19 ans)', catBadge: 'CAT: JUNIOR', color: '#f43f5e', badgeBg: 'rgba(244, 63, 94, 0.15)' },
+  { code: 'SEN', name: 'Seniors', simpleName: 'SENIOR', ageBracket: '20 - 34 ans', label: 'Seniors (20-34 ans)', catBadge: 'CAT: SENIOR', color: '#a855f7', badgeBg: 'rgba(168, 85, 247, 0.15)' },
+  { code: 'MAS', name: 'Masters', simpleName: 'MASTER', ageBracket: '35 ans et +', label: 'Masters (+35 ans)', catBadge: 'CAT: MASTER', color: '#06b6d4', badgeBg: 'rgba(6, 182, 212, 0.15)' },
 ];
 
 /**
@@ -24,7 +24,7 @@ export const FANA_CATEGORIES = [
  * (Fédération Algérienne de Natation / World Aquatics)
  * @param {string|Date|object} dateOrAthlete - Date de naissance ou objet athlète
  * @param {string} [explicitSexe] - 'M' ou 'F' (optionnel)
- * @returns {{ code: string, fanaCode: string, label: string, shortLabel: string, fanaCategory: string, ageBracket: string, age: number|null, sportingAge: number|null, color: string, badgeBg: string }}
+ * @returns {{ code: string, fanaCode: string, label: string, shortLabel: string, simpleName: string, catBadge: string, fanaCategory: string, ageBracket: string, age: number|null, sportingAge: number|null, color: string, badgeBg: string }}
  */
 export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
   let dateNaissance = dateOrAthlete;
@@ -41,6 +41,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'NA', 
       label: 'Non renseignée', 
       shortLabel: 'N/A', 
+      simpleName: 'N/A',
+      catBadge: 'CAT: N/A',
       fanaCategory: 'Non renseignée',
       ageBracket: '-', 
       age: null, 
@@ -57,6 +59,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'NA', 
       label: 'Date invalide', 
       shortLabel: 'N/A', 
+      simpleName: 'N/A',
+      catBadge: 'CAT: N/A',
       fanaCategory: 'Date invalide',
       ageBracket: '-', 
       age: null, 
@@ -81,6 +85,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'AVE', 
       label: 'Avenirs (Baby Nat)', 
       shortLabel: 'Avenirs', 
+      simpleName: 'AVENIR',
+      catBadge: 'CAT: AVENIR',
       fanaCategory: 'Avenirs',
       ageBracket: '< 7 ans', 
       age: civilAge, 
@@ -94,6 +100,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'AVE', 
       label: 'Avenirs (≤ 9 ans)', 
       shortLabel: 'Avenirs', 
+      simpleName: 'AVENIR',
+      catBadge: 'CAT: AVENIR',
       fanaCategory: 'Avenirs',
       ageBracket: '9 ans et -', 
       age: civilAge, 
@@ -103,11 +111,14 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
     };
   } else if (age <= 11) {
     const name = isFemale ? 'Poussines' : 'Poussins';
+    const simpleName = isFemale ? 'POUSSINE' : 'POUSSIN';
     return { 
       code: 'POU', 
       fanaCode: 'POU', 
       label: `${name} (10-11 ans)`, 
       shortLabel: name, 
+      simpleName,
+      catBadge: `CAT: ${simpleName}`,
       fanaCategory: 'Poussins',
       ageBracket: '10 - 11 ans', 
       age: civilAge, 
@@ -117,11 +128,14 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
     };
   } else if (age <= 13) {
     const name = isFemale ? 'Benjamines' : 'Benjamins';
+    const simpleName = isFemale ? 'BENJAMINE' : 'BENJAMIN';
     return { 
       code: 'BEN', 
       fanaCode: 'BEN', 
       label: `${name} (12-13 ans)`, 
       shortLabel: name, 
+      simpleName,
+      catBadge: `CAT: ${simpleName}`,
       fanaCategory: 'Benjamins',
       ageBracket: '12 - 13 ans', 
       age: civilAge, 
@@ -135,6 +149,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'MIN', 
       label: 'Minimes (14-15 ans)', 
       shortLabel: 'Minimes', 
+      simpleName: 'MINIME',
+      catBadge: 'CAT: MINIME',
       fanaCategory: 'Minimes',
       ageBracket: '14 - 15 ans', 
       age: civilAge, 
@@ -144,11 +160,14 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
     };
   } else if (age <= 17) {
     const name = isFemale ? 'Cadettes' : 'Cadets';
+    const simpleName = isFemale ? 'CADETTE' : 'CADET';
     return { 
       code: 'CAD', 
       fanaCode: 'CAD', 
       label: `${name} (16-17 ans)`, 
       shortLabel: name, 
+      simpleName,
+      catBadge: `CAT: ${simpleName}`,
       fanaCategory: 'Cadets',
       ageBracket: '16 - 17 ans', 
       age: civilAge, 
@@ -162,6 +181,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'JUN', 
       label: 'Juniors (18-19 ans)', 
       shortLabel: 'Juniors', 
+      simpleName: 'JUNIOR',
+      catBadge: 'CAT: JUNIOR',
       fanaCategory: 'Juniors',
       ageBracket: '18 - 19 ans', 
       age: civilAge, 
@@ -175,6 +196,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'SEN', 
       label: 'Seniors (20-34 ans)', 
       shortLabel: 'Seniors', 
+      simpleName: 'SENIOR',
+      catBadge: 'CAT: SENIOR',
       fanaCategory: 'Seniors',
       ageBracket: '20 - 34 ans', 
       age: civilAge, 
@@ -188,6 +211,8 @@ export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
       fanaCode: 'MAS', 
       label: 'Masters (+35 ans)', 
       shortLabel: 'Masters', 
+      simpleName: 'MASTER',
+      catBadge: 'CAT: MASTER',
       fanaCategory: 'Masters',
       ageBracket: '35 ans et +', 
       age: civilAge, 

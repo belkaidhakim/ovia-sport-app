@@ -151,40 +151,35 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '2px' }}>
-            <div>
-              <div style={{ color: '#64748b', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
-                Catégorie FANA
-              </div>
-              <span style={{ 
-                display: 'inline-block',
-                backgroundColor: category.badgeBg, 
-                color: category.color, 
-                border: `1px solid ${category.color}40`,
-                padding: '2px 8px', 
-                borderRadius: '6px', 
-                fontSize: '0.72rem', 
-                fontWeight: 800 
-              }}>
-                {category.label}
-              </span>
-            </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '4px', alignItems: 'center' }}>
+            <span style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: category.badgeBg, 
+              color: category.color, 
+              border: `1.5px solid ${category.color}50`,
+              padding: '3px 10px', 
+              borderRadius: '8px', 
+              fontSize: '0.78rem', 
+              fontWeight: 900,
+              letterSpacing: '0.04em'
+            }}>
+              {category.catBadge || `CAT: ${category.simpleName || 'N/A'}`}
+            </span>
 
-            <div>
-              <div style={{ color: '#64748b', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Groupe</div>
-              <span style={{ 
-                display: 'inline-block',
-                backgroundColor: 'rgba(79, 70, 229, 0.1)', 
-                color: '#4f46e5', 
-                border: '1px solid rgba(79, 70, 229, 0.25)',
-                padding: '2px 8px', 
-                borderRadius: '6px', 
-                fontSize: '0.72rem', 
-                fontWeight: 700 
-              }}>
-                {groupName}
-              </span>
-            </div>
+            <span style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: 'rgba(79, 70, 229, 0.1)', 
+              color: '#4f46e5', 
+              border: '1.5px solid rgba(79, 70, 229, 0.25)',
+              padding: '3px 10px', 
+              borderRadius: '8px', 
+              fontSize: '0.78rem', 
+              fontWeight: 800 
+            }}>
+              {groupName}
+            </span>
           </div>
         </div>
         

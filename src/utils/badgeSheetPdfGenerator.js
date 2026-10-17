@@ -149,9 +149,9 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     // Catégorie Fédérale Natation FANA
     const cat = getSwimmingCategory(athlete);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
+    doc.setFontSize(7);
     doc.setTextColor(30, 58, 138); // Bleu fédéral
-    doc.text(`Catégorie FANA : ${cat.label}`, infoX, y + 28.5);
+    doc.text(cat.catBadge || `CAT: ${cat.simpleName || 'N/A'}`, infoX, y + 28.5);
 
     // Section / Groupe d'entraînement
     const groupeNom = athlete.groupes?.nom || athlete.groupe || 'Section Natation';

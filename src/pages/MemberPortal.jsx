@@ -1018,7 +1018,7 @@ export default function MemberPortal() {
                           className="text-[10px] font-extrabold px-2 py-0.5 rounded-md"
                           style={{ backgroundColor: categoryInfo.badgeBg, color: categoryInfo.color }}
                         >
-                          {categoryInfo.label}
+                          {categoryInfo.catBadge || categoryInfo.label}
                         </span>
                       )}
                     </div>
