@@ -42,7 +42,7 @@ export async function generateBordereauCollectifPdf({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(100, 116, 139); // slate-500
-      doc.text('Complexe Sportif · Wilaya de Bouira · Algérie · Tél : +213 (0) 550 00 00 00', 38, 22);
+      doc.text('Complexe Sportif · Wilaya de Bouira · Algérie · Tél : 0770 71 98 68', 38, 22);
       doc.text(`Édité le : ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, 38, 27);
 
       // Titre du Document
@@ -74,15 +74,13 @@ export async function generateBordereauCollectifPdf({
 
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
-      doc.text('Période Couverte :', 115, 41);
-      doc.text('Type de Garantie :', 115, 48);
+      doc.text('Période Couverte :', 115, 45);
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(51, 65, 85);
       const debutStr = dateDebut ? new Date(dateDebut).toLocaleDateString('fr-FR') : '-';
       const finStr = dateFin ? new Date(dateFin).toLocaleDateString('fr-FR') : '-';
-      doc.text(`Du ${debutStr} au ${finStr}`, 148, 41);
-      doc.text(typeCouverture.substring(0, 50), 148, 48);
+      doc.text(`Du ${debutStr} au ${finStr}`, 148, 45);
 
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
@@ -98,16 +96,13 @@ export async function generateBordereauCollectifPdf({
     const startY = 56;
     const rowHeight = 7.5;
     const cols = [
-      { header: 'N°', x: 14, w: 12, align: 'center' },
-      { header: 'Nom', x: 26, w: 32, align: 'left' },
-      { header: 'Prénom', x: 58, w: 32, align: 'left' },
-      { header: 'Sexe', x: 90, w: 12, align: 'center' },
-      { header: 'Date & Lieu Naiss.', x: 102, w: 38, align: 'center' },
-      { header: 'Âge', x: 140, w: 14, align: 'center' },
-      { header: 'Groupe / Niveau', x: 154, w: 42, align: 'left' },
-      { header: 'Téléphone', x: 196, w: 30, align: 'left' },
-      { header: 'Police Individuelle', x: 226, w: 36, align: 'left' },
-      { header: 'Prime', x: 262, w: 21, align: 'right' }
+      { header: 'N°', x: 14, w: 14, align: 'center' },
+      { header: 'Nom', x: 28, w: 52, align: 'left' },
+      { header: 'Prénom', x: 80, w: 52, align: 'left' },
+      { header: 'Sexe', x: 132, w: 22, align: 'center' },
+      { header: 'Date de Naissance', x: 154, w: 40, align: 'center' },
+      { header: 'Lieu de Naissance', x: 194, w: 55, align: 'left' },
+      { header: 'Âge', x: 249, w: 34, align: 'center' }
     ];
 
     const drawTableHeader = (y) => {
@@ -148,9 +143,8 @@ export async function generateBordereauCollectifPdf({
       doc.line(14, currentY + rowHeight, pageWidth - 14, currentY + rowHeight);
 
       // Calcul des données
-      const datePart = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '';
-      const lieuPart = ath.lieu_naissance ? ath.lieu_naissance.substring(0, 10) : '';
-      const birthStr = (datePart && lieuPart) ? `${datePart} (${lieuPart})` : (datePart || lieuPart || '-');
+      const dateStr = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '-';
+      const lieuStr = ath.lieu_naissance || '-';
       let age = '-';
       if (ath.date_naissance) {
         const b = new Date(ath.date_naissance);
@@ -159,21 +153,15 @@ export async function generateBordereauCollectifPdf({
         if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) a--;
         if (a >= 0) age = `${a} ans`;
       }
-      const groupeNom = (ath.groupes?.nom || ath.groupe || 'Standard').substring(0, 22);
-      const policeIndiv = (ath.assurance?.numero_police || numeroPolice).substring(0, 18);
-      const primeStr = ath.assurance?.montant ? `${formatDA(ath.assurance.montant)}` : '-';
 
       const rowValues = [
         (idx + 1).toString(),
-        (ath.nom || '').toUpperCase().substring(0, 18),
-        (ath.prenom || '').substring(0, 18),
-        ath.sexe === 'Femme' ? 'F' : 'M',
-        birthStr,
-        age,
-        groupeNom,
-        (ath.telephone || 'Sans tél').substring(0, 14),
-        policeIndiv,
-        primeStr
+        (ath.nom || '').toUpperCase(),
+        ath.prenom || '',
+        (ath.sexe === 'Femme' || ath.sexe === 'F') ? 'F' : 'M',
+        dateStr,
+        lieuStr,
+        age
       ];
 
       doc.setFont('helvetica', 'normal');
@@ -258,7 +246,7 @@ export async function generateAttestationAssurancePdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
-    doc.text('Agréé par le Ministère de la Jeunesse et des Sports · Wilaya de Bouira', 48, 30);
+    doc.text('Agréé par le Ministère de la Jeunesse et des Sports · Wilaya de Bouira · Tél : 0770 71 98 68', 48, 30);
     doc.text('Affilié à la Fédération Algérienne de Natation (FAN)', 48, 35);
 
     // Titre
@@ -292,8 +280,9 @@ export async function generateAttestationAssurancePdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(51, 65, 85);
-    const birthStr = athlete.date_naissance ? new Date(athlete.date_naissance).toLocaleDateString('fr-FR') : '-';
-    doc.text(`• Date de naissance : ${birthStr}`, 26, 116);
+    const birthDatePart = athlete.date_naissance ? new Date(athlete.date_naissance).toLocaleDateString('fr-FR') : '-';
+    const birthLieuPart = athlete.lieu_naissance ? ` à ${athlete.lieu_naissance}` : '';
+    doc.text(`• Date & lieu de naissance : ${birthDatePart}${birthLieuPart}`, 26, 116);
     doc.text(`• Sexe : ${athlete.sexe || 'Non spécifié'}`, 26, 123);
     doc.text(`• Groupe / Niveau : ${athlete.groupes?.nom || athlete.groupe || 'Standard'}`, 26, 130);
     doc.text(`• Identifiant / QR Token : ${athlete.token_qr || athlete.id?.substring(0, 12)}`, 26, 137);

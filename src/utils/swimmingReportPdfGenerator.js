@@ -53,7 +53,7 @@ export const generateSwimmingReportPDF = async (athlete, performances = []) => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text('Complexe Sportif, Wilaya de Bouira · Tél: +213 (0) 550 00 00 00', headerTextX, 28.5);
+  doc.text('Complexe Sportif, Wilaya de Bouira · Tél: 0770 71 98 68', headerTextX, 28.5);
 
   // Boîte Document
   doc.setFillColor(248, 250, 252);

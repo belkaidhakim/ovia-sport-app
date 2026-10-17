@@ -96,7 +96,7 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(100, 116, 139);
-    doc.text('Complexe Sportif, Wilaya de Bouira · Tél : +213 (0) 550 00 00 00', headerTextX, 24);
+    doc.text('Complexe Sportif, Wilaya de Bouira · Tél : 0770 71 98 68', headerTextX, 24);
     doc.text('Email : contact@oviasport.com · Site : oviasport.com', headerTextX, 27.5);
 
     // Boîte Numéro de Dossier / Titre Fiche (Haut Droite)

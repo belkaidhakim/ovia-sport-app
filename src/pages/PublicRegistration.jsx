@@ -457,7 +457,7 @@ export default function PublicRegistration() {
                 <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.88rem', color: '#475569', lineHeight: '1.7' }}>
                   <li>Pour toute inscription tardive ou demande d'information, veuillez vous présenter directement au siège du club.</li>
                   <li><strong>Adresse :</strong> Complexe Sportif, Wilaya de Bouira</li>
-                  <li><strong>Téléphone :</strong> <a href="tel:0550000000" style={{ color: '#6366f1', fontWeight: 700 }}>+213 (0) 550 00 00 00</a></li>
+                  <li><strong>Téléphone :</strong> <a href="tel:0770719868" style={{ color: '#6366f1', fontWeight: 700 }}>0770 71 98 68</a></li>
                   <li><strong>Horaires d'accueil :</strong> Du Dimanche au Jeudi, de 09h00 à 17h00</li>
                 </ul>
               </div>
