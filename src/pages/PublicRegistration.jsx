@@ -5,12 +5,9 @@ import {
   Sun, 
   Moon, 
   ArrowLeft, 
-  Check, 
   Download, 
   Lock, 
   Phone, 
-  Waves,
-  ShieldCheck,
   FileText
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
@@ -29,7 +26,6 @@ export default function PublicRegistration() {
   const [sexe, setSexe] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
-  const [formula, setFormula] = useState("mensuel");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [dossierNumber, setDossierNumber] = useState("");
@@ -55,6 +51,23 @@ export default function PublicRegistration() {
 
   const categoryInfo = getCategoryInfo(birthDate);
 
+  // Téléchargement du formulaire vierge à faire signer par le médecin
+  const handleDownloadBlankForm = async () => {
+    try {
+      const toastId = toast.loading("Génération de la fiche officielle d'inscription vierge...");
+      await generateOfficialRegistrationFormPdf({
+        isBlank: true,
+        fraisInscription: 1000,
+        cotisationAdhesion: 2000
+      });
+      toast.dismiss(toastId);
+      toast.success("Fiche d'inscription vierge téléchargée avec succès !");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors de la génération du formulaire : " + err.message);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nom.trim() || !prenom.trim() || !birthDate || !sexe || !parentName.trim() || !parentPhone.trim()) {
@@ -78,7 +91,7 @@ export default function PublicRegistration() {
       telephone: cleanPhone,
       telephone_parent: cleanPhone,
       nom_parent: parentName.trim(),
-      observations_medicales: `Formule: ${formula.toUpperCase()} | Tuteur légal: ${parentName.trim()}`,
+      observations_medicales: `Tuteur légal: ${parentName.trim()}`,
       statut: "EN_ATTENTE",
       categorie: cat,
       date_demande: new Date().toISOString(),
@@ -124,7 +137,7 @@ export default function PublicRegistration() {
           sexe: sexe === "F" ? "Femme" : "Homme",
           telephone: parentPhone,
           telephone_parent: parentPhone,
-          observations_medicales: `Formule: ${formula.toUpperCase()} | Tuteur: ${parentName.trim()}`
+          observations_medicales: `Tuteur légal: ${parentName.trim()}`
         },
         numeroDossier: dossierNumber || `OVS-${Date.now().toString().slice(-6)}`,
         selectedGroupeNom: categoryInfo?.category || "Natation"
@@ -143,7 +156,6 @@ export default function PublicRegistration() {
     setSexe("");
     setParentName("");
     setParentPhone("");
-    setFormula("mensuel");
     setSubmitted(false);
   };
 
@@ -207,7 +219,7 @@ export default function PublicRegistration() {
           )}
 
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-            Votre dossier a bien été transmis à la direction du club. Un SMS de confirmation et les instructions de paiement vous seront envoyés sous 24h.
+            Votre dossier a bien été transmis à la direction du club. Un SMS de confirmation et les instructions de finalisation vous seront envoyés sous 24h.
           </p>
 
           <div className="space-y-3">
@@ -225,6 +237,15 @@ export default function PublicRegistration() {
             >
               <Download size={14} className="text-sky-500" />
               Télécharger mon récapitulatif officiel (PDF)
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadBlankForm}
+              className="w-full py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-medium transition flex items-center justify-center gap-1.5"
+            >
+              <FileText size={13} />
+              Télécharger aussi la fiche vierge pour le médecin
             </button>
 
             <Link
@@ -264,7 +285,7 @@ export default function PublicRegistration() {
       </div>
 
       {/* EN-TÊTE DU CLUB */}
-      <div className="max-w-3xl mx-auto text-center mb-10">
+      <div className="max-w-3xl mx-auto text-center mb-8">
         <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-400 text-white text-3xl font-black shadow-lg shadow-sky-600/30 mb-4 overflow-hidden">
           <img 
             src="/logo.jpg" 
@@ -280,6 +301,31 @@ export default function PublicRegistration() {
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-lg mx-auto">
           Remplissez le formulaire ci-dessous pour effectuer votre demande d'adhésion au club.
         </p>
+      </div>
+
+      {/* BANDEAU FICHE D'INSCRIPTION VIERGE (TÉLÉCHARGEMENT DIRECT) */}
+      <div className="max-w-3xl mx-auto mb-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4 text-left w-full sm:w-auto">
+          <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center flex-shrink-0">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+              Fiche d'Inscription Officielle Vierge (PDF)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Document officiel tout-en-un à imprimer, incluant le volet médical pour le médecin traitant.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleDownloadBlankForm}
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs sm:text-sm transition shadow-sm whitespace-nowrap"
+        >
+          <Download size={16} />
+          Télécharger vierge (PDF)
+        </button>
       </div>
 
       {/* FORMULAIRE */}
@@ -408,47 +454,6 @@ export default function PublicRegistration() {
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
               />
             </div>
-          </div>
-        </div>
-
-        {/* SECTION 3 : CHOIX DE LA FORMULE */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm">
-          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
-            <span className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
-              3
-            </span>
-            <h2 className="text-lg font-bold">Formule d'Abonnement</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { id: "mensuel", title: "Mensuel", price: "3 000 DA", desc: "Accès 1 mois" },
-              { id: "trimestriel", title: "Trimestriel", price: "8 000 DA", desc: "Le plus populaire (-10%)" },
-              { id: "annuel", title: "Saison Complète", price: "25 000 DA", desc: "Engagement annuel" },
-            ].map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setFormula(item.id)}
-                className={`cursor-pointer p-5 rounded-2xl border-2 transition text-center flex flex-col justify-between ${
-                  formula === item.id
-                    ? "border-sky-500 bg-sky-50/50 dark:bg-sky-500/10 shadow-sm"
-                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700"
-                }`}
-              >
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
-                    {item.title}
-                  </span>
-                  <span className="text-xl font-black text-slate-900 dark:text-white block mb-1">
-                    {item.price}
-                  </span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">{item.desc}</span>
-                </div>
-                <div className={`mt-4 w-5 h-5 mx-auto rounded-full border flex items-center justify-center font-bold text-xs ${formula === item.id ? "border-sky-600 bg-sky-600 text-white" : "border-slate-300 dark:border-slate-700"}`}>
-                  {formula === item.id && "✓"}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
 
