@@ -884,32 +884,40 @@ export default function AthletesList() {
                           {/* 1. Membre & Dossier */}
                           <td className="py-3.5 px-4 align-middle">
                             <div className="flex items-center gap-3">
-                              {athlete.photo ? (
-                                <img 
-                                  src={athlete.photo} 
-                                  alt={athlete.prenom} 
-                                  className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-300 dark:border-slate-700"
-                                />
-                              ) : (
-                                <div
-                                  className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 border ${
-                                    athlete.sexe === "F"
-                                      ? "bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800"
-                                      : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                                  }`}
-                                >
-                                  {initiales || 'OS'}
-                                </div>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => window.dispatchEvent(new CustomEvent('open-athlete-drawer', { detail: athlete }))}
+                                title="Ouvrir la fiche rapide latérale"
+                                className="cursor-pointer hover:scale-105 transition shrink-0 bg-transparent border-none p-0"
+                              >
+                                {athlete.photo ? (
+                                  <img 
+                                    src={athlete.photo} 
+                                    alt={athlete.prenom} 
+                                    className="w-10 h-10 rounded-full object-cover shrink-0 border border-slate-300 dark:border-slate-700"
+                                  />
+                                ) : (
+                                  <div
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shrink-0 border ${
+                                      athlete.sexe === "F"
+                                        ? "bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 border-pink-200 dark:border-pink-800"
+                                        : "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                                    }`}
+                                  >
+                                    {initiales || 'OS'}
+                                  </div>
+                                )}
+                              </button>
 
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <Link 
-                                    to={`/athletes/${athlete.id}`}
-                                    className="font-black text-slate-900 dark:text-white hover:text-blue-600 transition"
+                                  <button 
+                                    type="button"
+                                    onClick={() => window.dispatchEvent(new CustomEvent('open-athlete-drawer', { detail: athlete }))}
+                                    className="font-black text-slate-900 dark:text-white hover:text-blue-600 transition text-left cursor-pointer bg-transparent border-none p-0"
                                   >
                                     {athlete.nom?.toUpperCase()} {athlete.prenom}
-                                  </Link>
+                                  </button>
                                   
                                   {/* Certificat Médical Toggle rapide */}
                                   <button

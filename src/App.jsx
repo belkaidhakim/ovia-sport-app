@@ -5,6 +5,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import ClubProAppShell from './components/ClubProAppShell';
 import { Suspense, lazy } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -47,27 +48,10 @@ function ProtectedRoute({ children, allowedRoles }) {
 }
 
 function AppLayout({ children }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   return (
-    <div className="app-layout">
-      <Sidebar isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} />
-      <div className="main-content">
-        <Header toggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
-        <AnimatePresence mode="wait">
-          <motion.div 
-            key={window.location.pathname}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.3 }}
-            className="page-container"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
+    <ClubProAppShell>
+      {children}
+    </ClubProAppShell>
   );
 }
 
