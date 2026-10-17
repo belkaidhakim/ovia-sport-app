@@ -513,8 +513,8 @@ export default function MemberPortal() {
   }, [latestCotis, t]);
 
   const categoryInfo = useMemo(() => {
-    return session?.date_naissance ? getSwimmingCategory(session.date_naissance) : null;
-  }, [session?.date_naissance]);
+    return session?.date_naissance ? getSwimmingCategory(session) : null;
+  }, [session]);
 
   const medicalValid = Boolean(session?.certificat_medical || session?.certificat_medical_valide);
 

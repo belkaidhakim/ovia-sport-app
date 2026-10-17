@@ -18,7 +18,7 @@ export const generateSwimmingReportPDF = async (athlete, performances = []) => {
   });
 
   const logoBase64 = await loadClubLogoBase64();
-  const category = getSwimmingCategory(athlete.date_naissance);
+  const category = getSwimmingCategory(athlete);
   const athleteFullName = formatName(athlete.nom, athlete.prenom);
   const athleteGroupe = athlete.groupes?.nom || athlete.groupe || 'Section Natation';
   const birthStr = athlete.date_naissance ? new Date(athlete.date_naissance).toLocaleDateString('fr-FR') : '-';
@@ -96,7 +96,7 @@ export const generateSwimmingReportPDF = async (athlete, performances = []) => {
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 138);
-  doc.text(`Catégorie Fédérale (FAN) : ${category.label}`, 110, 47);
+  doc.text(`Catégorie Fédérale (FANA) : ${category.label}`, 110, 47);
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);

@@ -354,7 +354,7 @@ export default function SportsTracking() {
                 </thead>
                 <tbody>
                   {groupAthletes.map(athlete => {
-                    const swimCat = getSwimmingCategory(athlete.date_naissance);
+                    const swimCat = getSwimmingCategory(athlete);
                     
                     // Trouver le PB existant sur l'épreuve
                     const pbKey = `${athlete.id}_${selectedEventId}_${bassin}`;

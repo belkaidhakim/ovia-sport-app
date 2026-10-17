@@ -93,7 +93,7 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
   };
   const [formData, setFormData] = useState(initialFormState);
 
-  const category = useMemo(() => getSwimmingCategory(athlete?.date_naissance), [athlete]);
+  const category = useMemo(() => getSwimmingCategory(athlete), [athlete]);
   const currentStyleEvents = useMemo(() => SWIMMING_EVENTS.filter(ev => ev.styleId === selectedStyleId), [selectedStyleId]);
 
   const handleSelectStyle = (styleId) => {

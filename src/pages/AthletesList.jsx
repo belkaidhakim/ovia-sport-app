@@ -26,27 +26,18 @@ const getInitials = (nom = '', prenom = '') => {
   return `${n}${p}` || '?';
 };
 
-const getAgeAndCategory = (dateNaissance) => {
+const getAgeAndCategory = (dateNaissance, sexe = null) => {
   if (!dateNaissance) return { age: null, category: 'N/A', dateStr: '-' };
   const birth = new Date(dateNaissance);
   if (isNaN(birth.getTime())) return { age: null, category: 'N/A', dateStr: '-' };
   
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const m = now.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-
-  let category = 'Senior';
-  if (age < 7) category = 'Baby (U7)';
-  else if (age <= 9) category = 'Poussin (U9)';
-  else if (age <= 11) category = 'Pupille (U11)';
-  else if (age <= 13) category = 'Benjamin (U13)';
-  else if (age <= 15) category = 'Minime (U15)';
-  else if (age <= 17) category = 'Cadet (U17)';
-  else if (age <= 19) category = 'Junior (U20)';
-  else if (age >= 35) category = 'Master (+35)';
-
-  return { age, category, dateStr: birth.toLocaleDateString('fr-FR') };
+  const cat = getSwimmingCategory(dateNaissance, sexe);
+  return { 
+    age: cat.age, 
+    category: cat.label, 
+    fanaCategory: cat.fanaCategory, 
+    dateStr: birth.toLocaleDateString('fr-FR') 
+  };
 };
 
 const getCotisationStatus = (cotisationsArr, cardStatut) => {
@@ -884,8 +875,8 @@ export default function AthletesList() {
                             <td colSpan="7" className="p-8 text-center text-muted">Aucun membre ne correspond à vos critères de recherche.</td>
                           </tr>
                         ) : filteredAthletes.map(athlete => {
-                          const { age, category, dateStr } = getAgeAndCategory(athlete.date_naissance);
-                          const swimCat = getSwimmingCategory(athlete.date_naissance);
+                          const { age, category, dateStr } = getAgeAndCategory(athlete.date_naissance, athlete.sexe);
+                          const swimCat = getSwimmingCategory(athlete);
                           const cotisInfo = getCotisationStatus(athlete.cotisations, athlete.cartes_acces?.statut);
                           const presence = getPresenceGauge(athlete.presences);
                           const smartAccess = getSmartAccess(athlete);
@@ -1103,8 +1094,8 @@ export default function AthletesList() {
                     {filteredAthletes.length === 0 ? (
                       <div className="p-8 text-center text-muted">Aucun membre trouvé.</div>
                     ) : filteredAthletes.map(athlete => {
-                      const { age, dateStr } = getAgeAndCategory(athlete.date_naissance);
-                      const swimCat = getSwimmingCategory(athlete.date_naissance);
+                      const { age, dateStr } = getAgeAndCategory(athlete.date_naissance, athlete.sexe);
+                      const swimCat = getSwimmingCategory(athlete);
                       const cotisInfo = getCotisationStatus(athlete.cotisations, athlete.cartes_acces?.statut);
                       const presence = getPresenceGauge(athlete.presences);
                       const smartAccess = getSmartAccess(athlete);

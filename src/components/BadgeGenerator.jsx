@@ -6,7 +6,7 @@ import { getSwimmingCategory } from '../utils/swimmingCategories';
 export default function BadgeGenerator({ athlete, showEndDate = false }) {
   if (!athlete) return null;
 
-  const category = getSwimmingCategory(athlete.date_naissance);
+  const category = getSwimmingCategory(athlete);
 
   let endDateStr = null;
   if (showEndDate && Array.isArray(athlete.cotisations) && athlete.cotisations.length > 0) {
@@ -76,7 +76,7 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
             <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, letterSpacing: '0.04em', color: '#ffffff', lineHeight: 1.1 }}>
               OVIA SPORT
             </h2>
-            <div style={{ fontSize: '0.65rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.05em' }}>Club Professionnel</div>
+            <div style={{ fontSize: '0.65rem', color: '#93c5fd', fontWeight: 700, letterSpacing: '0.05em' }}>Club Professionnel · Bouira</div>
           </div>
         </div>
         <div style={{ 
@@ -95,7 +95,7 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
           gap: '4px'
         }}>
           <ShieldCheck size={12} />
-          CARTE D'ATHLÈTE
+          CARTE D'ACCÈS · MODÈLE FANA
         </div>
       </div>
       
@@ -135,11 +135,12 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
             {athlete.nom?.toUpperCase()} {athlete.prenom}
           </div>
           
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.4rem' }}>
+          <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
             <div>
               <div style={{ color: '#64748b', fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase' }}>Né(e) le</div>
               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
                 {athlete.date_naissance ? new Date(athlete.date_naissance).toLocaleDateString('fr-FR') : '-'}
+                {athlete.lieu_naissance ? ` (${athlete.lieu_naissance})` : ''}
               </div>
             </div>
             <div>
@@ -152,7 +153,9 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
 
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '2px' }}>
             <div>
-              <div style={{ color: '#64748b', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>Catégorie</div>
+              <div style={{ color: '#64748b', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '2px' }}>
+                Catégorie FANA
+              </div>
               <span style={{ 
                 display: 'inline-block',
                 backgroundColor: category.badgeBg, 
@@ -222,7 +225,7 @@ export default function BadgeGenerator({ athlete, showEndDate = false }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
-          Carte officielle de membre · Ovia Sport
+          Carte officielle de membre · Modèle FANA · Ovia Sport
         </div>
         <div>
           {showEndDate && endDateStr ? (

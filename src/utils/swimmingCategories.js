@@ -6,34 +6,195 @@
 import { calculateAge } from './formatters';
 
 /**
- * Retourne la catégorie officielle de natation et les détails associés
- * @param {string|Date} dateNaissance 
- * @returns {{ code: string, label: string, age: number|null, color: string, badgeBg: string }}
+ * Liste officielle des catégories d'âge FANA (Fédération Algérienne de Natation)
  */
-export const getSwimmingCategory = (dateNaissance) => {
-  const age = calculateAge(dateNaissance);
-  if (age === null) {
-    return { code: 'NA', label: 'Non renseignée', age: null, color: '#94a3b8', badgeBg: 'rgba(148, 163, 184, 0.15)' };
+export const FANA_CATEGORIES = [
+  { code: 'AVE', name: 'Avenirs', ageBracket: '9 ans et moins', label: 'Avenirs (≤ 9 ans)', color: '#38bdf8', badgeBg: 'rgba(56, 189, 248, 0.15)' },
+  { code: 'POU', name: 'Poussins', ageBracket: '10 - 11 ans', label: 'Poussins (10-11 ans)', color: '#818cf8', badgeBg: 'rgba(129, 140, 248, 0.15)' },
+  { code: 'BEN', name: 'Benjamins', ageBracket: '12 - 13 ans', label: 'Benjamins (12-13 ans)', color: '#34d399', badgeBg: 'rgba(52, 211, 153, 0.15)' },
+  { code: 'MIN', name: 'Minimes', ageBracket: '14 - 15 ans', label: 'Minimes (14-15 ans)', color: '#fbbf24', badgeBg: 'rgba(251, 191, 36, 0.15)' },
+  { code: 'CAD', name: 'Cadets', ageBracket: '16 - 17 ans', label: 'Cadets (16-17 ans)', color: '#fb923c', badgeBg: 'rgba(251, 146, 60, 0.15)' },
+  { code: 'JUN', name: 'Juniors', ageBracket: '18 - 19 ans', label: 'Juniors (18-19 ans)', color: '#f43f5e', badgeBg: 'rgba(244, 63, 94, 0.15)' },
+  { code: 'SEN', name: 'Seniors', ageBracket: '20 - 34 ans', label: 'Seniors (20-34 ans)', color: '#a855f7', badgeBg: 'rgba(168, 85, 247, 0.15)' },
+  { code: 'MAS', name: 'Masters', ageBracket: '35 ans et +', label: 'Masters (+35 ans)', color: '#06b6d4', badgeBg: 'rgba(6, 182, 212, 0.15)' },
+];
+
+/**
+ * Retourne la catégorie officielle de natation selon le modèle officiel FANA
+ * (Fédération Algérienne de Natation / World Aquatics)
+ * @param {string|Date|object} dateOrAthlete - Date de naissance ou objet athlète
+ * @param {string} [explicitSexe] - 'M' ou 'F' (optionnel)
+ * @returns {{ code: string, fanaCode: string, label: string, shortLabel: string, fanaCategory: string, ageBracket: string, age: number|null, sportingAge: number|null, color: string, badgeBg: string }}
+ */
+export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
+  let dateNaissance = dateOrAthlete;
+  let sexe = explicitSexe;
+
+  if (dateOrAthlete && typeof dateOrAthlete === 'object' && !(dateOrAthlete instanceof Date)) {
+    dateNaissance = dateOrAthlete.date_naissance;
+    sexe = explicitSexe || dateOrAthlete.sexe;
   }
 
+  if (!dateNaissance) {
+    return { 
+      code: 'NA', 
+      fanaCode: 'NA', 
+      label: 'Non renseignée', 
+      shortLabel: 'N/A', 
+      fanaCategory: 'Non renseignée',
+      ageBracket: '-', 
+      age: null, 
+      sportingAge: null, 
+      color: '#94a3b8', 
+      badgeBg: 'rgba(148, 163, 184, 0.15)' 
+    };
+  }
+
+  const birth = new Date(dateNaissance);
+  if (isNaN(birth.getTime())) {
+    return { 
+      code: 'NA', 
+      fanaCode: 'NA', 
+      label: 'Date invalide', 
+      shortLabel: 'N/A', 
+      fanaCategory: 'Date invalide',
+      ageBracket: '-', 
+      age: null, 
+      sportingAge: null, 
+      color: '#94a3b8', 
+      badgeBg: 'rgba(148, 163, 184, 0.15)' 
+    };
+  }
+
+  const currentYear = new Date().getFullYear();
+  const birthYear = birth.getFullYear();
+  // Millésime fédéral FANA : l'âge au 31 décembre de la saison sportive en cours
+  const sportingAge = currentYear - birthYear;
+  const civilAge = calculateAge(dateNaissance) ?? sportingAge;
+  const age = sportingAge >= 0 ? sportingAge : civilAge;
+
+  const isFemale = typeof sexe === 'string' && (sexe.trim().toUpperCase() === 'F' || sexe.trim().toUpperCase() === 'FEMME' || sexe.trim().toUpperCase() === 'FILLE');
+
   if (age < 7) {
-    return { code: 'U7', label: 'Baby Nat (U7)', age, color: '#ec4899', badgeBg: 'rgba(236, 72, 153, 0.15)' };
+    return { 
+      code: 'AVE', 
+      fanaCode: 'AVE', 
+      label: 'Avenirs (Baby Nat)', 
+      shortLabel: 'Avenirs', 
+      fanaCategory: 'Avenirs',
+      ageBracket: '< 7 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#ec4899', 
+      badgeBg: 'rgba(236, 72, 153, 0.15)' 
+    };
   } else if (age <= 9) {
-    return { code: 'U9', label: 'Poussins / Avenirs (U9)', age, color: '#38bdf8', badgeBg: 'rgba(56, 189, 248, 0.15)' };
+    return { 
+      code: 'AVE', 
+      fanaCode: 'AVE', 
+      label: 'Avenirs (≤ 9 ans)', 
+      shortLabel: 'Avenirs', 
+      fanaCategory: 'Avenirs',
+      ageBracket: '9 ans et -', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#38bdf8', 
+      badgeBg: 'rgba(56, 189, 248, 0.15)' 
+    };
   } else if (age <= 11) {
-    return { code: 'U11', label: 'Pupilles (U11)', age, color: '#818cf8', badgeBg: 'rgba(129, 140, 248, 0.15)' };
+    const name = isFemale ? 'Poussines' : 'Poussins';
+    return { 
+      code: 'POU', 
+      fanaCode: 'POU', 
+      label: `${name} (10-11 ans)`, 
+      shortLabel: name, 
+      fanaCategory: 'Poussins',
+      ageBracket: '10 - 11 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#818cf8', 
+      badgeBg: 'rgba(129, 140, 248, 0.15)' 
+    };
   } else if (age <= 13) {
-    return { code: 'U13', label: 'Benjamins (U13)', age, color: '#34d399', badgeBg: 'rgba(52, 211, 153, 0.15)' };
+    const name = isFemale ? 'Benjamines' : 'Benjamins';
+    return { 
+      code: 'BEN', 
+      fanaCode: 'BEN', 
+      label: `${name} (12-13 ans)`, 
+      shortLabel: name, 
+      fanaCategory: 'Benjamins',
+      ageBracket: '12 - 13 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#34d399', 
+      badgeBg: 'rgba(52, 211, 153, 0.15)' 
+    };
   } else if (age <= 15) {
-    return { code: 'U15', label: 'Minimes (U15)', age, color: '#fbbf24', badgeBg: 'rgba(251, 191, 36, 0.15)' };
+    return { 
+      code: 'MIN', 
+      fanaCode: 'MIN', 
+      label: 'Minimes (14-15 ans)', 
+      shortLabel: 'Minimes', 
+      fanaCategory: 'Minimes',
+      ageBracket: '14 - 15 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#fbbf24', 
+      badgeBg: 'rgba(251, 191, 36, 0.15)' 
+    };
   } else if (age <= 17) {
-    return { code: 'U17', label: 'Cadets (U17)', age, color: '#fb923c', badgeBg: 'rgba(251, 146, 60, 0.15)' };
+    const name = isFemale ? 'Cadettes' : 'Cadets';
+    return { 
+      code: 'CAD', 
+      fanaCode: 'CAD', 
+      label: `${name} (16-17 ans)`, 
+      shortLabel: name, 
+      fanaCategory: 'Cadets',
+      ageBracket: '16 - 17 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#fb923c', 
+      badgeBg: 'rgba(251, 146, 60, 0.15)' 
+    };
   } else if (age <= 19) {
-    return { code: 'U20', label: 'Juniors (U20)', age, color: '#f43f5e', badgeBg: 'rgba(244, 63, 94, 0.15)' };
+    return { 
+      code: 'JUN', 
+      fanaCode: 'JUN', 
+      label: 'Juniors (18-19 ans)', 
+      shortLabel: 'Juniors', 
+      fanaCategory: 'Juniors',
+      ageBracket: '18 - 19 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#f43f5e', 
+      badgeBg: 'rgba(244, 63, 94, 0.15)' 
+    };
   } else if (age < 35) {
-    return { code: 'SEN', label: 'Seniors (Élite)', age, color: '#a855f7', badgeBg: 'rgba(168, 85, 247, 0.15)' };
+    return { 
+      code: 'SEN', 
+      fanaCode: 'SEN', 
+      label: 'Seniors (20-34 ans)', 
+      shortLabel: 'Seniors', 
+      fanaCategory: 'Seniors',
+      ageBracket: '20 - 34 ans', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#a855f7', 
+      badgeBg: 'rgba(168, 85, 247, 0.15)' 
+    };
   } else {
-    return { code: 'MAS', label: `Masters (+${age} ans)`, age, color: '#06b6d4', badgeBg: 'rgba(6, 182, 212, 0.15)' };
+    return { 
+      code: 'MAS', 
+      fanaCode: 'MAS', 
+      label: 'Masters (+35 ans)', 
+      shortLabel: 'Masters', 
+      fanaCategory: 'Masters',
+      ageBracket: '35 ans et +', 
+      age: civilAge, 
+      sportingAge, 
+      color: '#06b6d4', 
+      badgeBg: 'rgba(6, 182, 212, 0.15)' 
+    };
   }
 };
 

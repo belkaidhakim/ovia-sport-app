@@ -99,7 +99,7 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.5);
     doc.setTextColor(52, 211, 153);
-    doc.text('CARTE D\'ACCÈS ATHLÈTE · SAISON 2025/2026', x + 14, y + 10.2);
+    doc.text('CARTE D\'ACCÈS ATHLÈTE · MODÈLE FANA', x + 14, y + 10.2);
 
     // Photo d'identité (ou placeholder)
     const photoX = x + 3.5;
@@ -136,24 +136,32 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(nomComplet, infoX, y + 21);
+    doc.text(nomComplet, infoX, y + 20.5);
 
-    // Catégorie Fédérale Natation (ex: Benjamins U13)
-    const cat = getSwimmingCategory(athlete.date_naissance);
+    // Date et lieu de naissance
+    const birthStr = athlete.date_naissance ? new Date(athlete.date_naissance).toLocaleDateString('fr-FR') : '-';
+    const lieuStr = athlete.lieu_naissance ? ` (${athlete.lieu_naissance})` : '';
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Né(e) le : ${birthStr}${lieuStr}`, infoX, y + 24.5);
+
+    // Catégorie Fédérale Natation FANA
+    const cat = getSwimmingCategory(athlete);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.setTextColor(30, 58, 138); // Bleu foncé
-    doc.text(`Catégorie : ${cat.label}`, infoX, y + 26);
+    doc.setTextColor(30, 58, 138); // Bleu fédéral
+    doc.text(`Catégorie FANA : ${cat.label}`, infoX, y + 28.5);
 
     // Section / Groupe d'entraînement
     const groupeNom = athlete.groupes?.nom || athlete.groupe || 'Section Natation';
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.2);
     doc.setTextColor(71, 85, 105);
-    doc.text(`Groupe : ${groupeNom}`, infoX, y + 30.5);
+    doc.text(`Groupe : ${groupeNom}`, infoX, y + 32.5);
 
     // Validité / Expiration
-    let validiteStr = 'À jour';
+    let validiteStr = 'Valide : Saison 2026/2027';
     if (Array.isArray(athlete.cotisations) && athlete.cotisations.length > 0) {
       const valid = athlete.cotisations.filter(c => c?.periode_couverte_fin && !isNaN(new Date(c.periode_couverte_fin).getTime()));
       if (valid.length > 0) {
@@ -165,7 +173,7 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(5.8);
     doc.setTextColor(16, 185, 129);
-    doc.text(validiteStr, infoX, y + 35);
+    doc.text(validiteStr, infoX, y + 36.5);
 
     // QR Code Vectoriel (Droite)
     const tokenQR = athlete.token_qr || athlete.id || `OVS-${Date.now()}`;
@@ -193,7 +201,7 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(5.2);
     doc.setTextColor(100, 116, 139);
-    doc.text('Présentation obligatoire à chaque séance · Badge strictement personnel', x + cardW / 2, y + cardH - 3, { align: 'center' });
+    doc.text('Carte officielle de membre · Modèle FANA · Ovia Sport', x + cardW / 2, y + cardH - 3, { align: 'center' });
 
     currentCardIndex++;
   }
