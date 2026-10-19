@@ -214,6 +214,10 @@ export default function PendingInscriptions({ embedded = false }) {
     lieu_naissance: '',
     photo: null,
     photoPreview: null,
+    certificat_medical: null,
+    certificat_medical_name: '',
+    extrait_naissance: null,
+    extrait_naissance_name: '',
     sexe: 'Homme',
     nom_parent: '',
     telephone: '',
@@ -232,6 +236,24 @@ export default function PendingInscriptions({ embedded = false }) {
     }
   };
 
+  const handleModalDocUpload = async (e, fieldKey, nameKey, label) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImageFile(file, 1200, 1600, 0.75);
+      if (dataUrl) {
+        setNewInscription(prev => ({
+          ...prev,
+          [fieldKey]: dataUrl,
+          [nameKey]: file.name
+        }));
+        toast.success(`${label} prêt`);
+      }
+    } catch {
+      toast.error(`Erreur chargement ${label}`);
+    }
+  };
+
   const handleAddNewInscription = async (e) => {
     e.preventDefault();
     if (!newInscription.nom.trim() || !newInscription.prenom.trim() || !newInscription.date_naissance || !newInscription.telephone.trim()) {
@@ -247,6 +269,8 @@ export default function PendingInscriptions({ embedded = false }) {
       date_naissance: newInscription.date_naissance,
       lieu_naissance: newInscription.lieu_naissance.trim() || null,
       photo: newInscription.photo || null,
+      certificat_medical: newInscription.certificat_medical || null,
+      extrait_naissance: newInscription.extrait_naissance || null,
       sexe: newInscription.sexe,
       telephone: cleanPhone,
       telephone_parent: cleanPhone,
@@ -265,6 +289,10 @@ export default function PendingInscriptions({ embedded = false }) {
         lieu_naissance: '',
         photo: null,
         photoPreview: null,
+        certificat_medical: null,
+        certificat_medical_name: '',
+        extrait_naissance: null,
+        extrait_naissance_name: '',
         sexe: 'Homme',
         nom_parent: '',
         telephone: '',
@@ -1537,6 +1565,42 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                   <option value="Seniors (18+ ans)">Seniors (18+ ans)</option>
                   <option value="Natation Adulte / Loisir">Natation Adulte / Loisir</option>
                 </select>
+              </div>
+
+              {/* Documents justificatifs (Fiche d'inscription & Extrait de naissance) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Fiche / Certificat</span>
+                    {newInscription.certificat_medical && <span className="text-[10px] text-emerald-400 font-bold">✔ Reçu</span>}
+                  </label>
+                  <label className="cursor-pointer flex items-center justify-center gap-1.5 w-full py-1.5 px-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sky-400 text-xs font-semibold transition truncate">
+                    <Upload size={12} />
+                    <span className="truncate">{newInscription.certificat_medical_name || "Joindre Fiche/Certif"}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={(e) => handleModalDocUpload(e, 'certificat_medical', 'certificat_medical_name', "Fiche / Certificat")}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Extrait de Naissance</span>
+                    {newInscription.extrait_naissance && <span className="text-[10px] text-emerald-400 font-bold">✔ Reçu</span>}
+                  </label>
+                  <label className="cursor-pointer flex items-center justify-center gap-1.5 w-full py-1.5 px-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-emerald-400 text-xs font-semibold transition truncate">
+                    <Upload size={12} />
+                    <span className="truncate">{newInscription.extrait_naissance_name || "Joindre Extrait N°12"}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,image/*"
+                      onChange={(e) => handleModalDocUpload(e, 'extrait_naissance', 'extrait_naissance_name', "Extrait de naissance")}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
 
               <div>

@@ -122,7 +122,8 @@ export default function AthletesList() {
     fetchArchivedAthletes, 
     archiveAthlete, 
     restoreAthlete,
-    bulkToggleAccess
+    bulkToggleAccess,
+    updateSmartAccess
   } = useAthletes();
 
   const { groupes } = useGroupes();
@@ -157,6 +158,25 @@ export default function AthletesList() {
   const [messageBody, setMessageBody] = useState("");
   const [messageTemplate, setMessageTemplate] = useState("horaire");
   const [activeMenuAthleteId, setActiveMenuAthleteId] = useState(null);
+
+  // Modale de changement manuel Smart Access
+  const [smartAccessModalAthlete, setSmartAccessModalAthlete] = useState(null);
+  const [smartAccessTargetAction, setSmartAccessTargetAction] = useState('AUTORISE');
+  const [smartAccessProlongCotis, setSmartAccessProlongCotis] = useState(false);
+  const [smartAccessResetQuota, setSmartAccessResetQuota] = useState(false);
+  const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
+
+  const handleApplySmartAccess = async () => {
+    if (!smartAccessModalAthlete) return;
+    setIsUpdatingAccess(true);
+    await updateSmartAccess(smartAccessModalAthlete.id, smartAccessTargetAction, {
+      addCotisation: smartAccessProlongCotis,
+      resetPresences: smartAccessResetQuota,
+      adjustPresences: true
+    });
+    setIsUpdatingAccess(false);
+    setSmartAccessModalAthlete(null);
+  };
 
   const fileInputRef = useRef(null);
 
@@ -1021,22 +1041,37 @@ export default function AthletesList() {
 
                           {/* 5. Smart Access */}
                           <td className="py-3.5 px-4 align-middle">
-                            {smartAccess.code === 'AUTORISE' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                Accès Autorisé
-                              </span>
-                            ) : smartAccess.code === 'TOLERANCE' ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                {smartAccess.label}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                                {smartAccess.label}
-                              </span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSmartAccessModalAthlete(athlete);
+                                setSmartAccessTargetAction(smartAccess.code === 'AUTORISE' ? 'BLOQUE' : 'AUTORISE');
+                                setSmartAccessProlongCotis(false);
+                                setSmartAccessResetQuota(false);
+                              }}
+                              className="group inline-flex items-center gap-1.5 p-1 -m-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer text-left"
+                              title="Cliquer pour changer le Smart Access de ce membre"
+                            >
+                              {smartAccess.code === 'AUTORISE' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 group-hover:border-emerald-400">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                  Accès Autorisé
+                                  <ChevronDown size={11} className="opacity-50 group-hover:opacity-100 ml-0.5" />
+                                </span>
+                              ) : smartAccess.code === 'TOLERANCE' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 group-hover:border-amber-400">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                  {smartAccess.label}
+                                  <ChevronDown size={11} className="opacity-50 group-hover:opacity-100 ml-0.5" />
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 group-hover:border-rose-400">
+                                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                  {smartAccess.label}
+                                  <ChevronDown size={11} className="opacity-50 group-hover:opacity-100 ml-0.5" />
+                                </span>
+                              )}
+                            </button>
                           </td>
 
                           {/* 6. Actions */}
@@ -1077,6 +1112,19 @@ export default function AthletesList() {
                                     onClick={(e) => e.stopPropagation()}
                                     className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-30 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300"
                                   >
+                                    <button
+                                      onClick={() => {
+                                        setActiveMenuAthleteId(null);
+                                        setSmartAccessModalAthlete(athlete);
+                                        setSmartAccessTargetAction(smartAccess.code === 'AUTORISE' ? 'BLOQUE' : 'AUTORISE');
+                                        setSmartAccessProlongCotis(false);
+                                        setSmartAccessResetQuota(false);
+                                      }}
+                                      className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-sky-50 dark:hover:bg-sky-950/40 text-sky-600 dark:text-sky-400 cursor-pointer"
+                                    >
+                                      <ShieldCheck className="w-3.5 h-3.5" /> Changer Smart Access
+                                    </button>
+
                                     <Link 
                                       to={`/athletes/edit/${athlete.id}`}
                                       className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
@@ -1337,6 +1385,228 @@ export default function AthletesList() {
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
               >
                 Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODALE DE GESTION DU SMART ACCESS */}
+      {smartAccessModalAthlete && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in-95">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white m-0">
+                    Changer Smart Access
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
+                    Contrôle des droits d'accès au bassin & scanner QR
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSmartAccessModalAthlete(null)}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Profil de l'athlète */}
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 mb-5 flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white m-0">
+                  {smartAccessModalAthlete.nom?.toUpperCase()} {smartAccessModalAthlete.prenom}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0 mt-0.5">
+                  Section : {smartAccessModalAthlete.groupes?.nom || smartAccessModalAthlete.groupe || 'Générale'} • {Array.isArray(smartAccessModalAthlete.presences) ? smartAccessModalAthlete.presences.length : 0}/8 séances consommées
+                </p>
+              </div>
+              <div>
+                {(() => {
+                  const sa = getSmartAccess(smartAccessModalAthlete);
+                  return (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
+                      sa.code === 'AUTORISE' 
+                        ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20'
+                        : sa.code === 'TOLERANCE'
+                        ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                        : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                    }`}>
+                      {sa.label}
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Choix des options Smart Access */}
+            <div className="space-y-3 mb-5">
+              {/* Option 1: AUTORISE */}
+              <label 
+                className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition ${
+                  smartAccessTargetAction === 'AUTORISE' 
+                    ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 shadow-xs' 
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="smart_access_action"
+                  value="AUTORISE"
+                  checked={smartAccessTargetAction === 'AUTORISE'}
+                  onChange={() => setSmartAccessTargetAction('AUTORISE')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Autoriser l'Accès (Passage libre)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 m-0">
+                    Active la carte d'accès. Le membre peut scanner son badge QR et entrer immédiatement.
+                  </p>
+
+                  {smartAccessTargetAction === 'AUTORISE' && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-2">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={smartAccessProlongCotis}
+                          onChange={(e) => setSmartAccessProlongCotis(e.target.checked)}
+                          className="rounded"
+                        />
+                        <span>Régulariser / Prolonger la cotisation (30 jours • 3 000 DA)</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={smartAccessResetQuota}
+                          onChange={(e) => setSmartAccessResetQuota(e.target.checked)}
+                          className="rounded"
+                        />
+                        <span>Réinitialiser les séances consommées (0/8)</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              {/* Option 2: TOLERANCE */}
+              <label 
+                className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition ${
+                  smartAccessTargetAction === 'TOLERANCE' 
+                    ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-xs' 
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="smart_access_action"
+                  value="TOLERANCE"
+                  checked={smartAccessTargetAction === 'TOLERANCE'}
+                  onChange={() => setSmartAccessTargetAction('TOLERANCE')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Tolérance / Période d'Essai
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 m-0">
+                    Autorise le passage au scanner avec avertissement jaune (séance d'essai accordée sans cotisation).
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 3: BLOQUE */}
+              <label 
+                className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition ${
+                  smartAccessTargetAction === 'BLOQUE' 
+                    ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/20 shadow-xs' 
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="smart_access_action"
+                  value="BLOQUE"
+                  checked={smartAccessTargetAction === 'BLOQUE'}
+                  onChange={() => setSmartAccessTargetAction('BLOQUE')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Bloquer l'Accès (Suspendre la carte)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 m-0">
+                    Suspend la carte d'accès. Le scanner affichera systématiquement « ACCÈS BLOQUÉ ».
+                  </p>
+                </div>
+              </label>
+
+              {/* Option 4: RESET_QUOTA */}
+              <label 
+                className={`flex items-start gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition ${
+                  smartAccessTargetAction === 'RESET_QUOTA' 
+                    ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 shadow-xs' 
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="smart_access_action"
+                  value="RESET_QUOTA"
+                  checked={smartAccessTargetAction === 'RESET_QUOTA'}
+                  onChange={() => setSmartAccessTargetAction('RESET_QUOTA')}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <RotateCcw size={13} className="text-blue-500" />
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                      Réinitialiser le Quota (Nouveau forfait 8 séances)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 m-0">
+                    Remet les présences à 0 et réactive la carte pour débuter un cycle complet de 8 séances.
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex justify-end items-center gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSmartAccessModalAthlete(null)}
+                disabled={isUpdatingAccess}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleApplySmartAccess}
+                disabled={isUpdatingAccess}
+                className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow-md shadow-sky-600/20 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Check size={14} />
+                {isUpdatingAccess ? "Application..." : "Appliquer la modification"}
               </button>
             </div>
           </div>

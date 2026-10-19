@@ -384,13 +384,33 @@ export default function Scanner() {
             Le quota mensuel de ce membre est atteint. Merci de régulariser la nouvelle cotisation au secrétariat.
           </p>
           
-          <button 
-            className="btn mt-5" 
-            style={{ backgroundColor: 'white', color: '#e11d48', fontWeight: 800, padding: '0.9rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
-            onClick={handleReset}
-          >
-            Scanner Suivant ({autoResetSeconds > 0 ? `${autoResetSeconds}s` : 'Manuel'})
-          </button>
+          <div className="flex flex-wrap gap-3 justify-center mt-5">
+            <button 
+              className="btn" 
+              style={{ backgroundColor: 'white', color: '#e11d48', fontWeight: 800, padding: '0.85rem 2rem', fontSize: '1.05rem', borderRadius: '12px' }} 
+              onClick={handleReset}
+            >
+              Scanner Suivant ({autoResetSeconds > 0 ? `${autoResetSeconds}s` : 'Manuel'})
+            </button>
+            <button 
+              className="btn" 
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', fontWeight: 800, padding: '0.85rem 1.5rem', fontSize: '1rem', borderRadius: '12px' }} 
+              onClick={async () => {
+                try {
+                  toast.loading("Validation d'accès exceptionnelle...", { id: 'renew-scan' });
+                  await supabase.from('cartes_acces').update({ statut: 'ACTIVE' }).eq('athlete_id', athleteData.id);
+                  await supabase.from('presences').insert([{ athlete_id: athleteData.id }]);
+                  if (soundEnabled) soundController.playSuccess();
+                  toast.success("Séance exceptionnelle accordée !", { id: 'renew-scan' });
+                  handleReset();
+                } catch (e) {
+                  toast.error("Erreur: " + e.message, { id: 'renew-scan' });
+                }
+              }}
+            >
+              ⚡ Accorder 1 séance exceptionnelle
+            </button>
+          </div>
         </div>
       );
     }
@@ -571,13 +591,33 @@ export default function Scanner() {
           <BadgeGenerator athlete={athleteData} showEndDate={true} />
         </div>
         
-        <button 
-          className="btn mt-5" 
-          style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, padding: '0.85rem 2.5rem', fontSize: '1.1rem', borderRadius: '12px' }} 
-          onClick={handleReset}
-        >
-          Scanner Suivant
-        </button>
+        <div className="flex flex-wrap gap-3 justify-center mt-5">
+          <button 
+            className="btn" 
+            style={{ backgroundColor: 'white', color: '#dc2626', fontWeight: 800, padding: '0.85rem 2rem', fontSize: '1.05rem', borderRadius: '12px' }} 
+            onClick={handleReset}
+          >
+            Scanner Suivant
+          </button>
+          <button 
+            className="btn" 
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', fontWeight: 800, padding: '0.85rem 1.5rem', fontSize: '1rem', borderRadius: '12px' }} 
+            onClick={async () => {
+              try {
+                toast.loading("Déblocage d'accès en cours...", { id: 'unblock-scan' });
+                await supabase.from('cartes_acces').update({ statut: 'ACTIVE' }).eq('athlete_id', athleteData.id);
+                await supabase.from('presences').insert([{ athlete_id: athleteData.id }]);
+                if (soundEnabled) soundController.playSuccess();
+                toast.success("Passage exceptionnel accordé !", { id: 'unblock-scan' });
+                handleReset();
+              } catch (e) {
+                toast.error("Erreur déblocage: " + e.message, { id: 'unblock-scan' });
+              }
+            }}
+          >
+            ⚡ Forcer le passage exceptionnel
+          </button>
+        </div>
       </div>
     );
   };

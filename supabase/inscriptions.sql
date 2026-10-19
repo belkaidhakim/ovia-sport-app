@@ -93,3 +93,4 @@ ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS groupe_id UUID REFERENCES p
 -- 7. Extension de la table inscriptions (compatibilité formulaire étendu)
 ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS nom_parent TEXT;
 ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS categorie TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS extrait_naissance TEXT;

@@ -9,6 +9,7 @@ import {
   Lock, 
   Phone, 
   FileText,
+  FileCheck,
   Camera,
   Upload,
   Trash2,
@@ -31,6 +32,10 @@ export default function PublicRegistration() {
   const [lieuNaissance, setLieuNaissance] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [certificatMedical, setCertificatMedical] = useState(null);
+  const [certificatMedicalName, setCertificatMedicalName] = useState("");
+  const [extraitNaissance, setExtraitNaissance] = useState(null);
+  const [extraitNaissanceName, setExtraitNaissanceName] = useState("");
   const [sexe, setSexe] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
@@ -86,6 +91,32 @@ export default function PublicRegistration() {
     setPhotoPreview(null);
   };
 
+  // Traitement et compression des documents officiels (Fiche / Certificat & Extrait de Naissance)
+  const handleDocumentUpload = async (e, setDoc, setDocName, label) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(`${label} : le fichier ne doit pas dépasser 10 Mo.`);
+      return;
+    }
+    const toastId = toast.loading(`Optimisation de ${label}...`);
+    try {
+      const dataUrl = await compressImageFile(file, 1200, 1600, 0.75);
+      if (dataUrl) {
+        setDoc(dataUrl);
+        setDocName(file.name);
+        toast.dismiss(toastId);
+        toast.success(`${label} prêt !`);
+      } else {
+        throw new Error("Format non reconnu");
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      console.error(err);
+      toast.error(`Erreur de lecture pour ${label}`);
+    }
+  };
+
   // Téléchargement du formulaire vierge à faire signer par le médecin
   const handleDownloadBlankForm = async () => {
     try {
@@ -125,6 +156,8 @@ export default function PublicRegistration() {
       date_naissance: birthDate,
       lieu_naissance: lieuNaissance.trim() || null,
       photo: photo || null,
+      certificat_medical: certificatMedical || null,
+      extrait_naissance: extraitNaissance || null,
       sexe: sexe === "F" ? "Femme" : "Homme",
       telephone: cleanPhone,
       telephone_parent: cleanPhone,
@@ -148,7 +181,12 @@ export default function PublicRegistration() {
 
       if (error && (error.code === "PGRST204" || error.message?.includes("column") || error.message?.includes("schema cache"))) {
         console.warn("Colonnes étendues non trouvées dans inscriptions, repli sur le schéma standard:", error.message);
-        const retry = await supabase.from("inscriptions").insert([basePayload]);
+        const retryPayload = { ...basePayload };
+        let retry = await supabase.from("inscriptions").insert([retryPayload]);
+        if (retry.error && retry.error.message?.includes("extrait_naissance")) {
+          delete retryPayload.extrait_naissance;
+          retry = await supabase.from("inscriptions").insert([retryPayload]);
+        }
         error = retry.error;
       }
 
@@ -219,6 +257,10 @@ export default function PublicRegistration() {
     setLieuNaissance("");
     setPhoto(null);
     setPhotoPreview(null);
+    setCertificatMedical(null);
+    setCertificatMedicalName("");
+    setExtraitNaissance(null);
+    setExtraitNaissanceName("");
     setSexe("");
     setParentName("");
     setParentPhone("");
@@ -578,6 +620,127 @@ export default function PublicRegistration() {
                 placeholder="0550 12 34 56"
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* SECTION 3 : PIÈCES JOINTES & DOCUMENTS OFFICIELS */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm">
+          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
+            <span className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
+              3
+            </span>
+            <div>
+              <h2 className="text-lg font-bold">Pièces Justificatives Numériques</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">Fiche d'inscription signée par le médecin et extrait de naissance</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* 1. Fiche d'inscription / Certificat médical */}
+            <div className="p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <FileText size={16} className="text-sky-500" />
+                    Fiche d'Inscription / Certificat Médical
+                  </span>
+                  {certificatMedical && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      ✔ Fichier joint
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
+                  Fiche médicale officielle complétée et visée par le médecin traitant (PDF ou photo lisible).
+                </p>
+              </div>
+
+              {certificatMedical ? (
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <FileText size={18} className="text-sky-500 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate" title={certificatMedicalName}>
+                      {certificatMedicalName || "Fiche_Medicale.pdf"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCertificatMedical(null);
+                      setCertificatMedicalName("");
+                    }}
+                    className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                    title="Supprimer ce document"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ) : (
+                <label className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-sky-600 dark:text-sky-400 text-xs font-bold shadow-xs transition">
+                  <Upload size={14} />
+                  <span>Téléverser la Fiche / Certificat</span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => handleDocumentUpload(e, setCertificatMedical, setCertificatMedicalName, "Fiche d'inscription")}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* 2. Extrait de naissance */}
+            <div className="p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <FileCheck size={16} className="text-emerald-500" />
+                    Extrait de Naissance (Acte N°12)
+                  </span>
+                  {extraitNaissance && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                      ✔ Fichier joint
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
+                  Extrait d'acte de naissance officiel ou copie lisible du livret de famille (PDF ou photo).
+                </p>
+              </div>
+
+              {extraitNaissance ? (
+                <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <FileCheck size={18} className="text-emerald-500 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate" title={extraitNaissanceName}>
+                      {extraitNaissanceName || "Extrait_Naissance.pdf"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExtraitNaissance(null);
+                      setExtraitNaissanceName("");
+                    }}
+                    className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                    title="Supprimer ce document"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ) : (
+                <label className="cursor-pointer flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 text-xs font-bold shadow-xs transition">
+                  <Upload size={14} />
+                  <span>Téléverser l'Extrait de Naissance</span>
+                  <input
+                    type="file"
+                    accept=".pdf,image/*"
+                    onChange={(e) => handleDocumentUpload(e, setExtraitNaissance, setExtraitNaissanceName, "Extrait de naissance")}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
           </div>
         </div>

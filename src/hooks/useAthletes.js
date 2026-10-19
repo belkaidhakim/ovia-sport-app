@@ -296,6 +296,134 @@ export function useAthletes() {
     }
   };
 
+  const updateSmartAccess = async (athleteId, action, options = {}) => {
+    const toastId = toast.loading("Mise à jour du Smart Access...");
+    try {
+      if (action === 'BLOQUE') {
+        const { error } = await supabase
+          .from('cartes_acces')
+          .update({ statut: 'SUSPENDUE' })
+          .eq('athlete_id', athleteId);
+        if (error) throw error;
+
+        setAthletes(prev => prev.map(a => {
+          if (a.id === athleteId) {
+            return {
+              ...a,
+              cartes_acces: Array.isArray(a.cartes_acces) 
+                ? [{ ...a.cartes_acces[0], statut: 'SUSPENDUE' }] 
+                : { ...a.cartes_acces, statut: 'SUSPENDUE' }
+            };
+          }
+          return a;
+        }));
+        toast.dismiss(toastId);
+        toast.success("Smart Access : Accès bloqué (Carte suspendue)");
+        return true;
+      }
+
+      if (action === 'AUTORISE') {
+        await supabase
+          .from('cartes_acces')
+          .update({ statut: 'ACTIVE', date_dernier_paiement: new Date().toISOString() })
+          .eq('athlete_id', athleteId);
+
+        let newCotis = null;
+        if (options.addCotisation) {
+          const now = new Date();
+          const fin = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+          const { data: cotisData } = await supabase
+            .from('cotisations')
+            .insert([{
+              athlete_id: athleteId,
+              montant_paye: Number(options.montant) || 3000,
+              mode_paiement: options.modePaiement || 'Espèces',
+              date_paiement: now.toISOString().split('T')[0],
+              periode_couverte_fin: fin
+            }])
+            .select()
+            .maybeSingle();
+          newCotis = cotisData;
+        }
+
+        if (options.resetPresences) {
+          await supabase.from('presences').delete().eq('athlete_id', athleteId);
+        }
+
+        setAthletes(prev => prev.map(a => {
+          if (a.id === athleteId) {
+            const updatedCotis = newCotis ? [newCotis, ...(a.cotisations || [])] : (a.cotisations || []);
+            const updatedPresences = options.resetPresences ? [] : (a.presences || []);
+            return {
+              ...a,
+              cartes_acces: Array.isArray(a.cartes_acces) 
+                ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }] 
+                : { ...a.cartes_acces, statut: 'ACTIVE' },
+              cotisations: updatedCotis,
+              presences: updatedPresences
+            };
+          }
+          return a;
+        }));
+
+        toast.dismiss(toastId);
+        toast.success("Smart Access : Accès autorisé");
+        return true;
+      }
+
+      if (action === 'RESET_QUOTA') {
+        const { error } = await supabase.from('presences').delete().eq('athlete_id', athleteId);
+        if (error) throw error;
+
+        await supabase
+          .from('cartes_acces')
+          .update({ statut: 'ACTIVE' })
+          .eq('athlete_id', athleteId);
+
+        setAthletes(prev => prev.map(a => {
+          if (a.id === athleteId) {
+            return {
+              ...a,
+              presences: [],
+              cartes_acces: Array.isArray(a.cartes_acces) 
+                ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }] 
+                : { ...a.cartes_acces, statut: 'ACTIVE' }
+            };
+          }
+          return a;
+        }));
+        toast.dismiss(toastId);
+        toast.success("Quota réinitialisé : 8/8 séances disponibles !");
+        return true;
+      }
+
+      if (action === 'TOLERANCE') {
+        await supabase
+          .from('cartes_acces')
+          .update({ statut: 'ACTIVE' })
+          .eq('athlete_id', athleteId);
+
+        if (options.adjustPresences) {
+          await supabase.from('presences').delete().eq('athlete_id', athleteId);
+          await supabase.from('presences').insert([{ athlete_id: athleteId }]);
+        }
+
+        await fetchAthletes();
+        toast.dismiss(toastId);
+        toast.success("Smart Access : Tolérance d'essai accordée");
+        return true;
+      }
+
+      toast.dismiss(toastId);
+      return false;
+    } catch (err) {
+      toast.dismiss(toastId);
+      console.error("Erreur updateSmartAccess:", err);
+      toast.error("Erreur Smart Access : " + err.message);
+      return false;
+    }
+  };
+
   return {
     athletes,
     archivedAthletes,
@@ -311,6 +439,7 @@ export function useAthletes() {
     deleteAthletePermanently,
     bulkDeleteAthletesPermanently,
     toggleAccessStatus,
+    updateSmartAccess,
     bulkUpdateGroup,
     bulkToggleAccess,
     bulkValidateCotisation
