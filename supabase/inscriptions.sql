@@ -89,3 +89,7 @@ CREATE POLICY "Admins can update club_settings"
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS contact_urgence TEXT;
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS observations_medicales TEXT;
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS groupe_id UUID REFERENCES public.groupes(id) ON DELETE SET NULL;
+
+-- 7. Extension de la table inscriptions (compatibilité formulaire étendu)
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS nom_parent TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS categorie TEXT;

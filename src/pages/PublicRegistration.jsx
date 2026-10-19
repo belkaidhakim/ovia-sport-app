@@ -82,7 +82,8 @@ export default function PublicRegistration() {
     const cat = categoryInfo?.category || "Seniors (18+ ans)";
     const cleanPhone = parentPhone.replace(/\s+/g, "");
 
-    const payload = {
+    // Schéma de base universel compatible Supabase
+    const basePayload = {
       numero_dossier: numDossier,
       nom: nom.trim().toUpperCase(),
       prenom: prenom.trim(),
@@ -90,41 +91,63 @@ export default function PublicRegistration() {
       sexe: sexe === "F" ? "Femme" : "Homme",
       telephone: cleanPhone,
       telephone_parent: cleanPhone,
-      nom_parent: parentName.trim(),
-      observations_medicales: `Tuteur légal: ${parentName.trim()}`,
+      observations_medicales: parentName.trim() ? `Tuteur légal: ${parentName.trim()}` : null,
+      groupe_nom: cat,
       statut: "EN_ATTENTE",
-      categorie: cat,
       date_demande: new Date().toISOString(),
       reglement_accepte: true,
       consentement_loi_18_07: true
     };
 
-    // 1. Sauvegarde locale de secours (garantit la visibilité immédiate dans l'admin)
+    // 1. Sauvegarde Supabase avec stratégie résiliente (auto-repli si colonnes étendues non présentes)
+    try {
+      let payloadToTry = {
+        ...basePayload,
+        nom_parent: parentName.trim(),
+        categorie: cat
+      };
+
+      let { error } = await supabase.from("inscriptions").insert([payloadToTry]);
+
+      if (error && (error.code === "PGRST204" || error.message?.includes("column") || error.message?.includes("schema cache"))) {
+        console.warn("Colonnes étendues non trouvées dans inscriptions, repli sur le schéma standard:", error.message);
+        const retry = await supabase.from("inscriptions").insert([basePayload]);
+        error = retry.error;
+      }
+
+      if (error) {
+        console.error("Erreur critique Supabase insert:", error);
+        toast.error("Erreur lors de l'enregistrement sur le serveur : " + (error.message || "Vérifiez votre connexion"));
+        setSubmitting(false);
+        return;
+      }
+    } catch (err) {
+      console.error("Exception insertion Supabase:", err);
+      toast.error("Erreur de connexion au serveur : " + (err.message || "Erreur inconnue"));
+      setSubmitting(false);
+      return;
+    }
+
+    // 2. Sauvegarde locale de secours
     try {
       const stored = localStorage.getItem("local_inscriptions_backup");
       const list = stored ? JSON.parse(stored) : [];
       list.unshift({ 
-        ...payload, 
+        ...basePayload, 
+        nom_parent: parentName.trim(),
+        categorie: cat,
         id: `local-${Date.now()}` 
       });
       localStorage.setItem("local_inscriptions_backup", JSON.stringify(list));
       window.dispatchEvent(new Event("storage"));
+      window.dispatchEvent(new CustomEvent("scb_inscriptions_updated"));
     } catch (err) {
       console.warn("Erreur sauvegarde locale:", err);
     }
 
-    // 2. Sauvegarde Supabase
-    try {
-      const { error } = await supabase.from("inscriptions").insert([payload]);
-      if (error) {
-        console.warn("Supabase insert note:", error);
-      }
-    } catch (err) {
-      console.warn("Supabase exception:", err);
-    }
-
     setSubmitting(false);
     setSubmitted(true);
+    toast.success("Demande d'inscription enregistrée avec succès !");
   };
 
   const handleDownloadPdf = async () => {

@@ -28,7 +28,9 @@ import {
   Lock,
   Unlock,
   RefreshCw,
-  Download
+  Download,
+  Plus,
+  UserPlus
 } from 'lucide-react';
 import { Card, Button, Skeleton } from '../components/ui';
 import { useInscriptions } from '../hooks/useInscriptions';
@@ -45,6 +47,7 @@ export default function PendingInscriptions({ embedded = false }) {
     loading, 
     isTableMissing,
     fetchInscriptions, 
+    ajouterInscription,
     validerInscription, 
     validerMultipleInscriptions,
     rejeterInscription, 
@@ -197,6 +200,57 @@ export default function PendingInscriptions({ embedded = false }) {
     }
   };
 
+  // Modale d'ajout manuel d'une inscription
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newInscription, setNewInscription] = useState({
+    nom: '',
+    prenom: '',
+    date_naissance: '',
+    sexe: 'Homme',
+    nom_parent: '',
+    telephone: '',
+    groupe_nom: 'École / Éveil Aquatique',
+    observations_medicales: ''
+  });
+
+  const handleAddNewInscription = async (e) => {
+    e.preventDefault();
+    if (!newInscription.nom.trim() || !newInscription.prenom.trim() || !newInscription.date_naissance || !newInscription.telephone.trim()) {
+      toast.error('Veuillez renseigner tous les champs obligatoires (*)');
+      return;
+    }
+
+    setIsAdding(true);
+    const cleanPhone = newInscription.telephone.replace(/\s+/g, '');
+    const res = await ajouterInscription({
+      nom: newInscription.nom.trim().toUpperCase(),
+      prenom: newInscription.prenom.trim(),
+      date_naissance: newInscription.date_naissance,
+      sexe: newInscription.sexe,
+      telephone: cleanPhone,
+      telephone_parent: cleanPhone,
+      nom_parent: newInscription.nom_parent.trim(),
+      groupe_nom: newInscription.groupe_nom,
+      observations_medicales: newInscription.observations_medicales.trim() || (newInscription.nom_parent ? `Tuteur légal: ${newInscription.nom_parent.trim()}` : null)
+    });
+
+    setIsAdding(false);
+    if (res.success) {
+      setIsAddModalOpen(false);
+      setNewInscription({
+        nom: '',
+        prenom: '',
+        date_naissance: '',
+        sexe: 'Homme',
+        nom_parent: '',
+        telephone: '',
+        groupe_nom: 'École / Éveil Aquatique',
+        observations_medicales: ''
+      });
+    }
+  };
+
   const copyPublicLink = () => {
     const publicUrl = `${window.location.origin}/inscription`;
     navigator.clipboard.writeText(publicUrl);
@@ -215,8 +269,10 @@ CREATE TABLE IF NOT EXISTS public.inscriptions (
   adresse TEXT,
   telephone TEXT NOT NULL,
   telephone_parent TEXT,
+  nom_parent TEXT,
   groupe_id UUID REFERENCES public.groupes(id) ON DELETE SET NULL,
   groupe_nom TEXT,
+  categorie TEXT,
   observations_medicales TEXT,
   photo TEXT,
   certificat_medical TEXT,
@@ -230,6 +286,10 @@ CREATE TABLE IF NOT EXISTS public.inscriptions (
   date_traitement TIMESTAMPTZ,
   traite_par UUID REFERENCES auth.users(id)
 );
+
+-- Colonnes de compatibilité étendue
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS nom_parent TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS categorie TEXT;
 
 ALTER TABLE public.inscriptions ENABLE ROW LEVEL SECURITY;
 
@@ -270,6 +330,27 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
 
           <Button 
             variant="secondary" 
+            onClick={() => {
+              fetchInscriptions();
+              toast.success("Demandes actualisées !");
+            }}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            title="Rafraîchir les demandes depuis la base de données"
+          >
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Actualiser
+          </Button>
+
+          <Button 
+            variant="primary" 
+            onClick={() => setIsAddModalOpen(true)}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#2563eb', borderColor: '#2563eb' }}
+            title="Saisir manuellement une nouvelle demande d'inscription"
+          >
+            <Plus size={15} /> Nouvelle Demande
+          </Button>
+
+          <Button 
+            variant="secondary" 
             onClick={async () => {
               try {
                 toast.loading("Génération du formulaire officiel vierge...", { id: 'blank-pdf-admin' });
@@ -293,7 +374,7 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
             <Copy size={15} /> Copier le lien
           </Button>
           <Button 
-            variant="primary" 
+            variant="secondary" 
             onClick={() => window.open('/inscription', '_blank')}
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             title="Ouvrir la page publique d'inscription dans un nouvel onglet"
@@ -1210,6 +1291,181 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                 <Printer size={16} /> Imprimer le Badge
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* MODALE DE CRÉATION MANUELLE D'UNE DEMANDE */}
+      {isAddModalOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          zIndex: 125,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <Card className="p-6 w-full max-w-lg shadow-2xl border border-slate-700/60" style={{ maxHeight: '92vh', overflowY: 'auto' }}>
+            <div className="flex justify-between items-center pb-3 mb-4 border-b border-slate-700/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
+                  <UserPlus size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white m-0">Nouvelle Demande d'Inscription</h3>
+                  <p className="text-xs text-slate-400 m-0">Saisie manuelle pour un athlète ou adhésion sur place</p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-white transition p-1 rounded-lg"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddNewInscription} className="space-y-4 text-left">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Nom <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="EX: BENALI"
+                    value={newInscription.nom}
+                    onChange={(e) => setNewInscription({ ...newInscription, nom: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs uppercase focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Prénom <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Anis"
+                    value={newInscription.prenom}
+                    onChange={(e) => setNewInscription({ ...newInscription, prenom: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs capitalize focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Date de Naissance <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newInscription.date_naissance}
+                    onChange={(e) => setNewInscription({ ...newInscription, date_naissance: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Sexe <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={newInscription.sexe}
+                    onChange={(e) => setNewInscription({ ...newInscription, sexe: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Homme">Masculin (Homme)</option>
+                    <option value="Femme">Féminin (Femme)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Nom du Tuteur / Parent
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: BENALI Mohamed"
+                    value={newInscription.nom_parent}
+                    onChange={(e) => setNewInscription({ ...newInscription, nom_parent: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Téléphone (WhatsApp) <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="0555123456"
+                    value={newInscription.telephone}
+                    onChange={(e) => setNewInscription({ ...newInscription, telephone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Section / Catégorie souhaitée
+                </label>
+                <select
+                  value={newInscription.groupe_nom}
+                  onChange={(e) => setNewInscription({ ...newInscription, groupe_nom: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="École / Éveil Aquatique">École / Éveil Aquatique</option>
+                  <option value="Poussins (9-10 ans)">Poussins (9-10 ans)</option>
+                  <option value="Benjamins (11-12 ans)">Benjamins (11-12 ans)</option>
+                  <option value="Minimes (13-14 ans)">Minimes (13-14 ans)</option>
+                  <option value="Cadets (15-16 ans)">Cadets (15-16 ans)</option>
+                  <option value="Juniors (17-18 ans)">Juniors (17-18 ans)</option>
+                  <option value="Seniors (18+ ans)">Seniors (18+ ans)</option>
+                  <option value="Natation Adulte / Loisir">Natation Adulte / Loisir</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Observations / Remarques Médicales
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="Informations médicales, asthme, allergies, etc."
+                  value={newInscription.observations_medicales}
+                  onChange={(e) => setNewInscription({ ...newInscription, observations_medicales: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-700/50">
+                <Button 
+                  type="button" 
+                  variant="secondary" 
+                  onClick={() => setIsAddModalOpen(false)}
+                  disabled={isAdding}
+                >
+                  Annuler
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="primary" 
+                  disabled={isAdding}
+                  style={{ backgroundColor: '#2563eb', borderColor: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <CheckCircle size={15} /> {isAdding ? "Enregistrement..." : "Créer le dossier"}
+                </Button>
+              </div>
+            </form>
           </Card>
         </div>
       )}
