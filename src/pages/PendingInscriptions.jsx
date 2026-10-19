@@ -30,7 +30,9 @@ import {
   RefreshCw,
   Download,
   Plus,
-  UserPlus
+  UserPlus,
+  Upload,
+  MapPin
 } from 'lucide-react';
 import { Card, Button, Skeleton } from '../components/ui';
 import { useInscriptions } from '../hooks/useInscriptions';
@@ -38,6 +40,7 @@ import { useRegistrationSettings } from '../hooks/useRegistrationSettings';
 import { useClubPricing } from '../hooks/useClubPricing';
 import { calculateAge, formatWhatsAppPhone, formatName, formatDA } from '../utils/formatters';
 import { generateOfficialRegistrationFormPdf } from '../utils/registrationFormPdfGenerator';
+import { compressImageFile } from '../utils/imageCompressor';
 import BadgeGenerator from '../components/BadgeGenerator';
 import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
 
@@ -51,7 +54,8 @@ export default function PendingInscriptions({ embedded = false }) {
     validerInscription, 
     validerMultipleInscriptions,
     rejeterInscription, 
-    deleteInscription 
+    deleteInscription,
+    deleteMultipleInscriptions
   } = useInscriptions();
 
   const { isOpen: isRegistrationOpen, toggleInscriptions } = useRegistrationSettings();
@@ -207,12 +211,26 @@ export default function PendingInscriptions({ embedded = false }) {
     nom: '',
     prenom: '',
     date_naissance: '',
+    lieu_naissance: '',
+    photo: null,
+    photoPreview: null,
     sexe: 'Homme',
     nom_parent: '',
     telephone: '',
     groupe_nom: 'École / Éveil Aquatique',
     observations_medicales: ''
   });
+
+  const handleModalPhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImageFile(file, 360, 460, 0.78);
+      setNewInscription(prev => ({ ...prev, photo: compressed, photoPreview: compressed }));
+    } catch {
+      toast.error("Erreur chargement photo");
+    }
+  };
 
   const handleAddNewInscription = async (e) => {
     e.preventDefault();
@@ -227,6 +245,8 @@ export default function PendingInscriptions({ embedded = false }) {
       nom: newInscription.nom.trim().toUpperCase(),
       prenom: newInscription.prenom.trim(),
       date_naissance: newInscription.date_naissance,
+      lieu_naissance: newInscription.lieu_naissance.trim() || null,
+      photo: newInscription.photo || null,
       sexe: newInscription.sexe,
       telephone: cleanPhone,
       telephone_parent: cleanPhone,
@@ -242,12 +262,27 @@ export default function PendingInscriptions({ embedded = false }) {
         nom: '',
         prenom: '',
         date_naissance: '',
+        lieu_naissance: '',
+        photo: null,
+        photoPreview: null,
         sexe: 'Homme',
         nom_parent: '',
         telephone: '',
         groupe_nom: 'École / Éveil Aquatique',
         observations_medicales: ''
       });
+    }
+  };
+
+  // Suppression groupée de dossiers
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) {
+      toast.error('Aucun dossier sélectionné.');
+      return;
+    }
+    if (window.confirm(`Confirmez-vous la suppression définitive de ${selectedIds.length} dossier(s) d'inscription ? Cette action est irréversible.`)) {
+      await deleteMultipleInscriptions(selectedIds);
+      setSelectedIds([]);
     }
   };
 
@@ -482,6 +517,14 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
               style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <XCircle size={15} /> Rejeter
+            </Button>
+            <Button 
+              variant="secondary" 
+              onClick={handleBulkDelete}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              title="Supprimer définitivement la sélection"
+            >
+              <Trash2 size={15} /> Supprimer ({selectedIds.length})
             </Button>
             <Button 
               variant="secondary" 
@@ -1140,6 +1183,19 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                 >
                   <Printer size={15} /> Fiche Officielle (PDF)
                 </Button>
+                <Button 
+                  variant="secondary"
+                  style={{ color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  onClick={async () => {
+                    if (window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement le dossier de ${selectedInscription.nom?.toUpperCase()} ${selectedInscription.prenom} ?`)) {
+                      await deleteInscription(selectedInscription.id);
+                      setSelectedInscription(null);
+                    }
+                  }}
+                  title="Supprimer définitivement ce dossier"
+                >
+                  <Trash2 size={15} /> Supprimer le dossier
+                </Button>
               </div>
 
               {selectedInscription.statut === 'EN_ATTENTE' && (
@@ -1373,6 +1429,21 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Lieu de Naissance
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Alger, Oran, Sétif..."
+                    value={newInscription.lieu_naissance}
+                    onChange={(e) => setNewInscription({ ...newInscription, lieu_naissance: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 items-center">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
                     Sexe <span className="text-rose-400">*</span>
                   </label>
                   <select
@@ -1383,6 +1454,40 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                     <option value="Homme">Masculin (Homme)</option>
                     <option value="Femme">Féminin (Femme)</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Photo d'identité (Badge QR)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {newInscription.photoPreview ? (
+                      <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-blue-500 flex-shrink-0">
+                        <img src={newInscription.photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setNewInscription(prev => ({ ...prev, photo: null, photoPreview: null }))}
+                          className="absolute inset-0 bg-black/60 text-rose-400 opacity-0 hover:opacity-100 flex items-center justify-center transition"
+                          title="Supprimer la photo"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-slate-800 border border-dashed border-slate-600 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <Camera size={15} />
+                      </div>
+                    )}
+                    <label className="cursor-pointer text-[11px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-700 transition flex items-center gap-1.5 flex-1 justify-center truncate">
+                      <Upload size={13} />
+                      <span>{newInscription.photoPreview ? "Changer" : "Photo"}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleModalPhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
 

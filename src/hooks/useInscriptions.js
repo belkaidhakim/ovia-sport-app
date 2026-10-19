@@ -320,22 +320,70 @@ export function useInscriptions() {
     }
   };
 
-  // Supprimer une inscription
+  // Supprimer une inscription (avec nettoyage Supabase et local)
   const deleteInscription = async (inscriptionId) => {
     try {
-      const { error } = await supabase
-        .from('inscriptions')
-        .delete()
-        .eq('id', inscriptionId);
+      if (!inscriptionId.toString().startsWith('local-')) {
+        const { error } = await supabase
+          .from('inscriptions')
+          .delete()
+          .eq('id', inscriptionId);
+        if (error) console.warn('Supabase delete warning:', error);
+      }
 
-      if (error) throw error;
+      // Supprimer du stockage local si présent
+      try {
+        const stored = localStorage.getItem('local_inscriptions_backup');
+        if (stored) {
+          const list = JSON.parse(stored).filter(item => item.id !== inscriptionId);
+          localStorage.setItem('local_inscriptions_backup', JSON.stringify(list));
+        }
+      } catch (e) {
+        console.warn('Local delete error:', e);
+      }
 
       setInscriptions(prev => prev.filter(item => item.id !== inscriptionId));
-      toast.success('Dossier supprimé.');
+      toast.success('Dossier d\'inscription supprimé.');
       return true;
     } catch (err) {
       console.error('Erreur suppression:', err);
       toast.error('Erreur lors de la suppression');
+      return false;
+    }
+  };
+
+  // Supprimer plusieurs inscriptions en lot
+  const deleteMultipleInscriptions = async (inscriptionIds) => {
+    if (!inscriptionIds || inscriptionIds.length === 0) return false;
+    const toastId = toast.loading(`Suppression de ${inscriptionIds.length} dossier(s)...`);
+    try {
+      const remoteIds = inscriptionIds.filter(id => !id.toString().startsWith('local-'));
+      if (remoteIds.length > 0) {
+        const { error } = await supabase
+          .from('inscriptions')
+          .delete()
+          .in('id', remoteIds);
+        if (error) console.warn('Supabase bulk delete warning:', error);
+      }
+
+      try {
+        const stored = localStorage.getItem('local_inscriptions_backup');
+        if (stored) {
+          const list = JSON.parse(stored).filter(item => !inscriptionIds.includes(item.id));
+          localStorage.setItem('local_inscriptions_backup', JSON.stringify(list));
+        }
+      } catch (e) {
+        console.warn('Local bulk delete error:', e);
+      }
+
+      setInscriptions(prev => prev.filter(item => !inscriptionIds.includes(item.id)));
+      toast.dismiss(toastId);
+      toast.success(`${inscriptionIds.length} dossier(s) supprimé(s) avec succès.`);
+      return true;
+    } catch (err) {
+      toast.dismiss(toastId);
+      console.error('Erreur bulk delete:', err);
+      toast.error('Erreur lors de la suppression groupée');
       return false;
     }
   };
@@ -353,6 +401,8 @@ export function useInscriptions() {
         nom: (payload.nom || '').trim().toUpperCase(),
         prenom: (payload.prenom || '').trim(),
         date_naissance: payload.date_naissance || null,
+        lieu_naissance: payload.lieu_naissance || null,
+        photo: payload.photo || null,
         sexe: payload.sexe || 'Homme',
         telephone: cleanPhone,
         telephone_parent: parentPhone,
@@ -414,6 +464,7 @@ export function useInscriptions() {
     validerInscription,
     validerMultipleInscriptions,
     rejeterInscription,
-    deleteInscription
+    deleteInscription,
+    deleteMultipleInscriptions
   };
 }

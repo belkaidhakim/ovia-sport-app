@@ -8,12 +8,17 @@ import {
   Download, 
   Lock, 
   Phone, 
-  FileText
+  FileText,
+  Camera,
+  Upload,
+  Trash2,
+  MapPin
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useRegistrationSettings } from "../hooks/useRegistrationSettings";
 import { useTheme } from "../contexts/ThemeContext";
 import { generateOfficialRegistrationFormPdf } from "../utils/registrationFormPdfGenerator";
+import { compressImageFile } from "../utils/imageCompressor";
 import toast from "react-hot-toast";
 
 export default function PublicRegistration() {
@@ -23,6 +28,9 @@ export default function PublicRegistration() {
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [lieuNaissance, setLieuNaissance] = useState("");
+  const [photo, setPhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [sexe, setSexe] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
@@ -50,6 +58,33 @@ export default function PublicRegistration() {
   };
 
   const categoryInfo = getCategoryInfo(birthDate);
+
+  // Traitement et compression de la photo
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("La photo ne doit pas dépasser 8 Mo.");
+      return;
+    }
+    const toastId = toast.loading("Optimisation de la photo...");
+    try {
+      const compressed = await compressImageFile(file, 400, 500, 0.78);
+      setPhoto(compressed);
+      setPhotoPreview(compressed);
+      toast.dismiss(toastId);
+      toast.success("Photo d'identité chargée !");
+    } catch (err) {
+      toast.dismiss(toastId);
+      console.error(err);
+      toast.error("Erreur lors de la préparation de la photo.");
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhoto(null);
+    setPhotoPreview(null);
+  };
 
   // Téléchargement du formulaire vierge à faire signer par le médecin
   const handleDownloadBlankForm = async () => {
@@ -88,6 +123,8 @@ export default function PublicRegistration() {
       nom: nom.trim().toUpperCase(),
       prenom: prenom.trim(),
       date_naissance: birthDate,
+      lieu_naissance: lieuNaissance.trim() || null,
+      photo: photo || null,
       sexe: sexe === "F" ? "Femme" : "Homme",
       telephone: cleanPhone,
       telephone_parent: cleanPhone,
@@ -157,12 +194,15 @@ export default function PublicRegistration() {
           nom: nom.trim().toUpperCase(),
           prenom: prenom.trim(),
           date_naissance: birthDate,
+          lieu_naissance: lieuNaissance.trim(),
+          photo: photo,
           sexe: sexe === "F" ? "Femme" : "Homme",
           telephone: parentPhone,
           telephone_parent: parentPhone,
           observations_medicales: `Tuteur légal: ${parentName.trim()}`
         },
         numeroDossier: dossierNumber || `OVS-${Date.now().toString().slice(-6)}`,
+        photoBase64: photo,
         selectedGroupeNom: categoryInfo?.category || "Natation"
       });
       toast.success("Fiche officielle PDF téléchargée !");
@@ -176,6 +216,9 @@ export default function PublicRegistration() {
     setNom("");
     setPrenom("");
     setBirthDate("");
+    setLieuNaissance("");
+    setPhoto(null);
+    setPhotoPreview(null);
     setSexe("");
     setParentName("");
     setParentPhone("");
@@ -406,6 +449,19 @@ export default function PublicRegistration() {
             </div>
 
             <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
+                <MapPin size={13} className="text-sky-500" /> Lieu de Naissance
+              </label>
+              <input
+                type="text"
+                value={lieuNaissance}
+                onChange={(e) => setLieuNaissance(e.target.value)}
+                placeholder="Ex: Alger, Oran, Blida..."
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+              />
+            </div>
+
+            <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Sexe <span className="text-rose-500">*</span>
               </label>
@@ -416,9 +472,55 @@ export default function PublicRegistration() {
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
               >
                 <option value="">Sélectionner</option>
-                <option value="M">Masculin</option>
-                <option value="F">Féminin</option>
+                <option value="M">Masculin (Homme)</option>
+                <option value="F">Féminin (Femme)</option>
               </select>
+            </div>
+
+            {/* Photo d'identité de l'Athlète */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Photo d'Identité de l'Athlète (Optionnelle)
+              </label>
+              <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-700">
+                <div className="relative w-20 h-24 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0 border border-slate-300 dark:border-slate-600 shadow-sm">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Aperçu identité" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-8 h-8 text-slate-400" />
+                  )}
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
+                    {photoPreview ? "Photo chargée avec succès !" : "Ajouter une photo d'identité"}
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
+                    Format portrait JPEG ou PNG, max 8 Mo. Utilisée pour le badge officiel du club.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl cursor-pointer transition shadow-sm">
+                      <Upload size={14} />
+                      {photoPreview ? "Remplacer la photo" : "Télécharger une photo"}
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handlePhotoUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+                    {photoPreview && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-semibold rounded-xl transition cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Affichage dynamique de la catégorie détectée */}
