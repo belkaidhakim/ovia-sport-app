@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Upload, Download, Link2, Plus, Printer, Mail,
-  ExternalLink, ShieldCheck 
+  ExternalLink, ShieldCheck, ChevronLeft, ChevronRight,
+  ChevronsLeft, ChevronsRight, Trash2, RotateCcw, X
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import BadgeGenerator from '../components/BadgeGenerator';
 import AthletePerformancesModal from '../components/AthletePerformancesModal';
+import ConfirmModal from '../components/ConfirmModal';
 import { detectSiblingGroups } from '../utils/swimmingCategories';
 import { getCotisationStatus, getSmartAccess } from '../utils/athleteHelpers';
 import { generateBadgeSheetPDF } from '../utils/badgeSheetPdfGenerator';
@@ -54,12 +56,16 @@ export default function AthletesList() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Filtres
-  const [search, setSearch] = useState('');
+  // Filtres (avec prise en charge du paramètre URL ?search=...)
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [groupFilter, setGroupFilter] = useState('');
   const [cotisationFilter, setCotisationFilter] = useState('');
   const [accessFilter, setAccessFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Sélections & Actions groupées
   const [selectedAthletes, setSelectedAthletes] = useState([]);
@@ -67,11 +73,13 @@ export default function AthletesList() {
   const [showBulkCotisModal, setShowBulkCotisModal] = useState(false);
   const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
 
-  // Modales
+  // Modales & Confirmations
   const [selectedAthleteForBadge, setSelectedAthleteForBadge] = useState(null);
   const [performanceAthlete, setPerformanceAthlete] = useState(null);
   const [activeMenuAthleteId, setActiveMenuAthleteId] = useState(null);
   const [smartAccessModalAthlete, setSmartAccessModalAthlete] = useState(null);
+  const [athleteToArchive, setAthleteToArchive] = useState(null);
+  const [athleteToRestore, setAthleteToRestore] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -89,7 +97,17 @@ export default function AthletesList() {
     } else {
       setActiveTab('tous');
     }
+
+    const searchQuery = searchParams.get('search');
+    if (searchQuery !== null) {
+      setSearch(searchQuery);
+    }
   }, [searchParams, fetchArchivedAthletes]);
+
+  // Réinitialiser la pagination lors d'un changement de filtre
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, groupFilter, accessFilter, cotisationFilter, genderFilter]);
 
   // Récupération du compteur d'inscriptions en attente
   useEffect(() => {
@@ -204,20 +222,32 @@ export default function AthletesList() {
           }
 
           try {
-            const { error } = await supabase
+            const { data: newAthlete, error } = await supabase
               .from('athletes')
               .insert([{
-                nom: row.nom,
-                prenom: row.prenom,
+                nom: row.nom.trim().toUpperCase(),
+                prenom: row.prenom.trim().charAt(0).toUpperCase() + row.prenom.trim().slice(1),
                 sexe: row.sexe || null,
                 groupe: row.groupe || null,
                 telephone: row.telephone || null,
                 date_naissance: date_naissance,
                 lieu_naissance: (row.lieu_naissance || row['Lieu de Naissance'] || row['lieu_de_naissance'] || row['Lieu'] || row['lieu'] || '').trim() || null,
-                token_qr
-              }]);
+                token_qr,
+                est_actif: true
+              }])
+              .select()
+              .single();
               
-            if (!error) importedCount++;
+            if (!error && newAthlete?.id) {
+              importedCount++;
+              try {
+                await supabase.from('cartes_acces').insert([{
+                  athlete_id: newAthlete.id,
+                  statut: 'ACTIVE',
+                  date_emission: new Date().toISOString()
+                }]);
+              } catch (_) {}
+            }
           } catch (err) {
             console.error("Erreur import", err);
           }
@@ -313,6 +343,18 @@ export default function AthletesList() {
     });
   }, [athletes, search, groupFilter, accessFilter, cotisationFilter, genderFilter]);
 
+  // Pagination & Découpage
+  const totalPages = itemsPerPage === -1 ? 1 : Math.max(1, Math.ceil(filteredAthletes.length / itemsPerPage));
+  
+  const paginatedAthletes = useMemo(() => {
+    if (itemsPerPage === -1) return filteredAthletes;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredAthletes.slice(start, start + itemsPerPage);
+  }, [filteredAthletes, currentPage, itemsPerPage]);
+
+  const startIndex = filteredAthletes.length === 0 ? 0 : itemsPerPage === -1 ? 1 : (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = itemsPerPage === -1 ? filteredAthletes.length : Math.min(filteredAthletes.length, currentPage * itemsPerPage);
+
   // Statistiques KPI Directeur Sportif
   const totalActifs = athletes.length;
   const payeCount = athletes.filter(a => getCotisationStatus(a.cotisations, a.cartes_acces?.statut).type === 'paid').length;
@@ -322,12 +364,12 @@ export default function AthletesList() {
   const medicalCount = athletes.filter(a => a.certificat_medical_valide).length;
   const medicalPercent = totalActifs > 0 ? Math.round((medicalCount / totalActifs) * 100) : 0;
 
-  // Gestion de la sélection par case à cocher
+  // Gestion de la sélection par case à cocher (sur la page courante)
   const toggleSelectAll = () => {
-    if (selectedAthletes.length === filteredAthletes.length) {
+    if (selectedAthletes.length === paginatedAthletes.length && paginatedAthletes.length > 0) {
       setSelectedAthletes([]);
     } else {
-      setSelectedAthletes(filteredAthletes.map(a => a.id));
+      setSelectedAthletes(paginatedAthletes.map(a => a.id));
     }
   };
 
@@ -575,7 +617,7 @@ export default function AthletesList() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <button
-                            onClick={() => restoreAthlete(arch.id)}
+                            onClick={() => setAthleteToRestore(arch)}
                             className="px-2.5 py-1 text-xs font-bold rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
                           >
                             Réactiver le membre
@@ -659,7 +701,7 @@ export default function AthletesList() {
                     <th className="py-3.5 pl-4 pr-2 w-10">
                       <input 
                         type="checkbox" 
-                        checked={selectedAthletes.length > 0 && selectedAthletes.length === filteredAthletes.length}
+                        checked={paginatedAthletes.length > 0 && selectedAthletes.length === paginatedAthletes.length}
                         onChange={toggleSelectAll}
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" 
                       />
@@ -686,7 +728,7 @@ export default function AthletesList() {
                       </td>
                     </tr>
                   ) : (
-                    filteredAthletes.map((athlete) => (
+                    paginatedAthletes.map((athlete) => (
                       <AthleteTableRow
                         key={athlete.id}
                         athlete={athlete}
@@ -699,11 +741,7 @@ export default function AthletesList() {
                         onOpenBadge={(a) => setSelectedAthleteForBadge(a)}
                         activeMenuId={activeMenuAthleteId}
                         setActiveMenuId={setActiveMenuAthleteId}
-                        onArchive={(a) => {
-                          if (window.confirm(`Confirmer l'archivage de ${a.nom} ${a.prenom} ?`)) {
-                            archiveAthlete(a.id);
-                          }
-                        }}
+                        onArchive={(a) => setAthleteToArchive(a)}
                         onDownloadPdfForm={handleDownloadPdfForm}
                       />
                     ))
@@ -711,6 +749,74 @@ export default function AthletesList() {
                 </tbody>
               </table>
             </div>
+
+            {/* Barre de pagination professionnelle */}
+            {filteredAthletes.length > 0 && (
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/20 text-xs text-slate-500 dark:text-slate-400">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>Affichage</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer"
+                  >
+                    <option value={15}>15 par page</option>
+                    <option value={25}>25 par page</option>
+                    <option value={50}>50 par page</option>
+                    <option value={100}>100 par page</option>
+                    <option value={-1}>Tous ({filteredAthletes.length})</option>
+                  </select>
+                  <span>
+                    • <strong className="text-slate-700 dark:text-slate-200">{startIndex}</strong> à <strong className="text-slate-700 dark:text-slate-200">{endIndex}</strong> sur <strong className="text-slate-700 dark:text-slate-200">{filteredAthletes.length}</strong> membre{filteredAthletes.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+
+                {itemsPerPage !== -1 && totalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
+                      title="Première page"
+                    >
+                      <ChevronsLeft className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
+                      title="Page précédente"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                    </button>
+
+                    <span className="px-3 py-1 font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      Page {currentPage} / {totalPages}
+                    </span>
+
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
+                      title="Page suivante"
+                    >
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer disabled:cursor-not-allowed text-slate-700 dark:text-slate-300"
+                      title="Dernière page"
+                    >
+                      <ChevronsRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -722,13 +828,14 @@ export default function AthletesList() {
 
       {/* MODALE BADGE INDIVIDUEL */}
       {selectedAthleteForBadge && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full relative shadow-2xl">
             <button 
               onClick={() => setSelectedAthleteForBadge(null)} 
-              className="absolute top-4 right-4 text-slate-400 hover:text-white text-xl cursor-pointer"
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              aria-label="Fermer"
             >
-              &times;
+              <X className="w-5 h-5" />
             </button>
             <h2 className="text-lg font-bold text-white mb-4 text-center">Badge d'Accès Officiel</h2>
             <BadgeGenerator athlete={selectedAthleteForBadge} />
@@ -792,6 +899,44 @@ export default function AthletesList() {
         athlete={smartAccessModalAthlete}
         onClose={() => setSmartAccessModalAthlete(null)}
         onApply={updateSmartAccess}
+      />
+
+      {/* MODALE DE CONFIRMATION D'ARCHIVAGE */}
+      <ConfirmModal
+        isOpen={Boolean(athleteToArchive)}
+        title="Archiver ce membre"
+        message={`Êtes-vous sûr de vouloir archiver ${athleteToArchive?.nom} ${athleteToArchive?.prenom} ? Il n'apparaîtra plus dans les listes actives mais restera conservé dans l'onglet Archives.`}
+        confirmText="Archiver le membre"
+        cancelText="Annuler"
+        confirmVariant="danger"
+        icon={Trash2}
+        onConfirm={async () => {
+          if (athleteToArchive) {
+            await archiveAthlete(athleteToArchive.id);
+            setAthleteToArchive(null);
+          }
+        }}
+        onCancel={() => setAthleteToArchive(null)}
+      />
+
+      {/* MODALE DE CONFIRMATION DE RESTAURATION */}
+      <ConfirmModal
+        isOpen={Boolean(athleteToRestore)}
+        title="Réactiver ce membre"
+        message={`Confirmer la réactivation de ${athleteToRestore?.nom} ${athleteToRestore?.prenom} dans l'annuaire actif ? Son accès au club sera rétabli.`}
+        confirmText="Réactiver le membre"
+        cancelText="Annuler"
+        confirmVariant="primary"
+        icon={RotateCcw}
+        onConfirm={async () => {
+          if (athleteToRestore) {
+            await restoreAthlete(athleteToRestore.id);
+            setAthleteToRestore(null);
+            fetchAthletes();
+            fetchArchivedAthletes();
+          }
+        }}
+        onCancel={() => setAthleteToRestore(null)}
       />
 
     </div>

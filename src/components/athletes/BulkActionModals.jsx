@@ -93,7 +93,21 @@ export function BulkCotisationModal({ isOpen, onClose, selectedAthletes, onCompl
       }));
       const { error } = await supabase.from('cotisations').insert(records);
       if (error) throw error;
-      toast.success(`Cotisations validées pour ${selectedAthletes.length} membres !`);
+
+      // Réactivation automatique des cartes d'accès
+      try {
+        await supabase
+          .from('cartes_acces')
+          .update({
+            statut: 'ACTIVE',
+            date_dernier_paiement: now.toISOString()
+          })
+          .in('athlete_id', selectedAthletes);
+      } catch (cardErr) {
+        console.warn('Erreur mise à jour cartes_acces:', cardErr);
+      }
+
+      toast.success(`Cotisations validées et accès réactivés pour ${selectedAthletes.length} membres !`);
       onComplete();
       onClose();
     } catch (e) {
