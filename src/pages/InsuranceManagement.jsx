@@ -3,40 +3,34 @@ import {
   ShieldCheck, 
   ShieldAlert, 
   Shield, 
-  Plus, 
   Search, 
-  Filter, 
   Download, 
   FileText, 
   Users, 
   MessageSquare, 
-  Calendar, 
   Edit, 
   Trash2, 
   CheckCircle, 
+  CheckCircle2,
   AlertTriangle, 
   Sparkles, 
   Copy, 
   CheckSquare, 
   Square, 
-  ExternalLink,
-  Phone,
-  RefreshCw,
-  X,
-  UserPlus,
-  UserMinus,
-  UserCheck,
-  Check,
-  Building2,
-  History,
-  Send,
-  Award,
-  Clock
+  RefreshCw, 
+  X, 
+  UserPlus, 
+  UserMinus, 
+  Building2, 
+  History, 
+  Send, 
+  Award, 
+  Clock 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
-import { Card, StatCard, Button, Badge, Skeleton } from '../components/ui';
+import { Card, StatCard, Button, Skeleton } from '../components/ui';
 import { supabase } from '../supabaseClient';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
@@ -51,11 +45,11 @@ import {
   generateAttestationAssurancePdf,
   generateBordereauFederalFanPdf
 } from '../utils/insurancePdfGenerator';
-import { formatDA, formatWhatsAppPhone } from '../utils/formatters';
 import InsuranceWhatsAppModal from '../components/InsuranceWhatsAppModal';
 import InsuranceOcrModal from '../components/InsuranceOcrModal';
 import InsurancePartnersModal from '../components/InsurancePartnersModal';
-import InsuranceAuditModal, { logInsuranceAction } from '../components/InsuranceAuditModal';
+import InsuranceAuditModal from '../components/InsuranceAuditModal';
+import { logInsuranceAction } from '../utils/insuranceAudit';
 
 export default function InsuranceManagement() {
   const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
@@ -68,7 +62,6 @@ export default function InsuranceManagement() {
     batchSouscrire, 
     deleteAssurance,
     batchDeleteAssurances,
-    removeAthleteFromInsurance,
     quickInsureAthlete,
     getAthleteAssurance,
     sqlSetupScript,
@@ -141,7 +134,6 @@ export default function InsuranceManagement() {
   const [showSingleModal, setShowSingleModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [showAddAthletesModal, setShowAddAthletesModal] = useState(false);
-  const [showSqlModal, setShowSqlModal] = useState(false);
   const [editingAssurance, setEditingAssurance] = useState(null);
   const [targetAthlete, setTargetAthlete] = useState(null);
 
@@ -599,6 +591,7 @@ export default function InsuranceManagement() {
       setShowBordereauModal(false);
       setSelectedAthleteIds([]);
     } catch (err) {
+      console.error('Erreur bordereau assurance:', err);
       toast.error('Erreur lors de la génération du bordereau PDF', { id: toastId });
     }
   };
@@ -674,6 +667,7 @@ export default function InsuranceManagement() {
 
       toast.success(`Bordereau Officiel FAN téléchargé (${listToExport.length} athlètes) !`, { id: toastId });
     } catch (err) {
+      console.error('Erreur bordereau fédéral FAN:', err);
       toast.error('Erreur lors de la génération du bordereau fédéral', { id: toastId });
     }
   };

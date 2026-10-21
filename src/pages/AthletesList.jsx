@@ -2,11 +2,11 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Search, Upload, Download, Link2, ShieldCheck, Plus, Users, 
   CreditCard, Zap, Timer, MoreVertical, CheckCircle2, Clock, 
-  AlertCircle, Phone, QrCode, Archive, UserCheck, ExternalLink,
-  Edit, Printer, Trash2, Mail, MessageSquare, Send, CheckSquare,
-  Check, Ban, RotateCcw, X, FileText, Sparkles, ChevronDown
+  Phone, QrCode, ExternalLink,
+  Edit, Printer, Trash2, Mail, MessageSquare,
+  Check, RotateCcw, X, FileText, ChevronDown
 } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import BadgeGenerator from '../components/BadgeGenerator';
 import AthletePerformancesModal from '../components/AthletePerformancesModal';
@@ -109,7 +109,6 @@ const getSmartAccess = (athlete) => {
 };
 
 export default function AthletesList() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Données de base
@@ -122,7 +121,6 @@ export default function AthletesList() {
     fetchArchivedAthletes, 
     archiveAthlete, 
     restoreAthlete,
-    bulkToggleAccess,
     updateSmartAccess
   } = useAthletes();
 
@@ -153,10 +151,6 @@ export default function AthletesList() {
   // Modales
   const [selectedAthlete, setSelectedAthlete] = useState(null);
   const [performanceAthlete, setPerformanceAthlete] = useState(null);
-  const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
-  const [messageSubject, setMessageSubject] = useState("Ovia Sport - Information");
-  const [messageBody, setMessageBody] = useState("");
-  const [messageTemplate, setMessageTemplate] = useState("horaire");
   const [activeMenuAthleteId, setActiveMenuAthleteId] = useState(null);
 
   // Modale de changement manuel Smart Access
@@ -352,6 +346,7 @@ export default function AthletesList() {
       toast.success(newStatus ? "Certificat médical validé !" : "Certificat médical marqué comme manquant.");
       fetchAthletes();
     } catch (err) {
+      console.error('Erreur certificat médical:', err);
       toast.error("Erreur mise à jour certificat");
     }
   };

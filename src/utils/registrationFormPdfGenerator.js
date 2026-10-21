@@ -1,6 +1,5 @@
 import jsPDF from 'jspdf';
 import { loadClubLogoBase64 } from './pdfHelpers';
-import { formatDA } from './formatters';
 
 /**
  * Génère le Formulaire Officiel d'Inscription Tout-en-Un d'Ovia Sport
@@ -26,8 +25,8 @@ export async function generateOfficialRegistrationFormPdf({
   numeroDossier = null,
   photoBase64 = null,
   isBlank = false,
-  fraisInscription = 1000,
-  cotisationAdhesion = 2000,
+  _fraisInscription = 1000,
+  _cotisationAdhesion = 2000,
   selectedGroupeNom = null
 } = {}) {
   try {
@@ -38,7 +37,6 @@ export async function generateOfficialRegistrationFormPdf({
       format: 'a4'
     });
 
-    const totalAdhesion = Number(fraisInscription || 0) + Number(cotisationAdhesion || 0);
     const dateStr = new Date().toLocaleDateString('fr-FR');
     const dossierNumber = isBlank 
       ? 'DOSSIER VIERGE' 

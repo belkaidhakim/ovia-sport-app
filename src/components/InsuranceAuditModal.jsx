@@ -2,76 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   History, 
   X, 
-  ShieldCheck, 
-  Trash2, 
-  Search, 
-  UserCheck, 
-  Send, 
-  FileText, 
-  Clock,
-  Filter
+  Clock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const INITIAL_LOGS = [
-  {
-    id: 'log-1',
-    date: new Date(Date.now() - 3600000 * 2).toISOString(),
-    athleteNom: 'BOUKIR SAMIR',
-    action: 'SOUSCRIPTION',
-    actionLabel: 'Nouvelle souscription collective SAA',
-    operateur: 'Administrateur (Direction)',
-    compagnie: 'SAA Assurances',
-    details: 'Police POL-COLL-2026/01 · Prime 1 200 DA'
-  },
-  {
-    id: 'log-2',
-    date: new Date(Date.now() - 3600000 * 5).toISOString(),
-    athleteNom: 'GUETTAF NOUR',
-    action: 'RELANCE_WHATSAPP',
-    actionLabel: 'Envoi rappel WhatsApp tuteur',
-    operateur: 'Secrétariat Général',
-    compagnie: '-',
-    details: 'Modèle Rappel Début de Saison envoyé au 0661 13 83 78'
-  },
-  {
-    id: 'log-3',
-    date: new Date(Date.now() - 3600000 * 24).toISOString(),
-    athleteNom: 'BOUALEM SOFIANE',
-    action: 'EXPORT_BORDEREAU',
-    actionLabel: 'Génération Bordereau Officiel FAN',
-    operateur: 'Direction Sportive',
-    compagnie: 'SAA Assurances',
-    details: 'Bordereau collectif de 14 athlètes transmis à la DJS'
-  },
-  {
-    id: 'log-4',
-    date: new Date(Date.now() - 3600000 * 48).toISOString(),
-    athleteNom: 'MECHERAOUI LINA',
-    action: 'MODIFICATION',
-    actionLabel: 'Prolongation de couverture',
-    operateur: 'Administrateur (Direction)',
-    compagnie: 'CAAT Assurances',
-    details: 'Prolongation validité jusqu\'au 31/08/2027'
-  }
-];
-
-export function logInsuranceAction(entry) {
-  try {
-    const existing = localStorage.getItem('ovia_insurance_audit_log');
-    const logs = existing ? JSON.parse(existing) : INITIAL_LOGS;
-    const newEntry = {
-      id: `log-${Date.now()}`,
-      date: new Date().toISOString(),
-      operateur: 'Administrateur',
-      ...entry
-    };
-    logs.unshift(newEntry);
-    localStorage.setItem('ovia_insurance_audit_log', JSON.stringify(logs.slice(0, 100)));
-  } catch (err) {
-    console.warn('Audit log write error:', err);
-  }
-}
+import { INITIAL_LOGS } from '../utils/insuranceAudit';
 
 export default function InsuranceAuditModal({ isOpen, onClose }) {
   const [logs, setLogs] = useState([]);

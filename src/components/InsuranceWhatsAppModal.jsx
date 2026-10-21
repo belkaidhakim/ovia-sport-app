@@ -4,16 +4,9 @@ import {
   Phone, 
   Send, 
   X, 
-  CheckCircle2, 
-  Clock, 
-  AlertTriangle, 
-  Sparkles, 
-  Copy, 
-  ExternalLink,
-  Users,
-  ShieldAlert
+  Copy 
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { formatWhatsAppPhone } from '../utils/formatters';
 

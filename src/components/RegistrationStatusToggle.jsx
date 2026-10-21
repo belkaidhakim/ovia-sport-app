@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Unlock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Lock, Unlock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRegistrationSettings } from '../hooks/useRegistrationSettings';
 

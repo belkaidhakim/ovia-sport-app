@@ -39,7 +39,6 @@ export const generateBadgeSheetPDF = async (athletesList = [], filename = 'Planc
 
   for (let i = 0; i < athletesList.length; i++) {
     const athlete = athletesList[i];
-    const pageIndex = Math.floor(currentCardIndex / (cols * rows));
     const posOnPage = currentCardIndex % (cols * rows);
 
     if (posOnPage === 0 && currentCardIndex > 0) {

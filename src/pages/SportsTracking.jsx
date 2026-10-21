@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Timer, Trophy, Users, Award, Plus, CheckCircle2, ChevronRight, 
-  Calendar, Waves, Download, Search, Edit, ArrowUpRight, Sparkles, Filter, Check
+  Timer, Trophy, Users, Award, CheckCircle2, Waves, Search, ArrowUpRight
 } from 'lucide-react';
 import { Card, Button, Badge, Skeleton } from '../components/ui';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
-import { SWIMMING_EVENTS, SWIMMING_STYLES, getSwimmingCategory } from '../utils/swimmingCategories';
+import { SWIMMING_EVENTS, getSwimmingCategory } from '../utils/swimmingCategories';
 import AthletePerformancesModal from '../components/AthletePerformancesModal';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
@@ -166,8 +165,6 @@ export default function SportsTracking() {
       toast.error("Erreur lors de la mise à jour du groupe");
     }
   };
-
-  const selectedEvent = SWIMMING_EVENTS.find(e => e.id === selectedEventId);
 
   return (
     <div>

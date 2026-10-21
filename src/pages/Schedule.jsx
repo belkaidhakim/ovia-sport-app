@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useSchedule } from '../hooks/useSchedule';
 import { useGroupes } from '../hooks/useGroupes';
-import { useTheme } from '../contexts/ThemeContext';
 import { 
-  Calendar as CalendarIcon, Plus, Clock, Users, User, MapPin, 
-  MoreVertical, Edit2, Trash2, X
+  Calendar as CalendarIcon, Plus, Clock, User, MapPin, 
+  Edit2, Trash2, X
 } from 'lucide-react';
-import { Button, Card } from '../components/ui';
-import toast from 'react-hot-toast';
+import { Button } from '../components/ui';
 
 const DAYS = [
   { id: 0, label: 'Dimanche', short: 'Dim' },
@@ -22,8 +20,6 @@ const DAYS = [
 export default function Schedule() {
   const { schedule, addSession, editSession, deleteSession } = useSchedule();
   const { groupes } = useGroupes();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);

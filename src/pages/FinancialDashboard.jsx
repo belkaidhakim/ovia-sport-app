@@ -2,15 +2,15 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';
-import { TrendingUp, Search, Download, AlertTriangle, FileText, Edit, TrendingDown, DollarSign, Trash2, Eye, Printer, X, Settings, Sliders, Coins, Sparkles, CheckCircle2, Users, MessageCircle, FileOutput } from 'lucide-react';
+import { TrendingUp, Search, Download, AlertTriangle, Edit, TrendingDown, Trash2, X, Settings, Coins, CheckCircle2, MessageCircle, FileOutput } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, PieChart, Pie, Cell } from 'recharts';
 import { z } from 'zod';
 import { useCotisations } from '../hooks/useCotisations';
 import { useDepenses } from '../hooks/useDepenses';
 import { useClubPricing } from '../hooks/useClubPricing';
 import { useAuth } from '../contexts/AuthContext';
-import { Card, Button, Skeleton, Badge } from '../components/ui';
-import { formatDA, formatDZ, formatName, formatWhatsAppPhone } from '../utils/formatters';
+import { Card, Button, Badge } from '../components/ui';
+import { formatDA, formatName, formatWhatsAppPhone } from '../utils/formatters';
 import { loadClubLogoBase64, generateMonthlyReportPDF } from '../utils/pdfHelpers';
 import { detectSiblingGroups } from '../utils/swimmingCategories';
 import { useTheme } from '../contexts/ThemeContext';
@@ -35,13 +35,13 @@ export default function FinancialDashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const { cotisations, loading: cotisLoading, fetchCotisations, deleteCotisation, addCotisation } = useCotisations();
-  const { depenses, loading: depensesLoading, fetchDepenses, deleteDepense, addDepense } = useDepenses();
+  const { cotisations, loading: _cotisLoading, fetchCotisations, deleteCotisation, addCotisation } = useCotisations();
+  const { depenses, loading: _depensesLoading, fetchDepenses, deleteDepense, addDepense } = useDepenses();
   const { user } = useAuth();
   const { fraisInscription, cotisationAdhesion, totalAdhesion, updatePricing } = useClubPricing();
   
   const [athletes, setAthletes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   const fetchAthletes = useCallback(async () => {
     try {
@@ -372,7 +372,7 @@ export default function FinancialDashboard() {
     const toastId = toast.loading('Préparation du reçu...');
     try {
       let logoBase64 = null;
-      try { logoBase64 = await loadClubLogoBase64(); } catch(e){}
+      try { logoBase64 = await loadClubLogoBase64(); } catch {}
       
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const receiptNumber = `OVS-REC-${cotisation.id ? cotisation.id.substring(0, 8).toUpperCase() : Date.now().toString().slice(-6)}`;
@@ -453,6 +453,10 @@ export default function FinancialDashboard() {
           <Button variant="secondary" onClick={() => setShowPricingModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Paramètres des tarifs">
             <Settings size={16} /> Tarifs
           </Button>
+          {/* Bouton Exporter CSV */}
+          <Button variant="secondary" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Exporter la liste actuelle en fichier CSV / Excel">
+            <Download size={16} /> Exporter CSV
+          </Button>
           {/* Phase 5 : Bouton Clôture Mensuelle */}
           <Button variant="secondary" onClick={handleMonthlyReport} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <FileOutput size={16} /> Clôturer le mois (PDF)
@@ -485,6 +489,13 @@ export default function FinancialDashboard() {
             <option value="all">Toutes les années</option>
             {[2023, 2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
+          {activeTab === 'revenus' && (
+            <select className="form-select w-auto" value={filterRevenueType} onChange={(e) => setFilterRevenueType(e.target.value)}>
+              <option value="all">Tous types d'encaissement</option>
+              <option value="inscriptions">Inscriptions uniquement</option>
+              <option value="cotisations">Cotisations uniquement</option>
+            </select>
+          )}
         </div>
       </Card>
 

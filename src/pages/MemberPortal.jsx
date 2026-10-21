@@ -2,23 +2,19 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
-import jsPDF from 'jspdf';
 import { 
   LogOut, CreditCard, CheckCircle2, AlertTriangle, 
-  User, Shield, ShieldCheck, ChevronRight, Phone, Calendar, Megaphone,
-  TrendingUp, Timer, Award, FileText, Globe, Waves, Download, 
-  Maximize2, Copy, Check, Clock, MapPin, Sparkles, RefreshCw, X,
-  ArrowRight, ExternalLink, Info, Flame
+  User, Shield, ShieldCheck, Phone, Calendar, Megaphone,
+  TrendingUp, Timer, Award, FileText, Waves, Download, 
+  Maximize2, Copy, Check, Clock, Sparkles, RefreshCw, X,
+  ArrowRight, Info, Flame
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { 
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid 
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
-import { SWIMMING_EVENTS, getSwimmingCategory } from '../utils/swimmingCategories';
-import { formatDA, formatName, formatWhatsAppPhone } from '../utils/formatters';
-import { loadClubLogoBase64 } from '../utils/pdfHelpers';
-import { generateBadgeSheetPDF } from '../utils/badgeSheetPdfGenerator';
+import { getSwimmingCategory } from '../utils/swimmingCategories';
+import { formatDA } from '../utils/formatters';
 
 const translations = {
   fr: {
@@ -282,7 +278,7 @@ export default function MemberPortal() {
         const parsed = JSON.parse(localSwim);
         if (Array.isArray(parsed)) setPerformances(parsed);
       }
-    } catch (e) {
+    } catch {
       setPerformances([]);
     }
   };

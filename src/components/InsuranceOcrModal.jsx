@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import { 
   UploadCloud, 
-  FileText, 
   CheckCircle2, 
   Sparkles, 
   X, 
   ShieldCheck, 
-  Calendar, 
-  Building2, 
-  Hash, 
-  RefreshCw,
-  UserCheck
+  RefreshCw 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { COMPAGNIES_ASSURANCE, TYPES_COUVERTURE } from '../hooks/useAssurances';
+import { COMPAGNIES_ASSURANCE } from '../hooks/useAssurances';
 
 export default function InsuranceOcrModal({ 
   isOpen, 
@@ -23,7 +18,6 @@ export default function InsuranceOcrModal({
   onApplyAssurance 
 }) {
   const [file, setFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
 

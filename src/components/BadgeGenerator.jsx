@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { User, ShieldCheck, Waves } from 'lucide-react';
+import { User, Waves } from 'lucide-react';
 import { getSwimmingCategory } from '../utils/swimmingCategories';
 
 export default function BadgeGenerator({ athlete, showEndDate = false }) {

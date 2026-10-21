@@ -1,30 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
-  AlertTriangle, 
   CreditCard, 
   ScanLine, 
   Wallet, 
-  Clock, 
-  UserX, 
-  Phone, 
-  Check, 
-  QrCode, 
-  X, 
   MessageCircle, 
   AlertOctagon, 
-  HeartPulse, 
-  Camera, 
-  FileWarning, 
-  CheckCircle, 
   ExternalLink, 
-  Filter,
-  TrendingUp,
-  Activity,
-  CalendarDays,
-  Copy,
-  ShieldCheck,
-  Plus
+  Activity, 
+  CalendarDays, 
+  Copy, 
+  ShieldCheck, 
+  Plus 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,18 +23,11 @@ import {
   Tooltip, 
   ResponsiveContainer, 
   CartesianGrid, 
-  BarChart, 
-  Bar, 
-  Legend,
-  PieChart, 
-  Pie, 
-  Cell 
+  Legend 
 } from 'recharts';
 import { supabase } from '../supabaseClient';
-import { Card, StatCard, Button, Badge, Skeleton } from '../components/ui';
-import RegistrationStatusToggle from '../components/RegistrationStatusToggle';
-import BadgeGenerator from '../components/BadgeGenerator';
-import { formatWhatsAppPhone, calculateAge, formatName, formatDA } from '../utils/formatters';
+import { Skeleton } from '../components/ui';
+import { formatWhatsAppPhone, calculateAge, formatDA } from '../utils/formatters';
 import { getSwimmingCategory } from '../utils/swimmingCategories';
 import toast from 'react-hot-toast';
 import { useTheme } from '../contexts/ThemeContext';
@@ -101,18 +81,14 @@ export default function Dashboard() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('presences'); 
-  const [presenceFilter, setPresenceFilter] = useState('today'); 
-  const [presenceSearch, setPresenceSearch] = useState('');
-  const [selectedAthlete, setSelectedAthlete] = useState(null);
   
+  // Filtres du listing inscrits
+  const [inscritsSearch, setInscritsSearch] = useState('');
+  const [inscritsFilterStatus, setInscritsFilterStatus] = useState('ALL');
+  const [inscritsFilterGroup, setInscritsFilterGroup] = useState('ALL');
+
   // Modals
   const [showBulkWA, setShowBulkWA] = useState(false);
-
-  // Filtres dynamiques sur la liste des inscrits
-  const [inscritsFilterGroup, setInscritsFilterGroup] = useState('ALL');
-  const [inscritsFilterStatus, setInscritsFilterStatus] = useState('ALL');
-  const [inscritsSearch, setInscritsSearch] = useState('');
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -872,6 +848,16 @@ export default function Dashboard() {
                     <option value="ALL">Tous statuts</option>
                     <option value="ACTIVE">✅ À jour</option>
                     <option value="SUSPENDED">❌ Suspendu / Bloqué</option>
+                  </select>
+                  <select
+                    value={inscritsFilterGroup}
+                    onChange={(e) => setInscritsFilterGroup(e.target.value)}
+                    className="px-3 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-blue-600 transition"
+                  >
+                    <option value="ALL">Tous les groupes</option>
+                    {(stats.groupCapacityStats || []).map((g) => (
+                      <option key={g.nom} value={g.nom}>{g.nom}</option>
+                    ))}
                   </select>
                 </div>
               </div>

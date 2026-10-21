@@ -4,7 +4,6 @@ import {
   RotateCcw, 
   Trash2, 
   Search, 
-  Filter, 
   Download, 
   Users, 
   CheckSquare, 
@@ -13,19 +12,13 @@ import {
   Eye, 
   X, 
   RefreshCw, 
-  Phone, 
-  Calendar, 
   Layers, 
-  ShieldAlert, 
-  ArrowUpDown,
-  ExternalLink,
-  MessageCircle,
-  FileSpreadsheet
+  MessageCircle 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
-import { Card, StatCard, Button, Badge, Skeleton } from '../components/ui';
+import { Card, StatCard, Button, Skeleton } from '../components/ui';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
 import { formatName, calculateAge, formatWhatsAppPhone } from '../utils/formatters';

@@ -48,13 +48,11 @@ export const extractBirthYear = (dateInput) => {
  * @param {string} [explicitSexe] - 'M' ou 'F' (optionnel)
  * @returns {{ code: string, fanaCode: string, label: string, shortLabel: string, simpleName: string, catBadge: string, fanaCategory: string, ageBracket: string, birthYear: number|null, age: number|null, sportingAge: number|null, color: string, badgeBg: string }}
  */
-export const getSwimmingCategory = (dateOrAthlete, explicitSexe = null) => {
+export const getSwimmingCategory = (dateOrAthlete, _explicitSexe = null) => {
   let dateNaissance = dateOrAthlete;
-  let sexe = explicitSexe;
 
   if (dateOrAthlete && typeof dateOrAthlete === 'object' && !(dateOrAthlete instanceof Date)) {
     dateNaissance = dateOrAthlete.date_naissance;
-    sexe = explicitSexe || dateOrAthlete.sexe;
   }
 
   const birthYear = extractBirthYear(dateNaissance);

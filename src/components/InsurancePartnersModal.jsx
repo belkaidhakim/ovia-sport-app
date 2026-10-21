@@ -1,20 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Building2, 
   CheckCircle2, 
   X, 
-  Phone, 
-  ShieldCheck, 
-  FileText, 
-  Award, 
-  Tag, 
-  ExternalLink,
   Star
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-export const DEFAULT_PARTNERS = [
+const DEFAULT_PARTNERS = [
   {
     id: 'saa',
     nom: 'SAA (Société Nationale d\'Assurance)',

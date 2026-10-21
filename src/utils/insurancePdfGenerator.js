@@ -1,6 +1,5 @@
 import jsPDF from 'jspdf';
 import { loadClubLogoBase64 } from './pdfHelpers';
-import { formatDA } from './formatters';
 
 /**
  * Génère le Bordereau Collectif d'Assurance d'Ovia Sport
@@ -25,7 +24,7 @@ export async function generateBordereauCollectifPdf({
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    const drawHeader = (pageNum, totalPages) => {
+    const drawHeader = () => {
       // En-tête officiel
       if (logoBase64) {
         try {
@@ -54,7 +53,7 @@ export async function generateBordereauCollectifPdf({
       doc.text('BORDEREAU D\'ASSURANCE', pageWidth - 90, 17);
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
-      doc.text('SOUSCRIPTION COLLECTIVE SPORTIVE', pageWidth - 90, 24);
+      doc.text(typeCouverture ? typeCouverture.substring(0, 38) : 'SOUSCRIPTION COLLECTIVE SPORTIVE', pageWidth - 90, 24);
 
       // Encadré Informations Police
       doc.setFillColor(248, 250, 252);
@@ -242,7 +241,7 @@ export async function generateAttestationAssurancePdf({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(15, 23, 42);
-    doc.text('CLUB SPORTIF DE NATATION - OVIA SPORT', 48, 24);
+    doc.text(`CLUB SPORTIF DE NATATION - ${clubName || 'OVIA SPORT'}`, 48, 24);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);

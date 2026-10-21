@@ -1,12 +1,8 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'react-hot-toast';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
 import ClubProAppShell from './components/ClubProAppShell';
-import { Suspense } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { lazyRetry } from './utils/lazyRetry';
 
@@ -22,7 +18,6 @@ const UpdatePassword = lazyRetry(() => import('./pages/UpdatePassword'));
 const UsersManagement = lazyRetry(() => import('./pages/UsersManagement'));
 const GroupsManagement = lazyRetry(() => import('./pages/GroupsManagement'));
 const PublicRegistration = lazyRetry(() => import('./pages/PublicRegistration'));
-const PendingInscriptions = lazyRetry(() => import('./pages/PendingInscriptions'));
 const LandingPage = lazyRetry(() => import('./pages/LandingPage'));
 const MemberPortal = lazyRetry(() => import('./pages/MemberPortal'));
 const Schedule = lazyRetry(() => import('./pages/Schedule'));

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Timer, Trophy, TrendingDown, Plus, Calendar, Trash2, Edit, X, 
-  Sparkles, CheckCircle2, Waves, Award, Download, Share2, 
-  Sliders, Target, Activity, Zap, ArrowDownRight, ArrowUpRight, 
-  MessageCircle, HelpCircle, AlertTriangle, Video, ChevronDown, ChevronUp
+  Timer, TrendingDown, Plus, Trash2, Edit, X, 
+  CheckCircle2, Waves, Download, Share2, 
+  Target, Zap, 
+  Video, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  CartesianGrid, ReferenceLine, Legend
+  CartesianGrid, ReferenceLine
 } from 'recharts';
 import { SWIMMING_EVENTS, SWIMMING_STYLES, getSwimmingCategory } from '../utils/swimmingCategories';
 import { formatName, formatWhatsAppPhone } from '../utils/formatters';
@@ -63,11 +63,10 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
   const [selectedStyleId, setSelectedStyleId] = useState('NL');
   const [selectedEventId, setSelectedEventId] = useState('50_NL');
   const [bassinFilter, setBassinFilter] = useState('all');
-  const [contexteFilter, setContexteFilter] = useState('all');
+  const [contexteFilter] = useState('all');
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPerfId, setEditingPerfId] = useState(null);
-  const [deletingPerfId, setDeletingPerfId] = useState(null);
   
   const [showTargetInput, setShowTargetInput] = useState(false);
   const [targetGoalTime, setTargetGoalTime] = useState('');

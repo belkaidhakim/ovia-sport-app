@@ -39,7 +39,7 @@ export function useAthletes() {
       setAthletes(data || []);
       try {
         localStorage.setItem('scb_cached_athletes_v1', JSON.stringify(data || []));
-      } catch (e) {
+      } catch {
         // Ignore storage quota errors
       }
       setError(null);

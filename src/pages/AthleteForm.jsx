@@ -8,11 +8,6 @@ import {
   Eye, 
   Upload, 
   Trash2, 
-  CheckCircle2, 
-  Clock, 
-  ShieldCheck, 
-  Phone, 
-  ChevronRight, 
   Camera 
 } from "lucide-react";
 import { useGroupes } from "../hooks/useGroupes";

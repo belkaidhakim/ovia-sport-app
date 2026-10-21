@@ -5,7 +5,7 @@
 
 import jsPDF from 'jspdf';
 import { loadClubLogoBase64 } from './pdfHelpers';
-import { getSwimmingCategory, SWIMMING_EVENTS } from './swimmingCategories';
+import { getSwimmingCategory } from './swimmingCategories';
 import { formatName } from './formatters';
 
 export const generateSwimmingReportPDF = async (athlete, performances = []) => {

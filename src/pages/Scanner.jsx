@@ -3,7 +3,7 @@ import { Scanner as QRScanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../supabaseClient';
 import { 
   CheckCircle2, XCircle, Users, Wifi, WifiOff, Volume2, VolumeX, 
-  RefreshCw, Sparkles, AlertTriangle, Maximize, Minimize, HeartPulse, CreditCard,
+  RefreshCw, Sparkles, AlertTriangle, Maximize, Minimize,
   ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import BadgeGenerator from '../components/BadgeGenerator';
@@ -34,7 +34,7 @@ export default function Scanner() {
   
   // Préférences sonores et auto-reset
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoResetSeconds, setAutoResetSeconds] = useState(4); // 0 = désactivé
+  const [autoResetSeconds] = useState(4); // 0 = désactivé
 
   // Sauvegarder la file d'attente hors-ligne
   const saveOfflineQueue = (newQueue) => {

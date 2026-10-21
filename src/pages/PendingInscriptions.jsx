@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Users, 
   Search, 
@@ -12,33 +12,23 @@ import {
   HeartPulse, 
   ShieldCheck, 
   Camera, 
-  Phone, 
-  Calendar, 
   Trash2, 
   Copy, 
   ExternalLink,
-  Printer,
-  X,
-  AlertTriangle,
-  MessageCircle,
-  DollarSign,
-  CheckSquare,
-  Square,
-  Sparkles,
-  Lock,
-  Unlock,
-  RefreshCw,
-  Download,
-  Plus,
-  UserPlus,
-  Upload,
-  MapPin
+  Printer, 
+  X, 
+  AlertTriangle, 
+  MessageCircle, 
+  RefreshCw, 
+  Download, 
+  Plus, 
+  UserPlus, 
+  Upload
 } from 'lucide-react';
 import { Card, Button, Skeleton } from '../components/ui';
 import { useInscriptions } from '../hooks/useInscriptions';
-import { useRegistrationSettings } from '../hooks/useRegistrationSettings';
 import { useClubPricing } from '../hooks/useClubPricing';
-import { calculateAge, formatWhatsAppPhone, formatName, formatDA } from '../utils/formatters';
+import { calculateAge, formatWhatsAppPhone } from '../utils/formatters';
 import { generateOfficialRegistrationFormPdf } from '../utils/registrationFormPdfGenerator';
 import { compressImageFile } from '../utils/imageCompressor';
 import BadgeGenerator from '../components/BadgeGenerator';
@@ -57,8 +47,6 @@ export default function PendingInscriptions({ embedded = false }) {
     deleteInscription,
     deleteMultipleInscriptions
   } = useInscriptions();
-
-  const { isOpen: isRegistrationOpen, toggleInscriptions } = useRegistrationSettings();
   const { fraisInscription, cotisationAdhesion, totalAdhesion } = useClubPricing();
 
   const [activeTab, setActiveTab] = useState('EN_ATTENTE'); // 'EN_ATTENTE', 'VALIDE', 'REJETE', 'ALL'

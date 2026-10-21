@@ -11,7 +11,6 @@ import {
   Settings,
   Bell,
   Search,
-  ChevronRight,
   Calendar,
   LogOut,
   X,
@@ -23,8 +22,6 @@ import {
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { useAuth } from "../contexts/AuthContext";
-import { useTheme } from "../contexts/ThemeContext";
-import { getSwimmingCategory } from "../utils/swimmingCategories";
 import ThemeToggle from "./ThemeToggle";
 import toast from "react-hot-toast";
 
@@ -32,7 +29,6 @@ export default function ClubProAppShell({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
