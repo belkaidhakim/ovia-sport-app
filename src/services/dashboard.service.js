@@ -23,14 +23,18 @@ const parseHoraires = (horairesText) => {
  * Récupère l'ensemble des données agrégées pour le tableau de bord
  */
 export async function getDashboardOverview() {
+  try {
     // 1. Récupération des athlètes actifs avec cartes, cotisations et groupes
     const { data: athletesData, error: athletesError } = await supabase
       .from('athletes')
-      .select(`*, cartes_acces(statut, date_dernier_paiement), cotisations(montant_paye, date_paiement, periode_couverte_fin), groupes(id, nom, horaires, tarif)`)
+      .select(`*, cartes_acces(statut, date_dernier_paiement), cotisations(montant_paye, date_paiement, periode_couverte_fin), groupes(id, nom, horaires)`)
       .eq('est_actif', true)
       .order('date_inscription', { ascending: false });
 
-    if (athletesError) throw athletesError;
+    if (athletesError) {
+      console.warn('Erreur chargement athlètes dashboard:', athletesError);
+      throw athletesError;
+    }
 
     let active = 0;
     let suspended = 0;
@@ -270,4 +274,8 @@ export async function getDashboardOverview() {
       planningToday: Array.from(planningTodayMap.values()).sort((a, b) => a.heure.localeCompare(b.heure)),
       planningTomorrow: Array.from(planningTomorrowMap.values()).sort((a, b) => a.heure.localeCompare(b.heure))
     };
+  } catch (error) {
+    console.error('Erreur getDashboardOverview:', error);
+    throw error;
   }
+}
