@@ -2,35 +2,21 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ShieldCheck, 
   ShieldAlert, 
-  Shield, 
-  Search, 
-  Download, 
-  FileText, 
-  Users, 
-  MessageSquare, 
-  Edit, 
-  Trash2, 
-  CheckCircle, 
-  CheckCircle2,
   AlertTriangle, 
   Sparkles, 
   Copy, 
-  CheckSquare, 
-  Square, 
   RefreshCw, 
-  X, 
   UserPlus, 
-  UserMinus, 
   Building2, 
   History, 
   Send, 
-  Award, 
-  Clock 
+  Award,
+  FileText
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
-import { Card, StatCard, Button, Skeleton } from '../components/ui';
+import { Button } from '../components/ui';
 import { supabase } from '../supabaseClient';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
@@ -50,6 +36,16 @@ import InsuranceOcrModal from '../components/InsuranceOcrModal';
 import InsurancePartnersModal from '../components/InsurancePartnersModal';
 import InsuranceAuditModal from '../components/InsuranceAuditModal';
 import { logInsuranceAction } from '../utils/insuranceAudit';
+
+import {
+  InsuranceKPIs,
+  InsuranceFilterBar,
+  InsuranceTable,
+  InsuranceSingleModal,
+  InsuranceBatchModal,
+  InsuranceBordereauModal,
+  InsuranceAddAthletesModal
+} from '../components/insurance';
 
 export default function InsuranceManagement() {
   const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
@@ -120,7 +116,7 @@ export default function InsuranceManagement() {
   const [federalCategoryFilter, setFederalCategoryFilter] = useState('ALL');
   const [urgencyFilterOnly, setUrgencyFilterOnly] = useState(false);
 
-  // Nouveaux Modales Intelligentes
+  // Modales Intelligentes Dédiées
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [whatsAppTargetAthletes, setWhatsAppTargetAthletes] = useState([]);
   const [showOcrModal, setShowOcrModal] = useState(false);
@@ -130,7 +126,7 @@ export default function InsuranceManagement() {
   // Sélection multiple
   const [selectedAthleteIds, setSelectedAthleteIds] = useState([]);
 
-  // Modales
+  // Modales Internes
   const [showSingleModal, setShowSingleModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [showAddAthletesModal, setShowAddAthletesModal] = useState(false);
@@ -289,8 +285,6 @@ export default function InsuranceManagement() {
     const expireBientot = enrichedAthletes.filter(a => a.insuranceStatus.code === 'EXPIRE_BIENTOT').length;
     const nonAssure = enrichedAthletes.filter(a => a.insuranceStatus.code === 'NON_ASSURE' || a.insuranceStatus.code === 'EXPIREE').length;
     const tauxConformite = total > 0 ? Math.round(((aJour + expireBientot) / total) * 100) : 0;
-    
-    // Total des primes enregistrées
     const totalPrimes = assurances.reduce((acc, curr) => acc + (Number(curr.montant) || 0), 0);
 
     return { total, aJour, expireBientot, nonAssure, tauxConformite, totalPrimes };
@@ -433,7 +427,6 @@ export default function InsuranceManagement() {
 
   // Ouvrir la modale d'ajout d'athlètes à la liste d'assurance
   const handleOpenAddAthletesModal = () => {
-    // Si des athlètes sont déjà cochés, pré-sélectionner ceux non-assurés
     if (selectedAthleteIds.length > 0) {
       const nonAssuresSelected = selectedAthleteIds.filter(id => {
         const ath = enrichedAthletes.find(a => a.id === id);
@@ -441,7 +434,6 @@ export default function InsuranceManagement() {
       });
       setSelectedForAdd(nonAssuresSelected.length > 0 ? nonAssuresSelected : selectedAthleteIds);
     } else {
-      // Par défaut tous les non-assurés
       const nonAssures = enrichedAthletes
         .filter(a => a.insuranceStatus.code === 'NON_ASSURE' || a.insuranceStatus.code === 'EXPIREE')
         .map(a => a.id);
@@ -490,7 +482,7 @@ export default function InsuranceManagement() {
     }
   };
 
-  // Retirer un athlète de la liste d'assurance (supprimer la police)
+  // Retirer un athlète de la liste d'assurance
   const handleRemoveAthleteFromInsurance = async (athlete) => {
     const existing = athlete.assurance || getAthleteAssurance(athlete.id);
     if (!existing) {
@@ -507,7 +499,7 @@ export default function InsuranceManagement() {
     }
   };
 
-  // Retirer la sélection de la liste d'assurance (suppression groupée)
+  // Retirer la sélection de la liste d'assurance
   const handleBatchDeleteSelected = async () => {
     if (!selectedAthleteIds.length) return;
     const insuredSelected = selectedAthleteIds.filter(id => !!getAthleteAssurance(id));
@@ -538,7 +530,7 @@ export default function InsuranceManagement() {
     setShowBordereauModal(true);
   };
 
-  // Générer Bordereau Collectif PDF (avec auto-enregistrement optionnel)
+  // Générer Bordereau Collectif PDF
   const handleGenerateBordereau = async (e) => {
     if (e) e.preventDefault();
     let listToExport = [];
@@ -565,7 +557,6 @@ export default function InsuranceManagement() {
     const toastId = toast.loading(`Génération du bordereau pour ${listToExport.length} athlète(s)...`);
 
     try {
-      // Si l'utilisateur a choisi d'enregistrer automatiquement ces assurances :
       if (bordereauForm.autoEnregistrer) {
         await batchSouscrire(listToExport.map(a => a.id), {
           compagnie: bordereauForm.compagnie,
@@ -616,7 +607,7 @@ export default function InsuranceManagement() {
     }
   };
 
-  // Centre de relances WhatsApp & SMS automatisées
+  // Centre de relances WhatsApp
   const handleOpenWhatsAppModal = (targetList = null) => {
     if (targetList && targetList.length > 0) {
       setWhatsAppTargetAthletes(targetList);
@@ -633,7 +624,7 @@ export default function InsuranceManagement() {
     handleOpenWhatsAppModal([athlete]);
   };
 
-  // Bordereau Fédéral FAN & DJS Bouira
+  // Bordereau Fédéral FAN & DJS
   const handleGenerateBordereauFederalFan = async () => {
     const listToExport = selectedAthleteIds.length > 0
       ? enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id))
@@ -703,24 +694,15 @@ export default function InsuranceManagement() {
 
   // Sélection d'un partenaire référent
   const handleSelectPartner = (partner) => {
-    setSingleForm(prev => ({
+    const updateForm = prev => ({
       ...prev,
       compagnie: partner.nom,
       montant: partner.tarifNegocie,
       numero_police: partner.policeGroupe
-    }));
-    setBatchForm(prev => ({
-      ...prev,
-      compagnie: partner.nom,
-      montant: partner.tarifNegocie,
-      numero_police: partner.policeGroupe
-    }));
-    setAddModalForm(prev => ({
-      ...prev,
-      compagnie: partner.nom,
-      montant: partner.tarifNegocie,
-      numero_police: partner.policeGroupe
-    }));
+    });
+    setSingleForm(updateForm);
+    setBatchForm(updateForm);
+    setAddModalForm(updateForm);
     logInsuranceAction({
       athleteNom: 'Club Ovia Sport',
       action: 'MODIFICATION',
@@ -790,18 +772,18 @@ export default function InsuranceManagement() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Relances Automatisées WhatsApp & SMS */}
+          {/* Relances Automatisées WhatsApp */}
           <button 
             type="button"
             onClick={() => handleOpenWhatsAppModal()}
             className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition cursor-pointer"
-            title="Ouvrir le centre de relances automatisées par WhatsApp et SMS pour les non-assurés"
+            title="Ouvrir le centre de relances automatisées par WhatsApp pour les non-assurés"
           >
             <Send size={14} />
             Relances WhatsApp ({stats.nonAssure})
           </button>
 
-          {/* Scanner Intelligent OCR */}
+          {/* Scanner OCR */}
           <button 
             type="button"
             onClick={() => setShowOcrModal(true)}
@@ -812,7 +794,7 @@ export default function InsuranceManagement() {
             Scanner OCR
           </button>
 
-          {/* Accords Cadres & Partenaires */}
+          {/* Accords Cadres */}
           <button 
             type="button"
             onClick={() => setShowPartnersModal(true)}
@@ -834,7 +816,7 @@ export default function InsuranceManagement() {
             Bordereau FAN (PDF)
           </button>
 
-          {/* Journal d'Audit & Traçabilité */}
+          {/* Journal d'Audit */}
           <button 
             type="button"
             onClick={() => setShowAuditModal(true)}
@@ -959,7 +941,7 @@ export default function InsuranceManagement() {
         </motion.div>
       )}
 
-      {/* BANNIÈRE TABLE MANQUANTE SUPABASE (AVEC 1-CLIC SQL) */}
+      {/* BANNIÈRE TABLE MANQUANTE SUPABASE */}
       {isTableMissing && (
         <div style={{
           marginBottom: '1.25rem',
@@ -1004,1442 +986,113 @@ export default function InsuranceManagement() {
       )}
 
       {/* CARTES DE STATISTIQUES / KPIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard 
-          icon={
-            <div className="relative w-8 h-8 flex items-center justify-center">
-              <svg className="w-8 h-8 transform -rotate-90">
-                <circle
-                  cx="16"
-                  cy="16"
-                  r="12"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  className="text-slate-200 dark:text-slate-700"
-                  fill="transparent"
-                />
-                <circle
-                  cx="16"
-                  cy="16"
-                  r="12"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeDasharray={75.4}
-                  strokeDashoffset={75.4 - (75.4 * stats.tauxConformite) / 100}
-                  strokeLinecap="round"
-                  className={stats.tauxConformite >= 75 ? "text-emerald-500" : stats.tauxConformite >= 40 ? "text-amber-500" : "text-rose-500"}
-                  fill="transparent"
-                />
-              </svg>
-            </div>
-          }
-          iconBg="rgba(16, 185, 129, 0.15)"
-          iconColor="#10b981"
-          label="Taux de Conformité"
-          value={`${stats.tauxConformite}%`}
-          subtitle={`${stats.aJour + stats.expireBientot} sur ${stats.total} membres couverts`}
-          glowColor={stats.tauxConformite > 75 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}
-        />
-
-        <StatCard 
-          icon={<CheckCircle size={24} />}
-          iconBg="rgba(16, 185, 129, 0.12)"
-          iconColor="#10b981"
-          label="Assurés à Jour"
-          value={stats.aJour}
-          subtitle="Couverture active (> 30 jours)"
-        />
-
-        <StatCard 
-          icon={<AlertTriangle size={24} />}
-          iconBg="rgba(245, 158, 11, 0.15)"
-          iconColor="#f59e0b"
-          label="Expirent Bientôt"
-          value={stats.expireBientot}
-          subtitle="À renouveler sous 30 jours"
-        />
-
-        <StatCard 
-          icon={<ShieldAlert size={24} />}
-          iconBg="rgba(239, 68, 68, 0.15)"
-          iconColor="#ef4444"
-          label="Non Couverts / Expirés"
-          value={stats.nonAssure}
-          subtitle="Urgent : régularisation requise"
-        />
-      </div>
-
-      {/* ONGLETS DE VUE : LISTE D'ASSURANCE / NON ASSURÉS / TOUS */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
-        <button
-          onClick={() => setViewTab('ALL')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            viewTab === 'ALL'
-              ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-              : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-white border border-[var(--border-color)]'
-          }`}
-        >
-          <Users size={14} />
-          Tous les membres ({stats.total})
-        </button>
-
-        <button
-          onClick={() => setViewTab('INSURED')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            viewTab === 'INSURED'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-[var(--bg-tertiary)] text-emerald-400 hover:text-emerald-300 border border-[var(--border-color)]'
-          }`}
-          title="Afficher uniquement les athlètes présents sur la liste d'assurance"
-        >
-          <ShieldCheck size={14} />
-          🛡️ Liste d'Assurance ({stats.aJour + stats.expireBientot})
-        </button>
-
-        <button
-          onClick={() => setViewTab('NOT_INSURED')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            viewTab === 'NOT_INSURED'
-              ? 'bg-rose-600 text-white shadow-sm'
-              : 'bg-[var(--bg-tertiary)] text-rose-400 hover:text-rose-300 border border-[var(--border-color)]'
-          }`}
-          title="Afficher les athlètes sans assurance à ajouter à la liste"
-        >
-          <ShieldAlert size={14} />
-          ⚠️ Non Assurés / À Ajouter ({stats.nonAssure})
-        </button>
-      </div>
+      <InsuranceKPIs stats={stats} />
 
       {/* BARRE D'OUTILS ET FILTRES */}
-      <Card noPadding className="mb-6">
-        <div className="p-4 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
-          {/* Recherche */}
-          <div className="relative flex-1 min-w-[240px]">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-            <input 
-              type="text"
-              placeholder="Rechercher par nom, prénom, numéro de police..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl text-sm border focus:outline-none"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
-              }}
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-white"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+      <InsuranceFilterBar 
+        viewTab={viewTab}
+        setViewTab={setViewTab}
+        stats={stats}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        groupFilter={groupFilter}
+        setGroupFilter={setGroupFilter}
+        groupes={groupes}
+        compagnieFilter={compagnieFilter}
+        setCompagnieFilter={setCompagnieFilter}
+        compagniesList={COMPAGNIES_ASSURANCE}
+        federalCategoryFilter={federalCategoryFilter}
+        setFederalCategoryFilter={setFederalCategoryFilter}
+        urgencyFilterOnly={urgencyFilterOnly}
+        setUrgencyFilterOnly={setUrgencyFilterOnly}
+        onExportCsv={handleExportCsv}
+      />
 
-          {/* Filtres dropdown */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Statut Assurance */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <option value="ALL">Tous les statuts assurance</option>
-              <option value="A_JOUR">🟢 À jour uniquement</option>
-              <option value="EXPIRE_BIENTOT">🟠 Expire sous 30j</option>
-              <option value="NON_ASSURE">🔴 Non assurés / Expirés</option>
-            </select>
+      {/* TABLEAU DES ASSURANCES */}
+      <InsuranceTable 
+        filteredAthletes={filteredAthletes}
+        selectedAthleteIds={selectedAthleteIds}
+        setSelectedAthleteIds={setSelectedAthleteIds}
+        onToggleSelectAll={handleToggleSelectAll}
+        onToggleSelectAthlete={handleToggleSelectAthlete}
+        loadingAthletes={loadingAthletes}
+        loadingAssurances={loadingAssurances}
+        onOpenBatchModalForSelected={() => {
+          setBatchForm(prev => ({ ...prev, targetType: 'selected' }));
+          setShowBatchModal(true);
+        }}
+        onBatchDeleteSelected={handleBatchDeleteSelected}
+        onOpenWhatsAppModalForSelected={() => handleOpenWhatsAppModal(enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id)))}
+        onGenerateBordereauFederalFan={handleGenerateBordereauFederalFan}
+        onOpenBordereauModalForSelected={() => handleOpenBordereauModal('selected')}
+        onQuickAddAthlete={handleQuickAddAthlete}
+        onRemoveAthleteFromInsurance={handleRemoveAthleteFromInsurance}
+        onOpenSingleModal={handleOpenSingleModal}
+        onDownloadAttestation={handleDownloadAttestation}
+        onWhatsAppReminder={handleWhatsAppReminder}
+      />
 
-            {/* Groupe */}
-            <select
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <option value="ALL">Tous les groupes</option>
-              {groupes.map(g => (
-                <option key={g.id} value={g.id}>{g.nom}</option>
-              ))}
-            </select>
+      {/* MODALE 1 : ASSURANCE INDIVIDUELLE */}
+      <InsuranceSingleModal 
+        isOpen={showSingleModal}
+        onClose={() => setShowSingleModal(false)}
+        editingAssurance={editingAssurance}
+        targetAthlete={targetAthlete}
+        singleForm={singleForm}
+        setSingleForm={setSingleForm}
+        onSubmit={handleSubmitSingleForm}
+        enrichedAthletes={enrichedAthletes}
+        compagniesList={COMPAGNIES_ASSURANCE}
+        typesCouverture={TYPES_COUVERTURE}
+      />
 
-            {/* Compagnie */}
-            <select
-              value={compagnieFilter}
-              onChange={(e) => setCompagnieFilter(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer max-w-[160px]"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <option value="ALL">Toutes compagnies</option>
-              {COMPAGNIES_ASSURANCE.map(c => (
-                <option key={c} value={c}>{c.split('(')[0].trim()}</option>
-              ))}
-            </select>
+      {/* MODALE 2 : SOUSCRIPTION GROUPÉE */}
+      <InsuranceBatchModal 
+        isOpen={showBatchModal}
+        onClose={() => setShowBatchModal(false)}
+        batchForm={batchForm}
+        setBatchForm={setBatchForm}
+        onSubmit={handleSubmitBatchForm}
+        selectedCount={selectedAthleteIds.length}
+        groupes={groupes}
+        compagniesList={COMPAGNIES_ASSURANCE}
+        typesCouverture={TYPES_COUVERTURE}
+      />
 
-            {/* Catégorie d'Âge Fédérale FAN */}
-            <select
-              value={federalCategoryFilter}
-              onChange={(e) => setFederalCategoryFilter(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none cursor-pointer"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
-              }}
-            >
-              <option value="ALL">Toutes catégories d'âge</option>
-              <option value="ECOLE">École (&lt;8 ans)</option>
-              <option value="POUSSINS">Poussins (9-10 ans)</option>
-              <option value="BENJAMINS">Benjamins (11-12 ans)</option>
-              <option value="MINIMES">Minimes (13-14 ans)</option>
-              <option value="CADETS">Cadets (15-16 ans)</option>
-              <option value="JUNIORS">Juniors (17-18 ans)</option>
-              <option value="SENIORS">Seniors (18+ ans)</option>
-            </select>
+      {/* MODALE 3 : BORDEREAU COLLECTIF PDF */}
+      <InsuranceBordereauModal 
+        isOpen={showBordereauModal}
+        onClose={() => setShowBordereauModal(false)}
+        bordereauForm={bordereauForm}
+        setBordereauForm={setBordereauForm}
+        onSubmit={handleGenerateBordereau}
+        stats={stats}
+        selectedCount={selectedAthleteIds.length}
+        groupes={groupes}
+        compagniesList={COMPAGNIES_ASSURANCE}
+      />
 
-            {/* Filtre Urgence Immédiate */}
-            <button
-              type="button"
-              onClick={() => setUrgencyFilterOnly(!urgencyFilterOnly)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                urgencyFilterOnly
-                  ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                  : 'bg-[var(--bg-tertiary)] text-slate-600 dark:text-slate-300 border-[var(--border-color)] hover:border-rose-400'
-              }`}
-              title="Filtrer uniquement les athlètes non assurés ou avec expiration imminente (< 15 jours)"
-            >
-              <ShieldAlert size={14} className={urgencyFilterOnly ? 'text-white' : 'text-rose-500'} />
-              🚨 Urgences ({stats.nonAssure})
-            </button>
+      {/* MODALE 4 : AJOUTER DES ATHLÈTES À LA LISTE */}
+      <InsuranceAddAthletesModal 
+        isOpen={showAddAthletesModal}
+        onClose={() => setShowAddAthletesModal(false)}
+        selectedForAdd={selectedForAdd}
+        setSelectedForAdd={setSelectedForAdd}
+        modalCandidateAthletes={modalCandidateAthletes}
+        modalSearchQuery={modalSearchQuery}
+        setModalSearchQuery={setModalSearchQuery}
+        modalGroupFilter={modalGroupFilter}
+        setModalGroupFilter={setModalGroupFilter}
+        addModalForm={addModalForm}
+        setAddModalForm={setAddModalForm}
+        onSubmit={handleSubmitAddAthletesModal}
+        groupes={groupes}
+        compagniesList={COMPAGNIES_ASSURANCE}
+      />
 
-            {/* Export CSV */}
-            <Button 
-              variant="secondary" 
-              onClick={handleExportCsv}
-              title="Exporter le tableau sous forme de tableur Excel/CSV"
-              style={{ padding: '0.45rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-            >
-              <Download size={14} /> CSV
-            </Button>
-          </div>
-        </div>
-
-        {/* Barre d'action groupée si éléments sélectionnés */}
-        {selectedAthleteIds.length > 0 && (
-          <div style={{
-            padding: '0.75rem 1rem',
-            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-            borderTop: '1px solid rgba(99, 102, 241, 0.25)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '10px'
-          }}>
-            <div className="flex items-center gap-2">
-              <CheckSquare size={17} color="#818cf8" />
-              <strong style={{ fontSize: '0.85rem', color: '#818cf8' }}>
-                {selectedAthleteIds.length} athlète(s) sélectionné(s)
-              </strong>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* BOUTON POUR AJOUTER LA SÉLECTION À L'ASSURANCE */}
-              <Button 
-                variant="primary"
-                onClick={() => {
-                  setBatchForm(prev => ({ ...prev, targetType: 'selected' }));
-                  setShowBatchModal(true);
-                }}
-                style={{ 
-                  fontSize: '0.78rem', 
-                  padding: '0.4rem 0.85rem', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '5px',
-                  backgroundColor: '#10b981',
-                  borderColor: '#10b981',
-                  color: '#ffffff'
-                }}
-                title="Ajouter tous les athlètes sélectionnés à la liste d'assurance"
-              >
-                <UserPlus size={14} /> + Ajouter la sélection à l'assurance
-              </Button>
-
-              {/* BOUTON POUR SUPPRIMER LA SÉLECTION DE L'ASSURANCE */}
-              <Button 
-                variant="secondary"
-                onClick={handleBatchDeleteSelected}
-                style={{ 
-                  fontSize: '0.78rem', 
-                  padding: '0.4rem 0.85rem', 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '5px',
-                  borderColor: 'rgba(239, 68, 68, 0.4)', 
-                  color: '#ef4444',
-                  backgroundColor: 'rgba(239, 68, 68, 0.08)'
-                }}
-                title="Supprimer la police d'assurance des athlètes sélectionnés (Retirer de la liste)"
-              >
-                <Trash2 size={14} /> Supprimer de la liste d'assurance
-              </Button>
-
-              {/* RELANCES WHATSAPP EN MASSE */}
-              <button
-                type="button"
-                onClick={() => handleOpenWhatsAppModal(enrichedAthletes.filter(a => selectedAthleteIds.includes(a.id)))}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-sm"
-                title="Envoyer des rappels WhatsApp ciblés pour les athlètes sélectionnés"
-              >
-                <Send size={13} /> Relance WhatsApp ({selectedAthleteIds.length})
-              </button>
-
-              {/* BORDEREAU FÉDÉRAL FAN */}
-              <button
-                type="button"
-                onClick={handleGenerateBordereauFederalFan}
-                className="px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-700"
-                title="Générer le bordereau officiel FAN pour la sélection"
-              >
-                <Award size={13} className="text-amber-400" /> Bordereau FAN ({selectedAthleteIds.length})
-              </button>
-
-              <Button 
-                variant="secondary"
-                onClick={() => handleOpenBordereauModal('selected')}
-                style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-              >
-                <FileText size={14} /> Bordereau Compagnie ({selectedAthleteIds.length})
-              </Button>
-
-              <button
-                onClick={() => setSelectedAthleteIds([])}
-                className="text-xs text-[var(--text-muted)] hover:text-white px-2 py-1 cursor-pointer"
-              >
-                Désélectionner
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* TABLEAU DES ASSURANCES */}
-        <div className="table-responsive">
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)', fontSize: '0.8rem', borderBottom: '1px solid var(--border-color)' }}>
-                <th style={{ padding: '0.85rem 1rem', width: '40px', textAlign: 'center' }}>
-                  <button 
-                    onClick={handleToggleSelectAll}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', display: 'flex' }}
-                  >
-                    {selectedAthleteIds.length > 0 && selectedAthleteIds.length === filteredAthletes.length ? (
-                      <CheckSquare size={16} color="#818cf8" />
-                    ) : (
-                      <Square size={16} />
-                    )}
-                  </button>
-                </th>
-                <th style={{ padding: '0.85rem 1rem' }}>Athlète</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Groupe</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Statut Couverture</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Compagnie & Police</th>
-                <th style={{ padding: '0.85rem 1rem' }}>Période de Validité</th>
-                <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loadingAthletes || loadingAssurances ? (
-                <tr>
-                  <td colSpan={7} className="p-8 text-center">
-                    <div className="flex flex-col gap-3">
-                      <Skeleton height="35px" />
-                      <Skeleton height="35px" />
-                      <Skeleton height="35px" />
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredAthletes.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-[var(--text-muted)]">
-                    <Shield size={36} className="mx-auto mb-2 opacity-30" />
-                    Aucun athlète ne correspond aux filtres actuels.
-                  </td>
-                </tr>
-              ) : (
-                filteredAthletes.map(ath => {
-                  const isSelected = selectedAthleteIds.includes(ath.id);
-                  const st = ath.insuranceStatus;
-                  const ass = ath.assurance;
-
-                  return (
-                    <tr 
-                      key={ath.id}
-                      style={{ 
-                        borderBottom: '1px solid rgba(255,255,255,0.05)',
-                        backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.05)' : 'transparent',
-                        transition: 'background-color 0.15s'
-                      }}
-                      className="hover:bg-[var(--table-row-hover)]"
-                    >
-                      {/* Checkbox */}
-                      <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
-                        <button 
-                          onClick={() => handleToggleSelectAthlete(ath.id)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', display: 'flex', margin: '0 auto' }}
-                        >
-                          {isSelected ? (
-                            <CheckSquare size={16} color="#818cf8" />
-                          ) : (
-                            <Square size={16} color="var(--text-muted)" />
-                          )}
-                        </button>
-                      </td>
-
-                      {/* Athlète */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        <div className="flex items-center gap-2.5">
-                          <div style={{
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--accent-primary)',
-                            color: '#fff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            flexShrink: 0
-                          }}>
-                            {(ath.nom?.charAt(0) || '') + (ath.prenom?.charAt(0) || '')}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <strong style={{ color: 'var(--text-primary)', fontSize: '0.88rem' }}>
-                                {(ath.nom || '').toUpperCase()} {ath.prenom}
-                              </strong>
-                              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
-                                {ath.federalCategory?.label?.split('(')[0]?.trim() || 'Adhérent'}
-                              </span>
-                            </div>
-                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                              {ath.telephone || ath.telephone_parent || 'Sans numéro'}
-                              {ath.date_naissance && ` • Né(e) le ${new Date(ath.date_naissance).toLocaleDateString('fr-FR')}${ath.lieu_naissance ? ` à ${ath.lieu_naissance}` : ''} (${ath.federalCategory?.age} ans)`}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Groupe */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        <span style={{ 
-                          fontSize: '0.8rem', 
-                          fontWeight: 600, 
-                          color: 'var(--text-primary)',
-                          backgroundColor: 'var(--bg-tertiary)',
-                          padding: '3px 8px',
-                          borderRadius: '8px',
-                          display: 'inline-block'
-                        }}>
-                          {ath.groupes?.nom || ath.groupe || 'Non assigné'}
-                        </span>
-                      </td>
-
-                      {/* Statut Couverture Dynamique */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        {st.code === 'A_JOUR' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                            <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
-                            <span>À jour ({st.daysLeft}j)</span>
-                          </span>
-                        ) : st.code === 'EXPIRE_BIENTOT' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 animate-pulse">
-                            <Clock size={13} className="text-amber-500 flex-shrink-0" />
-                            <span>Expire sous {st.daysLeft}j</span>
-                          </span>
-                        ) : st.code === 'EXPIREE' ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
-                            <X size={13} className="text-rose-500 flex-shrink-0" />
-                            <span>Expirée ({Math.abs(st.daysLeft)}j)</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
-                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping flex-shrink-0" />
-                            <span>Non Assuré (Bloqué)</span>
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Compagnie & N° Police */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        {ass ? (
-                          <div>
-                            <strong style={{ fontSize: '0.82rem', color: 'var(--text-primary)', display: 'block' }}>
-                              {ass.compagnie?.split('(')[0].trim()}
-                            </strong>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--accent-secondary)', fontFamily: 'monospace' }}>
-                              {ass.numero_police}
-                            </span>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            Aucune police active
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Validité */}
-                      <td style={{ padding: '0.85rem 1rem' }}>
-                        {ass?.date_fin ? (
-                          <div>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', display: 'block' }}>
-                              Jusqu'au {new Date(ass.date_fin).toLocaleDateString('fr-FR')}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              Depuis {ass.date_debut ? new Date(ass.date_debut).toLocaleDateString('fr-FR') : '-'}
-                            </span>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>
-                            Non couvert
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
-                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* SI NON ASSURÉ OU EXPIRÉ : BOUTON "+ AJOUTER À L'ASSURANCE" */}
-                          {(!ass || st.code === 'NON_ASSURE' || st.code === 'EXPIREE') ? (
-                            <button
-                              onClick={() => handleQuickAddAthlete(ath)}
-                              title="Ajouter immédiatement cet athlète à la liste d'assurance (Souscription 1 an)"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '5px 11px',
-                                borderRadius: '8px',
-                                fontSize: '0.74rem',
-                                fontWeight: 700,
-                                backgroundColor: '#10b981',
-                                color: '#ffffff',
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 5px rgba(16, 185, 129, 0.25)',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              <UserPlus size={13} /> + Ajouter à l'assurance
-                            </button>
-                          ) : (
-                            /* SI ASSURÉ : BOUTON "RETIRER DE LA LISTE" */
-                            <button
-                              onClick={() => handleRemoveAthleteFromInsurance(ath)}
-                              title="Retirer cet athlète de la liste d'assurance (Supprimer sa police)"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                padding: '5px 10px',
-                                borderRadius: '8px',
-                                fontSize: '0.73rem',
-                                fontWeight: 700,
-                                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                                color: '#ef4444',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              <UserMinus size={13} /> Retirer de la liste
-                            </button>
-                          )}
-
-                          {/* Éditer / Renouveler */}
-                          <button
-                            onClick={() => handleOpenSingleModal(ath)}
-                            title={ass ? "Modifier ou renouveler la police d'assurance" : "Personnaliser les dates ou le contrat"}
-                            className="p-1.5 rounded-lg text-indigo-400 hover:text-indigo-300 hover:bg-[var(--bg-tertiary)]"
-                          >
-                            <Edit size={15} />
-                          </button>
-
-                          {/* Attestation PDF */}
-                          <button
-                            onClick={() => handleDownloadAttestation(ath)}
-                            title="Télécharger l'Attestation Individuelle d'Assurance (PDF)"
-                            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-white hover:bg-[var(--bg-tertiary)]"
-                          >
-                            <FileText size={15} />
-                          </button>
-
-                          {/* Relance WhatsApp */}
-                          <button
-                            onClick={() => handleWhatsAppReminder(ath)}
-                            title="Envoyer un rappel de renouvellement d'assurance par WhatsApp"
-                            className="p-1.5 rounded-lg text-emerald-400 hover:text-emerald-300 hover:bg-[var(--bg-tertiary)]"
-                          >
-                            <MessageSquare size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* MODALE 1 : ASSURANCE INDIVIDUELLE / RENOUVELLEMENT */}
-      <AnimatePresence>
-        {showSingleModal && (
-          <div className="modal-overlay" style={{ zIndex: 100 }}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card modal-content"
-              style={{ maxWidth: '540px', width: '95%' }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={20} color="#818cf8" />
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
-                    {editingAssurance ? 'Renouveler / Modifier l\'Assurance' : 'Souscrire une Police Individuelle'}
-                  </h3>
-                </div>
-                <button 
-                  onClick={() => setShowSingleModal(false)}
-                  className="text-[var(--text-muted)] hover:text-white"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmitSingleForm} className="flex flex-col gap-3">
-                {/* Choix de l'athlète */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Athlète concerné *
-                  </label>
-                  {targetAthlete ? (
-                    <div style={{
-                      padding: '0.65rem 0.9rem',
-                      borderRadius: '10px',
-                      backgroundColor: 'var(--bg-tertiary)',
-                      border: '1px solid var(--border-color)',
-                      fontSize: '0.88rem',
-                      fontWeight: 700,
-                      color: 'var(--text-primary)'
-                    }}>
-                      {(targetAthlete.nom || '').toUpperCase()} {targetAthlete.prenom} ({targetAthlete.groupes?.nom || targetAthlete.groupe || 'Standard'})
-                    </div>
-                  ) : (
-                    <select
-                      value={singleForm.athlete_id}
-                      onChange={(e) => setSingleForm(prev => ({ ...prev, athlete_id: e.target.value }))}
-                      required
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                      <option value="">Sélectionner un athlète...</option>
-                      {enrichedAthletes.map(a => (
-                        <option key={a.id} value={a.id}>
-                          {(a.nom || '').toUpperCase()} {a.prenom} ({a.groupes?.nom || a.groupe || 'Sans groupe'})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Compagnie */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Compagnie d'Assurance *
-                  </label>
-                  <select
-                    value={singleForm.compagnie}
-                    onChange={(e) => setSingleForm(prev => ({ ...prev, compagnie: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  >
-                    {COMPAGNIES_ASSURANCE.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Numéro de police */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Numéro de Police / Référence *
-                  </label>
-                  <input 
-                    type="text"
-                    required
-                    placeholder="Ex: POL-2026-9874"
-                    value={singleForm.numero_police}
-                    onChange={(e) => setSingleForm(prev => ({ ...prev, numero_police: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-
-                {/* Dates de début et fin */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date de début *
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={singleForm.date_debut}
-                      onChange={(e) => setSingleForm(prev => ({ ...prev, date_debut: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date d'expiration *
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={singleForm.date_fin}
-                      onChange={(e) => setSingleForm(prev => ({ ...prev, date_fin: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Type de couverture & Montant */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Type de Couverture
-                    </label>
-                    <select
-                      value={singleForm.type_couverture}
-                      onChange={(e) => setSingleForm(prev => ({ ...prev, type_couverture: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                      {TYPES_COUVERTURE.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Prime payée (DA)
-                    </label>
-                    <input 
-                      type="number"
-                      min="0"
-                      step="any"
-                      placeholder="1500"
-                      value={singleForm.montant}
-                      onChange={(e) => setSingleForm(prev => ({ ...prev, montant: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Notes / Remarques (Optionnel)
-                  </label>
-                  <input 
-                    type="text"
-                    placeholder="Ex: Quittance N° 124, certificat joint"
-                    value={singleForm.notes}
-                    onChange={(e) => setSingleForm(prev => ({ ...prev, notes: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-[var(--border-color)]">
-                  <Button variant="secondary" type="button" onClick={() => setShowSingleModal(false)}>
-                    Annuler
-                  </Button>
-                  <Button variant="primary" type="submit">
-                    Valider la Police
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODALE 2 : SOUSCRIPTION GROUPÉE (PAR GROUPE OU SÉLECTION) */}
-      <AnimatePresence>
-        {showBatchModal && (
-          <div className="modal-overlay" style={{ zIndex: 100 }}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card modal-content"
-              style={{ maxWidth: '560px', width: '95%' }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <Users size={20} color="#818cf8" />
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
-                    Souscription Groupée d'Assurance
-                  </h3>
-                </div>
-                <button 
-                  onClick={() => setShowBatchModal(false)}
-                  className="text-[var(--text-muted)] hover:text-white"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmitBatchForm} className="flex flex-col gap-3">
-                {/* Cible */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Cible de la souscription groupée *
-                  </label>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <button
-                      type="button"
-                      onClick={() => setBatchForm(prev => ({ ...prev, targetType: 'selected' }))}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                        batchForm.targetType === 'selected'
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
-                      }`}
-                    >
-                      Membres cochés ({selectedAthleteIds.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBatchForm(prev => ({ ...prev, targetType: 'group' }))}
-                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                        batchForm.targetType === 'group'
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
-                      }`}
-                    >
-                      Tout un Groupe
-                    </button>
-                  </div>
-
-                  {batchForm.targetType === 'group' && (
-                    <select
-                      value={batchForm.targetGroupId}
-                      onChange={(e) => setBatchForm(prev => ({ ...prev, targetGroupId: e.target.value }))}
-                      required={batchForm.targetType === 'group'}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                      <option value="">Sélectionner le groupe à assurer...</option>
-                      {groupes.map(g => (
-                        <option key={g.id} value={g.id}>{g.nom}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* Compagnie */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Compagnie d'Assurance *
-                  </label>
-                  <select
-                    value={batchForm.compagnie}
-                    onChange={(e) => setBatchForm(prev => ({ ...prev, compagnie: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  >
-                    {COMPAGNIES_ASSURANCE.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Numéro de police collective */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Numéro de Police Cadre / Bordereau *
-                  </label>
-                  <input 
-                    type="text"
-                    required
-                    placeholder="Ex: POL-COLL-2026/01"
-                    value={batchForm.numero_police}
-                    onChange={(e) => setBatchForm(prev => ({ ...prev, numero_police: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-
-                {/* Dates */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date de début *
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={batchForm.date_debut}
-                      onChange={(e) => setBatchForm(prev => ({ ...prev, date_debut: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date d'expiration *
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={batchForm.date_fin}
-                      onChange={(e) => setBatchForm(prev => ({ ...prev, date_fin: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Type de couverture */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Garantie / Couverture
-                  </label>
-                  <select
-                    value={batchForm.type_couverture}
-                    onChange={(e) => setBatchForm(prev => ({ ...prev, type_couverture: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  >
-                    {TYPES_COUVERTURE.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-[var(--border-color)]">
-                  <Button variant="secondary" type="button" onClick={() => setShowBatchModal(false)}>
-                    Annuler
-                  </Button>
-                  <Button variant="primary" type="submit">
-                    Appliquer la souscription
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-
-        {/* MODALE 3 : CONFIGURATION DU BORDEREAU COLLECTIF PDF */}
-        {showBordereauModal && (
-          <div className="modal-overlay" style={{ zIndex: 100 }}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card modal-content"
-              style={{ maxWidth: '580px', width: '95%' }}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <FileText size={20} color="#818cf8" />
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
-                    Générateur de Bordereau Collectif (PDF)
-                  </h3>
-                </div>
-                <button 
-                  onClick={() => setShowBordereauModal(false)}
-                  className="text-[var(--text-muted)] hover:text-white"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleGenerateBordereau} className="flex flex-col gap-3.5">
-                {/* 1. Sélection de la cible */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1.5">
-                    Quels athlètes inclure dans ce bordereau ? *
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'non_assures' }))}
-                      className={`p-2.5 rounded-xl text-left border transition-all ${
-                        bordereauForm.targetType === 'non_assures'
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
-                      }`}
-                    >
-                      <strong className="block text-xs font-bold">🔴 Nouveaux & Non-assurés</strong>
-                      <span className="text-[0.7rem] opacity-80">{stats.nonAssure} athlète(s) à régulariser</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'selected' }))}
-                      className={`p-2.5 rounded-xl text-left border transition-all ${
-                        bordereauForm.targetType === 'selected'
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
-                      }`}
-                    >
-                      <strong className="block text-xs font-bold">📋 Sélection cochée</strong>
-                      <span className="text-[0.7rem] opacity-80">{selectedAthleteIds.length} athlète(s) coché(s)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'group' }))}
-                      className={`p-2.5 rounded-xl text-left border transition-all ${
-                        bordereauForm.targetType === 'group'
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
-                      }`}
-                    >
-                      <strong className="block text-xs font-bold">👥 Tout un Groupe</strong>
-                      <span className="text-[0.7rem] opacity-80">Sélectionner par niveau</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setBordereauForm(prev => ({ ...prev, targetType: 'all' }))}
-                      className={`p-2.5 rounded-xl text-left border transition-all ${
-                        bordereauForm.targetType === 'all'
-                          ? 'bg-[var(--accent-primary)] text-white border-transparent shadow'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] border-[var(--border-color)]'
-                      }`}
-                    >
-                      <strong className="block text-xs font-bold">🌐 Tous les Membres</strong>
-                      <span className="text-[0.7rem] opacity-80">Totalité du club ({stats.total})</span>
-                    </button>
-                  </div>
-
-                  {bordereauForm.targetType === 'group' && (
-                    <select
-                      value={bordereauForm.targetGroupId}
-                      onChange={(e) => setBordereauForm(prev => ({ ...prev, targetGroupId: e.target.value }))}
-                      required={bordereauForm.targetType === 'group'}
-                      className="w-full mt-2 px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                      <option value="">Sélectionner le groupe...</option>
-                      {groupes.map(g => (
-                        <option key={g.id} value={g.id}>{g.nom}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                {/* 2. Compagnie d'Assurance */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Compagnie d'Assurance Destinataire *
-                  </label>
-                  <select
-                    value={bordereauForm.compagnie}
-                    onChange={(e) => setBordereauForm(prev => ({ ...prev, compagnie: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  >
-                    {COMPAGNIES_ASSURANCE.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. Référence de police / bordereau */}
-                <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                    Référence de Police / Contrat-Cadre *
-                  </label>
-                  <input 
-                    type="text"
-                    required
-                    placeholder="Ex: BORD-OVIA-2026/01 ou POL-SAA-7890"
-                    value={bordereauForm.numero_police}
-                    onChange={(e) => setBordereauForm(prev => ({ ...prev, numero_police: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                    style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-
-                {/* 4. Dates de couverture */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date de début *
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={bordereauForm.date_debut}
-                      onChange={(e) => setBordereauForm(prev => ({ ...prev, date_debut: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date d'expiration *
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={bordereauForm.date_fin}
-                      onChange={(e) => setBordereauForm(prev => ({ ...prev, date_fin: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* 5. Option d'enregistrement automatique */}
-                <div style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: '12px',
-                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px'
-                }}>
-                  <input 
-                    type="checkbox"
-                    id="autoEnregistrerCheck"
-                    checked={bordereauForm.autoEnregistrer}
-                    onChange={(e) => setBordereauForm(prev => ({ ...prev, autoEnregistrer: e.target.checked }))}
-                    style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
-                  />
-                  <label htmlFor="autoEnregistrerCheck" style={{ cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                    <strong>Enregistrer automatiquement ces membres comme assurés</strong>
-                    <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Cochez cette case si le contrat est déjà effectif : les athlètes inclus passeront immédiatement au vert 🟢 "À jour".
-                    </span>
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-[var(--border-color)]">
-                  <Button variant="secondary" type="button" onClick={() => setShowBordereauModal(false)}>
-                    Annuler
-                  </Button>
-                  <Button variant="primary" type="submit" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <Download size={15} /> Télécharger le Bordereau PDF
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-        {/* MODALE 4 : AJOUTER DES ATHLÈTES À LA LISTE D'ASSURANCE */}
-        {showAddAthletesModal && (
-          <div className="modal-overlay" style={{ zIndex: 100 }}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card modal-content"
-              style={{ maxWidth: '640px', width: '95%' }}
-            >
-              <div className="flex justify-between items-center mb-3">
-                <div className="flex items-center gap-2">
-                  <div style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '10px',
-                    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                    color: '#10b981',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <UserPlus size={18} />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
-                      Ajouter à la Liste d'Assurance
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      Sélectionnez les athlètes à inscrire au contrat d'assurance du club.
-                    </p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowAddAthletesModal(false)}
-                  className="text-[var(--text-muted)] hover:text-white cursor-pointer"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmitAddAthletesModal} className="flex flex-col gap-3.5">
-                {/* 1. Sélection des athlètes candidats */}
-                <div style={{
-                  padding: '0.85rem',
-                  borderRadius: '12px',
-                  backgroundColor: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-color)'
-                }}>
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2.5">
-                    <span className="text-xs font-bold text-[var(--text-primary)]">
-                      1. Choisir les athlètes non assurés ({selectedForAdd.length} sélectionné{selectedForAdd.length > 1 ? 's' : ''})
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedForAdd(modalCandidateAthletes.map(a => a.id))}
-                        className="text-[0.72rem] font-semibold text-emerald-400 hover:text-emerald-300 cursor-pointer bg-transparent border-none p-0"
-                      >
-                        Tout cocher ({modalCandidateAthletes.length})
-                      </button>
-                      <span className="text-muted text-[0.7rem]">•</span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedForAdd([])}
-                        className="text-[0.72rem] font-semibold text-[var(--text-muted)] hover:text-white cursor-pointer bg-transparent border-none p-0"
-                      >
-                        Tout décocher
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Filtres internes à la modale */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2.5">
-                    <div className="relative">
-                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                      <input 
-                        type="text"
-                        placeholder="Rechercher par nom..."
-                        value={modalSearchQuery}
-                        onChange={(e) => setModalSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 rounded-lg text-xs border focus:outline-none"
-                        style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                      />
-                    </div>
-                    <select
-                      value={modalGroupFilter}
-                      onChange={(e) => setModalGroupFilter(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs border focus:outline-none cursor-pointer"
-                      style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                      <option value="ALL">Tous les groupes</option>
-                      {groupes.map(g => (
-                        <option key={g.id} value={g.id}>{g.nom}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Liste scrollable des athlètes candidats */}
-                  <div style={{
-                    maxHeight: '180px',
-                    overflowY: 'auto',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--bg-primary)'
-                  }}>
-                    {modalCandidateAthletes.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-[var(--text-muted)]">
-                        Aucun athlète non assuré ne correspond à ce filtre.
-                      </div>
-                    ) : (
-                      modalCandidateAthletes.map(ath => {
-                        const isChecked = selectedForAdd.includes(ath.id);
-                        return (
-                          <div 
-                            key={ath.id}
-                            onClick={() => {
-                              setSelectedForAdd(prev => 
-                                isChecked ? prev.filter(x => x !== ath.id) : [...prev, ath.id]
-                              );
-                            }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '6px 10px',
-                              borderBottom: '1px solid rgba(255,255,255,0.05)',
-                              cursor: 'pointer',
-                              backgroundColor: isChecked ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                              transition: 'background-color 0.1s'
-                            }}
-                          >
-                            <div className="flex items-center gap-2">
-                              {isChecked ? (
-                                <CheckSquare size={16} color="#10b981" />
-                              ) : (
-                                <Square size={16} color="var(--text-muted)" />
-                              )}
-                              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                {(ath.nom || '').toUpperCase()} {ath.prenom}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                              <span style={{
-                                fontSize: '0.68rem',
-                                padding: '1px 6px',
-                                borderRadius: '6px',
-                                backgroundColor: 'var(--bg-tertiary)',
-                                color: 'var(--text-muted)'
-                              }}>
-                                {ath.groupes?.nom || ath.groupe || 'Standard'}
-                              </span>
-                              <span style={{
-                                fontSize: '0.65rem',
-                                padding: '1px 5px',
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                color: '#ef4444',
-                                fontWeight: 700
-                              }}>
-                                {ath.insuranceStatus.label}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* 2. Détails de couverture */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Compagnie d'Assurance *
-                    </label>
-                    <select
-                      value={addModalForm.compagnie}
-                      onChange={(e) => setAddModalForm(prev => ({ ...prev, compagnie: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    >
-                      {COMPAGNIES_ASSURANCE.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Numéro de Police / Référence *
-                    </label>
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Ex: POL-COLL-2026/01"
-                      value={addModalForm.numero_police}
-                      onChange={(e) => setAddModalForm(prev => ({ ...prev, numero_police: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-xl text-sm border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Dates & Prime */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date de début
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={addModalForm.date_debut}
-                      onChange={(e) => setAddModalForm(prev => ({ ...prev, date_debut: e.target.value }))}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-xs border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Date de fin (1 an)
-                    </label>
-                    <input 
-                      type="date"
-                      required
-                      value={addModalForm.date_fin}
-                      onChange={(e) => setAddModalForm(prev => ({ ...prev, date_fin: e.target.value }))}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-xs border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
-                      Prime par athlète (DA)
-                    </label>
-                    <input 
-                      type="number"
-                      min="0"
-                      value={addModalForm.montant}
-                      onChange={(e) => setAddModalForm(prev => ({ ...prev, montant: e.target.value }))}
-                      className="w-full px-2.5 py-1.5 rounded-xl text-xs border focus:outline-none"
-                      style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-2 pt-3 border-t border-[var(--border-color)]">
-                  <Button variant="secondary" type="button" onClick={() => setShowAddAthletesModal(false)}>
-                    Annuler
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    type="submit" 
-                    disabled={selectedForAdd.length === 0}
-                    style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: '6px',
-                      backgroundColor: selectedForAdd.length === 0 ? 'var(--bg-tertiary)' : '#10b981',
-                      borderColor: selectedForAdd.length === 0 ? 'var(--border-color)' : '#10b981',
-                      color: selectedForAdd.length === 0 ? 'var(--text-muted)' : '#ffffff',
-                      cursor: selectedForAdd.length === 0 ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <UserPlus size={15} /> Ajouter ({selectedForAdd.length}) à la Liste d'Assurance
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODALE RELANCES AUTOMATISÉES WHATSAPP & SMS */}
+      {/* MODALE RELANCES AUTOMATISÉES WHATSAPP */}
       <InsuranceWhatsAppModal 
         isOpen={showWhatsAppModal}
         onClose={() => setShowWhatsAppModal(false)}

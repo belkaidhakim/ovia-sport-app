@@ -1,11 +1,35 @@
+/**
+ * =====================================================
+ * OVIA SPORT — Hook : useAthletes (refactorisé)
+ * =====================================================
+ * Gère l'état local des athlètes et délègue toutes les
+ * opérations Supabase au service layer (athletes.service.js).
+ */
+
 import { useState, useCallback } from 'react';
-import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
+import { STORAGE_KEYS, DEFAULT_COTISATION_MONTANT, COTISATION_VALIDITY_DAYS } from '../config/constants';
+import {
+  fetchActiveAthletes,
+  fetchArchivedAthletes as fetchArchivedService,
+  fetchAllAthletes as fetchAllService,
+  archiveAthlete as archiveService,
+  restoreAthlete as restoreService,
+  bulkRestoreAthletes as bulkRestoreService,
+  deleteAthletePermanently as deleteService,
+  bulkDeleteAthletes as bulkDeleteService,
+  updateAccessStatus,
+  bulkUpdateAccessStatus,
+  grantAccess,
+  bulkUpdateGroup as bulkUpdateGroupService,
+} from '../services/athletes.service';
+import { createCotisation, bulkCreateCotisations, resetPresences } from '../services/finances.service';
+import { supabase } from '../supabaseClient';
 
 export function useAthletes() {
   const [athletes, setAthletes] = useState(() => {
     try {
-      const cached = localStorage.getItem('scb_cached_athletes_v1');
+      const cached = localStorage.getItem(STORAGE_KEYS.CACHED_ATHLETES);
       return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
@@ -16,35 +40,29 @@ export function useAthletes() {
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [error, setError] = useState(null);
 
+  // ── Helpers ─────────────────────────────────────────────────────────
+  const cacheAthletes = (data) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CACHED_ATHLETES, JSON.stringify(data || []));
+    } catch {
+      // Ignorer les erreurs de quota storage
+    }
+  };
+
+  // ── Fetch athlètes actifs ──────────────────────────────────────────
   const fetchAthletes = useCallback(async (includeArchived = false) => {
     try {
       setLoading(true);
-      let query = supabase
-        .from('athletes')
-        .select(`
-          *,
-          cartes_acces (statut, date_dernier_paiement),
-          cotisations (periode_couverte_fin),
-          groupes(id, nom),
-          presences (id)
-        `);
+      const { data, error: err } = includeArchived
+        ? await fetchAllService()
+        : await fetchActiveAthletes();
 
-      if (!includeArchived) {
-        query = query.eq('est_actif', true);
-      }
-
-      const { data, error } = await query.order('date_inscription', { ascending: false });
-
-      if (error) throw error;
+      if (err) throw err;
       setAthletes(data || []);
-      try {
-        localStorage.setItem('scb_cached_athletes_v1', JSON.stringify(data || []));
-      } catch {
-        // Ignore storage quota errors
-      }
+      cacheAthletes(data);
       setError(null);
     } catch (err) {
-      console.error('Erreur fetchAthletes:', err);
+      console.error('[useAthletes] fetchAthletes:', err);
       setError(err.message);
       toast.error('Erreur lors du chargement des athlètes');
     } finally {
@@ -52,29 +70,18 @@ export function useAthletes() {
     }
   }, []);
 
-  const fetchAllAthletes = useCallback(async () => {
-    return fetchAthletes(true);
-  }, [fetchAthletes]);
+  const fetchAllAthletes = useCallback(() => fetchAthletes(true), [fetchAthletes]);
 
+  // ── Fetch archives ────────────────────────────────────────────────
   const fetchArchivedAthletes = useCallback(async () => {
     try {
       setLoadingArchived(true);
-      const { data, error } = await supabase
-        .from('athletes')
-        .select(`
-          *,
-          cartes_acces (statut, date_dernier_paiement),
-          cotisations (periode_couverte_fin, date_paiement, montant_paye),
-          groupes(id, nom)
-        `)
-        .eq('est_actif', false)
-        .order('date_inscription', { ascending: false });
-
-      if (error) throw error;
+      const { data, error: err } = await fetchArchivedService();
+      if (err) throw err;
       setArchivedAthletes(data || []);
       return data || [];
     } catch (err) {
-      console.error('Erreur fetchArchivedAthletes:', err);
+      console.error('[useAthletes] fetchArchivedAthletes:', err);
       toast.error('Erreur lors du chargement des archives');
       return [];
     } finally {
@@ -82,19 +89,16 @@ export function useAthletes() {
     }
   }, []);
 
+  // ── Archive / Restauration ────────────────────────────────────────
   const archiveAthlete = async (id) => {
     try {
-      const { error } = await supabase
-        .from('athletes')
-        .update({ est_actif: false })
-        .eq('id', id);
-
-      if (error) throw error;
+      const { error: err } = await archiveService(id);
+      if (err) throw err;
       setAthletes(prev => prev.filter(a => a.id !== id));
-      toast.success("Membre archivé avec succès");
+      toast.success('Membre archivé avec succès');
       return true;
     } catch (err) {
-      console.error('Erreur archiveAthlete:', err);
+      console.error('[useAthletes] archiveAthlete:', err);
       toast.error("Erreur lors de l'archivage");
       return false;
     }
@@ -102,309 +106,221 @@ export function useAthletes() {
 
   const restoreAthlete = async (id) => {
     try {
-      const { error } = await supabase
-        .from('athletes')
-        .update({ est_actif: true })
-        .eq('id', id);
-
-      if (error) throw error;
+      const { error: err } = await restoreService(id);
+      if (err) throw err;
       setArchivedAthletes(prev => prev.filter(a => a.id !== id));
       fetchAthletes();
-      toast.success("Membre réactivé avec succès");
+      toast.success('Membre réactivé avec succès');
       return true;
     } catch (err) {
-      console.error('Erreur restoreAthlete:', err);
-      toast.error("Erreur lors de la réactivation");
+      console.error('[useAthletes] restoreAthlete:', err);
+      toast.error('Erreur lors de la réactivation');
       return false;
     }
   };
 
   const bulkRestoreAthletes = async (athleteIds) => {
-    if (!athleteIds || athleteIds.length === 0) return false;
+    if (!athleteIds?.length) return false;
     try {
-      const { error } = await supabase
-        .from('athletes')
-        .update({ est_actif: true })
-        .in('id', athleteIds);
-
-      if (error) throw error;
+      const { error: err } = await bulkRestoreService(athleteIds);
+      if (err) throw err;
       setArchivedAthletes(prev => prev.filter(a => !athleteIds.includes(a.id)));
       fetchAthletes();
       toast.success(`${athleteIds.length} membre(s) réactivé(s) avec succès`);
       return true;
     } catch (err) {
-      console.error('Erreur bulkRestoreAthletes:', err);
-      toast.error("Erreur lors de la réactivation en masse");
+      console.error('[useAthletes] bulkRestoreAthletes:', err);
+      toast.error('Erreur lors de la réactivation en masse');
       return false;
     }
   };
 
+  // ── Suppression permanente ─────────────────────────────────────────
   const deleteAthletePermanently = async (id) => {
     try {
-      // Nettoyer les dépendances clés étrangères avant suppression définitive
-      await supabase.from('cartes_acces').delete().eq('athlete_id', id).catch(() => {});
-      await supabase.from('cotisations').delete().eq('athlete_id', id).catch(() => {});
-      await supabase.from('assurances').delete().eq('athlete_id', id).catch(() => {});
-      await supabase.from('presences').delete().eq('athlete_id', id).catch(() => {});
-      await supabase.from('scans').delete().eq('athlete_id', id).catch(() => {});
-
-      const { error } = await supabase
-        .from('athletes')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      const { error: err } = await deleteService(id);
+      if (err) throw err;
       setArchivedAthletes(prev => prev.filter(a => a.id !== id));
       setAthletes(prev => prev.filter(a => a.id !== id));
-      toast.success("Membre supprimé définitivement");
+      toast.success('Membre supprimé définitivement');
       return true;
     } catch (err) {
-      console.error('Erreur deleteAthletePermanently:', err);
-      toast.error("Erreur lors de la suppression définitive");
+      console.error('[useAthletes] deleteAthletePermanently:', err);
+      toast.error('Erreur lors de la suppression définitive');
       return false;
     }
   };
 
   const bulkDeleteAthletesPermanently = async (athleteIds) => {
-    if (!athleteIds || athleteIds.length === 0) return false;
+    if (!athleteIds?.length) return false;
     try {
-      await supabase.from('cartes_acces').delete().in('athlete_id', athleteIds).catch(() => {});
-      await supabase.from('cotisations').delete().in('athlete_id', athleteIds).catch(() => {});
-      await supabase.from('assurances').delete().in('athlete_id', athleteIds).catch(() => {});
-      await supabase.from('presences').delete().in('athlete_id', athleteIds).catch(() => {});
-      await supabase.from('scans').delete().in('athlete_id', athleteIds).catch(() => {});
-
-      const { error } = await supabase
-        .from('athletes')
-        .delete()
-        .in('id', athleteIds);
-
-      if (error) throw error;
+      const { error: err } = await bulkDeleteService(athleteIds);
+      if (err) throw err;
       setArchivedAthletes(prev => prev.filter(a => !athleteIds.includes(a.id)));
       setAthletes(prev => prev.filter(a => !athleteIds.includes(a.id)));
       toast.success(`${athleteIds.length} membre(s) supprimé(s) définitivement`);
       return true;
     } catch (err) {
-      console.error('Erreur bulkDeleteAthletesPermanently:', err);
-      toast.error("Erreur lors de la suppression définitive en masse");
+      console.error('[useAthletes] bulkDeleteAthletesPermanently:', err);
+      toast.error('Erreur lors de la suppression définitive en masse');
       return false;
     }
   };
 
+  // ── Statut d'accès ────────────────────────────────────────────────
+  /** Met à jour le statut carte d'accès d'un athlète dans l'état local */
+  const patchAthleteAccess = (athleteId, newStatus) => {
+    setAthletes(prev => prev.map(a => {
+      if (a.id !== athleteId) return a;
+      return {
+        ...a,
+        cartes_acces: Array.isArray(a.cartes_acces)
+          ? [{ ...a.cartes_acces[0], statut: newStatus }]
+          : { ...a.cartes_acces, statut: newStatus },
+      };
+    }));
+  };
+
   const toggleAccessStatus = async (athleteId, currentStatusObj) => {
-    const currentStatus = Array.isArray(currentStatusObj) ? currentStatusObj[0]?.statut : currentStatusObj?.statut;
+    const currentStatus = Array.isArray(currentStatusObj)
+      ? currentStatusObj[0]?.statut
+      : currentStatusObj?.statut;
     const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDUE' : 'ACTIVE';
-    
+
     try {
-      const { error } = await supabase
-        .from('cartes_acces')
-        .update({ statut: newStatus })
-        .eq('athlete_id', athleteId);
-        
-      if (error) throw error;
-      
-      setAthletes(prev => prev.map(a => {
-        if (a.id === athleteId) {
-          return {
-            ...a,
-            cartes_acces: Array.isArray(a.cartes_acces)
-              ? [{ ...a.cartes_acces[0], statut: newStatus }]
-              : { ...a.cartes_acces, statut: newStatus }
-          };
-        }
-        return a;
-      }));
-      toast.success(`Statut mis à jour : ${newStatus === 'ACTIVE' ? 'Activé' : 'Suspendu'}`);
+      const { error: err } = await updateAccessStatus(athleteId, newStatus);
+      if (err) throw err;
+      patchAthleteAccess(athleteId, newStatus);
+      toast.success(`Statut mis à jour : ${newStatus === 'ACTIVE' ? 'Activé ✓' : 'Suspendu ✗'}`);
       return true;
     } catch (err) {
-      console.error('Error updating status:', err);
+      console.error('[useAthletes] toggleAccessStatus:', err);
       toast.error('Erreur lors de la mise à jour du statut');
       return false;
     }
   };
 
   const bulkUpdateGroup = async (athleteIds, newGroupId, newGroupName) => {
-    if (!athleteIds || athleteIds.length === 0) return false;
+    if (!athleteIds?.length) return false;
     try {
-      const { error } = await supabase
-        .from('athletes')
-        .update({ groupe_id: newGroupId, groupe: newGroupName })
-        .in('id', athleteIds);
-      if (error) throw error;
+      const { error: err } = await bulkUpdateGroupService(athleteIds, newGroupId, newGroupName);
+      if (err) throw err;
       toast.success(`${athleteIds.length} membre(s) réaffecté(s) au groupe « ${newGroupName} »`);
       fetchAthletes();
       return true;
     } catch (err) {
-      console.error('Erreur bulkUpdateGroup:', err);
+      console.error('[useAthletes] bulkUpdateGroup:', err);
       toast.error('Erreur lors de la réaffectation en masse');
       return false;
     }
   };
 
   const bulkToggleAccess = async (athleteIds, newStatus = 'SUSPENDUE') => {
-    if (!athleteIds || athleteIds.length === 0) return false;
+    if (!athleteIds?.length) return false;
     try {
-      const { error } = await supabase
-        .from('cartes_acces')
-        .update({ statut: newStatus })
-        .in('athlete_id', athleteIds);
-      if (error) throw error;
+      const { error: err } = await bulkUpdateAccessStatus(athleteIds, newStatus);
+      if (err) throw err;
       toast.success(`Accès ${newStatus === 'ACTIVE' ? 'activé' : 'suspendu'} pour ${athleteIds.length} membre(s)`);
       fetchAthletes();
       return true;
     } catch (err) {
-      console.error('Erreur bulkToggleAccess:', err);
+      console.error('[useAthletes] bulkToggleAccess:', err);
       toast.error("Erreur lors du changement d'accès en masse");
       return false;
     }
   };
 
-  const bulkValidateCotisation = async (athleteIds, montant = 3000, modePaiement = 'Espèces') => {
-    if (!athleteIds || athleteIds.length === 0) return false;
+  const bulkValidateCotisation = async (athleteIds, montant = DEFAULT_COTISATION_MONTANT, modePaiement = 'Espèces') => {
+    if (!athleteIds?.length) return false;
     try {
-      const now = new Date();
-      const fin = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-      const datePaiement = now.toISOString().split('T')[0];
+      const { error: err } = await bulkCreateCotisations(athleteIds, montant, modePaiement);
+      if (err) throw err;
 
-      const cotisRows = athleteIds.map(id => ({
-        athlete_id: id,
-        montant_paye: montant,
-        mode_paiement: modePaiement,
-        date_paiement: datePaiement,
-        periode_couverte_fin: fin
-      }));
+      // Réactivation des cartes
+      await bulkUpdateAccessStatus(athleteIds, 'ACTIVE');
 
-      const { error } = await supabase
-        .from('cotisations')
-        .insert(cotisRows);
-
-      if (error) throw error;
-
-      // Réactivation de la carte d'accès
-      await supabase
-        .from('cartes_acces')
-        .update({ statut: 'ACTIVE', date_dernier_paiement: datePaiement })
-        .in('athlete_id', athleteIds);
-
-      toast.success(`Cotisation validée pour ${athleteIds.length} membre(s) (valable 30j)`);
+      toast.success(`Cotisation validée pour ${athleteIds.length} membre(s) (valable ${COTISATION_VALIDITY_DAYS}j)`);
       fetchAthletes();
       return true;
     } catch (err) {
-      console.error('Erreur bulkValidateCotisation:', err);
+      console.error('[useAthletes] bulkValidateCotisation:', err);
       toast.error('Erreur lors de la validation des cotisations en masse');
       return false;
     }
   };
 
+  // ── Smart Access (multi-actions) ──────────────────────────────────
   const updateSmartAccess = async (athleteId, action, options = {}) => {
-    const toastId = toast.loading("Mise à jour du Smart Access...");
+    const toastId = toast.loading('Mise à jour du Smart Access…');
     try {
       if (action === 'BLOQUE') {
-        const { error } = await supabase
-          .from('cartes_acces')
-          .update({ statut: 'SUSPENDUE' })
-          .eq('athlete_id', athleteId);
-        if (error) throw error;
-
-        setAthletes(prev => prev.map(a => {
-          if (a.id === athleteId) {
-            return {
-              ...a,
-              cartes_acces: Array.isArray(a.cartes_acces) 
-                ? [{ ...a.cartes_acces[0], statut: 'SUSPENDUE' }] 
-                : { ...a.cartes_acces, statut: 'SUSPENDUE' }
-            };
-          }
-          return a;
-        }));
+        await updateAccessStatus(athleteId, 'SUSPENDUE');
+        patchAthleteAccess(athleteId, 'SUSPENDUE');
         toast.dismiss(toastId);
-        toast.success("Smart Access : Accès bloqué (Carte suspendue)");
+        toast.success('Smart Access : Accès bloqué');
         return true;
       }
 
       if (action === 'AUTORISE') {
-        await supabase
-          .from('cartes_acces')
-          .update({ statut: 'ACTIVE', date_dernier_paiement: new Date().toISOString() })
-          .eq('athlete_id', athleteId);
+        await grantAccess(athleteId);
 
         let newCotis = null;
         if (options.addCotisation) {
-          const now = new Date();
-          const fin = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-          const { data: cotisData } = await supabase
-            .from('cotisations')
-            .insert([{
-              athlete_id: athleteId,
-              montant_paye: Number(options.montant) || 3000,
-              mode_paiement: options.modePaiement || 'Espèces',
-              date_paiement: now.toISOString().split('T')[0],
-              periode_couverte_fin: fin
-            }])
-            .select()
-            .maybeSingle();
-          newCotis = cotisData;
+          const { data } = await createCotisation({
+            athleteId,
+            montant: options.montant,
+            modePaiement: options.modePaiement || 'Espèces',
+            periodeFin: options.periodeFin,
+          });
+          newCotis = data;
         }
 
         if (options.resetPresences) {
-          await supabase.from('presences').delete().eq('athlete_id', athleteId);
+          await resetPresences(athleteId);
         }
 
         setAthletes(prev => prev.map(a => {
-          if (a.id === athleteId) {
-            const updatedCotis = newCotis ? [newCotis, ...(a.cotisations || [])] : (a.cotisations || []);
-            const updatedPresences = options.resetPresences ? [] : (a.presences || []);
-            return {
-              ...a,
-              cartes_acces: Array.isArray(a.cartes_acces) 
-                ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }] 
-                : { ...a.cartes_acces, statut: 'ACTIVE' },
-              cotisations: updatedCotis,
-              presences: updatedPresences
-            };
-          }
-          return a;
+          if (a.id !== athleteId) return a;
+          return {
+            ...a,
+            cartes_acces: Array.isArray(a.cartes_acces)
+              ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
+              : { ...a.cartes_acces, statut: 'ACTIVE' },
+            cotisations: newCotis ? [newCotis, ...(a.cotisations || [])] : (a.cotisations || []),
+            presences: options.resetPresences ? [] : (a.presences || []),
+          };
         }));
 
         toast.dismiss(toastId);
-        toast.success("Smart Access : Accès autorisé");
+        toast.success('Smart Access : Accès autorisé ✓');
         return true;
       }
 
       if (action === 'RESET_QUOTA') {
-        const { error } = await supabase.from('presences').delete().eq('athlete_id', athleteId);
-        if (error) throw error;
-
-        await supabase
-          .from('cartes_acces')
-          .update({ statut: 'ACTIVE' })
-          .eq('athlete_id', athleteId);
+        await resetPresences(athleteId);
+        await updateAccessStatus(athleteId, 'ACTIVE');
 
         setAthletes(prev => prev.map(a => {
-          if (a.id === athleteId) {
-            return {
-              ...a,
-              presences: [],
-              cartes_acces: Array.isArray(a.cartes_acces) 
-                ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }] 
-                : { ...a.cartes_acces, statut: 'ACTIVE' }
-            };
-          }
-          return a;
+          if (a.id !== athleteId) return a;
+          return {
+            ...a,
+            presences: [],
+            cartes_acces: Array.isArray(a.cartes_acces)
+              ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
+              : { ...a.cartes_acces, statut: 'ACTIVE' },
+          };
         }));
+
         toast.dismiss(toastId);
-        toast.success("Quota réinitialisé : 8/8 séances disponibles !");
+        toast.success('Quota réinitialisé : 8/8 séances disponibles !');
         return true;
       }
 
       if (action === 'TOLERANCE') {
-        await supabase
-          .from('cartes_acces')
-          .update({ statut: 'ACTIVE' })
-          .eq('athlete_id', athleteId);
+        await updateAccessStatus(athleteId, 'ACTIVE');
 
         if (options.adjustPresences) {
-          await supabase.from('presences').delete().eq('athlete_id', athleteId);
+          await resetPresences(athleteId);
           await supabase.from('presences').insert([{ athlete_id: athleteId }]);
         }
 
@@ -418,8 +334,8 @@ export function useAthletes() {
       return false;
     } catch (err) {
       toast.dismiss(toastId);
-      console.error("Erreur updateSmartAccess:", err);
-      toast.error("Erreur Smart Access : " + err.message);
+      console.error('[useAthletes] updateSmartAccess:', err);
+      toast.error('Erreur Smart Access : ' + err.message);
       return false;
     }
   };
@@ -442,6 +358,6 @@ export function useAthletes() {
     updateSmartAccess,
     bulkUpdateGroup,
     bulkToggleAccess,
-    bulkValidateCotisation
+    bulkValidateCotisation,
   };
 }

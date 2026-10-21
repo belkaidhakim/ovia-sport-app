@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { ROLES } from '../config/constants';
 
 const AuthContext = createContext({});
 
@@ -55,28 +56,40 @@ export const AuthProvider = ({ children }) => {
         .select('role')
         .eq('id', userId)
         .single();
-      
+
       if (error) {
-        console.error("Error fetching role:", error);
-        // Fallback or handle missing profile
-        setRole('admin'); // Fallback pour ne pas bloquer l'app en attendant la configuration
+        // Ne jamais accorder de rôle par défaut — rediriger vers login
+        console.error('[AuthContext] Profil utilisateur introuvable:', error.message);
+        setRole(null);
       } else {
-        setRole(data?.role || 'admin');
+        // Valider que le rôle est connu, sinon null
+        const knownRoles = Object.values(ROLES);
+        const userRole = data?.role;
+        setRole(knownRoles.includes(userRole) ? userRole : null);
       }
     } catch (err) {
-      console.error(err);
-      setRole('admin');
+      console.error('[AuthContext] Erreur fetchUserRole:', err);
+      setRole(null);
     } finally {
       setLoading(false);
     }
   }
+
+  const signOut = async () => {
+    setRole(null);
+    setUser(null);
+    setSession(null);
+    await supabase.auth.signOut();
+  };
 
   const value = {
     session,
     user,
     role,
     loading,
-    signOut: () => supabase.auth.signOut(),
+    signOut,
+    /** Vérifie si l'utilisateur possède un des rôles donnés */
+    hasRole: (roles) => Array.isArray(roles) ? roles.includes(role) : role === roles,
   };
 
   return (
