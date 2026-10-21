@@ -24,11 +24,14 @@ import {
   Calendar,
   LogOut,
   X,
-  Menu
+  Menu,
+  Archive,
+  UserCheck
 } from "lucide-react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
+import ConfirmModal from "./ConfirmModal";
 import AthleteQuickDrawer from "./layout/AthleteQuickDrawer";
 import {
   ROLE_LABELS,
@@ -48,6 +51,7 @@ export default function ClubProAppShell({ children }) {
   const [globalSearch, setGlobalSearch] = useState("");
   const [counts, setCounts] = useState({ athletes: 0, inscriptions: 0, pendingCotis: 0 });
   const [pendingNotifications, setPendingNotifications] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const searchInputRef = useRef(null);
 
   // ── Charger les compteurs sidebar ─────────────────────────────────
@@ -147,7 +151,8 @@ export default function ClubProAppShell({ children }) {
     {
       section: "ADMINISTRATION",
       items: [
-        { id: "archives", label: "Archives", icon: null, path: "/archives", badge: null },
+        { id: "archives", label: "Archives", icon: Archive, path: "/archives", badge: null },
+        { id: "profil", label: "Mon Profil", icon: UserCheck, path: "/profil", badge: null },
         { id: "parametres", label: "Configuration Club", icon: Settings, path: "/users", badge: null },
       ],
     },
@@ -158,9 +163,9 @@ export default function ClubProAppShell({ children }) {
   const displayRole = ROLE_LABELS[role] || "Direction Sportive";
   const initials = displayName.slice(0, 2).toUpperCase();
 
-  // ── Déconnexion avec confirmation ─────────────────────────────────
+  // ── Déconnexion avec confirmation moderne ──────────────────────────
   const handleSignOut = () => {
-    if (window.confirm("Voulez-vous vous déconnecter ?")) signOut();
+    setShowSignOutModal(true);
   };
 
   return (
@@ -272,17 +277,20 @@ export default function ClubProAppShell({ children }) {
 
         {/* Profil admin */}
         <div className="p-3 border-t border-slate-800 flex items-center justify-between bg-slate-950/40 gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-xs font-black text-cyan-300 shrink-0">
+          <Link
+            to="/profil"
+            className="flex items-center gap-2 min-w-0 hover:opacity-85 transition group no-underline"
+            title="Accéder à mon profil"
+          >
+            <div className="w-8 h-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-xs font-black text-cyan-300 shrink-0 group-hover:scale-105 transition-transform">
               {initials}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-bold text-white truncate leading-none mb-0">{displayName}</p>
+              <p className="text-xs font-bold text-white truncate leading-none mb-0 group-hover:text-cyan-300 transition-colors">{displayName}</p>
               <p className="text-[10px] text-slate-500 truncate mt-0.5 mb-0">{displayRole}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <ThemeToggle className="!px-2 !py-1 !text-[11px]" />
+          </Link>
+          <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={handleSignOut}
               title="Se déconnecter"
@@ -345,7 +353,7 @@ export default function ClubProAppShell({ children }) {
             <ThemeToggle />
 
             <Link
-              to="/dashboard"
+              to="/alertes"
               className="relative p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition"
               title="Centre d'alertes & notifications"
               aria-label="Notifications"
@@ -366,6 +374,22 @@ export default function ClubProAppShell({ children }) {
 
       {/* ── Tiroir athlète (composant autonome) ─────────────────── */}
       <AthleteQuickDrawer />
+
+      {/* ── Modale de confirmation déconnexion ──────────────────── */}
+      <ConfirmModal
+        isOpen={showSignOutModal}
+        title="Déconnexion"
+        message="Êtes-vous sûr de vouloir vous déconnecter de votre session OVIA SPORT ?"
+        confirmText="Se déconnecter"
+        cancelText="Annuler"
+        confirmVariant="danger"
+        icon={LogOut}
+        onConfirm={() => {
+          setShowSignOutModal(false);
+          signOut();
+        }}
+        onCancel={() => setShowSignOutModal(false)}
+      />
     </div>
   );
 }

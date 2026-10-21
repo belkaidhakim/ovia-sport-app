@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useSchedule } from '../hooks/useSchedule';
 import { useGroupes } from '../hooks/useGroupes';
 import { 
   Calendar as CalendarIcon, Plus, Clock, User, MapPin, 
-  Edit2, Trash2, X
+  Edit2, Trash2, X, RefreshCw, Zap, Info
 } from 'lucide-react';
 import { Button } from '../components/ui';
+import { supabase } from '../supabaseClient';
+import toast from 'react-hot-toast';
+import ConfirmModal from '../components/ConfirmModal';
 
 const DAYS = [
   { id: 0, label: 'Dimanche', short: 'Dim' },
@@ -23,6 +27,8 @@ export default function Schedule() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
+  const [syncing, setSyncing] = useState(false);
   
   const [formData, setFormData] = useState({
     dayOfWeek: 0,
@@ -79,9 +85,61 @@ export default function Schedule() {
     handleCloseModal();
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Voulez-vous vraiment supprimer ce créneau ?")) {
-      await deleteSession(id);
+  const handleDelete = (id) => {
+    setSessionToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (sessionToDelete) {
+      await deleteSession(sessionToDelete);
+      setSessionToDelete(null);
+    }
+  };
+
+  // Synchronisation intelligente vers la table groupes (pour le Dashboard)
+  const handleSyncToGroups = async () => {
+    try {
+      setSyncing(true);
+      if (!groupes || groupes.length === 0) {
+        toast.error("Aucun groupe trouvé pour la synchronisation.");
+        return;
+      }
+
+      let updatedCount = 0;
+      for (const grp of groupes) {
+        const matchingSessions = schedule.filter(
+          s => (s.groupId && s.groupId === grp.id) || 
+               (s.groupName && s.groupName.trim().toLowerCase() === grp.nom.trim().toLowerCase())
+        );
+
+        if (matchingSessions.length > 0) {
+          const formattedHoraires = matchingSessions.map(s => {
+            const dayObj = DAYS.find(d => d.id === s.dayOfWeek);
+            return {
+              jour: dayObj ? dayObj.label : 'Lundi',
+              heure: s.startTime
+            };
+          });
+
+          const { error } = await supabase
+            .from('groupes')
+            .update({ horaires: formattedHoraires })
+            .eq('id', grp.id);
+
+          if (!error) updatedCount++;
+        }
+      }
+
+      if (updatedCount > 0) {
+        toast.success(`${updatedCount} groupe(s) synchronisé(s) ! Les présences attendues sur le Dashboard sont à jour.`);
+      } else {
+        toast.info("Aucun créneau ne correspond aux groupes actuels. Vérifiez les noms de groupes.");
+      }
+    } catch (err) {
+      console.error("Erreur synchronisation planning:", err);
+      toast.error("Erreur lors de la synchronisation.");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -104,8 +162,9 @@ export default function Schedule() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* En-tête */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold flex items-center gap-3">
             <CalendarIcon className="text-primary" size={32} />
@@ -113,9 +172,29 @@ export default function Schedule() {
           </h1>
           <p className="text-muted mt-1">Organisez les créneaux d'entraînement, les groupes et les lignes d'eau.</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="flex items-center gap-2">
-          <Plus size={18} /> Ajouter un créneau
-        </Button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button 
+            variant="outline" 
+            onClick={handleSyncToGroups}
+            disabled={syncing}
+            className="flex items-center gap-2 border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10"
+            title="Met à jour les créneaux des groupes pour les afficher sur le Dashboard"
+          >
+            <Zap className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? 'Synchronisation...' : 'Synchroniser avec le Dashboard'}
+          </Button>
+          <Button onClick={() => handleOpenModal()} className="flex items-center gap-2">
+            <Plus size={18} /> Ajouter un créneau
+          </Button>
+        </div>
+      </div>
+
+      {/* Bannière explicative professionnelle */}
+      <div className="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 flex items-start gap-3">
+        <Info className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
+        <div className="text-xs text-sky-950 dark:text-sky-200 leading-relaxed">
+          <span className="font-bold">Grille globale du club :</span> Les séances définies ici structurent la répartition des lignes d'eau et des coachs. Cliquez sur <span className="font-semibold underline">Synchroniser avec le Dashboard</span> à tout moment pour que les athlètes de chaque groupe soient automatiquement attendus lors de leurs séances du jour.
+        </div>
       </div>
 
       <div className="overflow-x-auto pb-4">
@@ -323,9 +402,18 @@ export default function Schedule() {
         </div>
       )}
 
+      {/* Modale de confirmation de suppression */}
+      <ConfirmModal
+        isOpen={Boolean(sessionToDelete)}
+        title="Supprimer ce créneau"
+        message="Êtes-vous sûr de vouloir supprimer définitivement ce créneau d'entraînement du planning ?"
+        confirmText="Supprimer le créneau"
+        cancelText="Annuler"
+        confirmVariant="danger"
+        icon={Trash2}
+        onConfirm={confirmDelete}
+        onCancel={() => setSessionToDelete(null)}
+      />
     </div>
   );
 }
-
-// Manually import framer-motion since it's used in the modal
-import { motion } from 'framer-motion';

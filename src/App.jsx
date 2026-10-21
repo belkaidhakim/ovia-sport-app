@@ -30,6 +30,9 @@ const Schedule             = lazyRetry(() => import('./pages/Schedule'));
 const SportsTracking       = lazyRetry(() => import('./pages/SportsTracking'));
 const InsuranceManagement  = lazyRetry(() => import('./pages/InsuranceManagement'));
 const ArchivesManagement   = lazyRetry(() => import('./pages/ArchivesManagement'));
+const AlertsCenter         = lazyRetry(() => import('./pages/AlertsCenter'));
+const AdminProfile         = lazyRetry(() => import('./pages/AdminProfile'));
+const NotFound             = lazyRetry(() => import('./pages/NotFound'));
 
 // ─── Layout protégé ───────────────────────────────────────────────────────
 function AdminLayout({ children, allowedRoles }) {
@@ -224,8 +227,22 @@ function AppRoutes() {
               </AdminLayout>
             } />
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Centre d'alertes & notifications */}
+            <Route path="/alertes" element={
+              <AdminLayout allowedRoles={ALL_ADMIN_ROLES}>
+                <AlertsCenter />
+              </AdminLayout>
+            } />
+
+            {/* Profil & Sécurité administrateur */}
+            <Route path="/profil" element={
+              <AdminLayout allowedRoles={ALL_ADMIN_ROLES}>
+                <AdminProfile />
+              </AdminLayout>
+            } />
+
+            {/* Page 404 Personnalisée */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>
