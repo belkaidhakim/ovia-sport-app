@@ -37,6 +37,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
 import { Card, StatCard, Button, Badge, Skeleton } from '../components/ui';
+import { supabase } from '../supabaseClient';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
 import { 
@@ -78,6 +79,44 @@ export default function InsuranceManagement() {
   useEffect(() => {
     fetchAthletes(false);
   }, [fetchAthletes]);
+
+  // Synchronisation proactive du lieu de naissance depuis les inscriptions si manquant
+  useEffect(() => {
+    const syncMissingLieux = async () => {
+      try {
+        const missingAthletes = athletes.filter(a => !a.lieu_naissance && a.nom && a.prenom);
+        if (!missingAthletes.length) return;
+
+        const { data: inscData, error: inscError } = await supabase
+          .from('inscriptions')
+          .select('nom, prenom, lieu_naissance')
+          .not('lieu_naissance', 'is', null);
+
+        if (!inscError && inscData && inscData.length > 0) {
+          for (const ath of missingAthletes) {
+            const match = inscData.find(i => 
+              i.nom?.trim().toUpperCase() === ath.nom?.trim().toUpperCase() &&
+              i.prenom?.trim().toLowerCase() === ath.prenom?.trim().toLowerCase() &&
+              i.lieu_naissance?.trim()
+            );
+            if (match && match.lieu_naissance) {
+              await supabase
+                .from('athletes')
+                .update({ lieu_naissance: match.lieu_naissance.trim() })
+                .eq('id', ath.id);
+              ath.lieu_naissance = match.lieu_naissance.trim();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Sync lieu_naissance background warning:', err);
+      }
+    };
+
+    if (athletes.length > 0) {
+      syncMissingLieux();
+    }
+  }, [athletes]);
 
   // Filtres & Recherche
   const [searchQuery, setSearchQuery] = useState('');
@@ -176,14 +215,32 @@ export default function InsuranceManagement() {
 
   // Fusionner chaque athlète ACTIF avec son assurance active & catégorie fédérale
   const enrichedAthletes = useMemo(() => {
+    let localInsc = [];
+    try {
+      localInsc = JSON.parse(localStorage.getItem('local_inscriptions_backup') || '[]');
+    } catch {}
+
     return athletes
       .filter(ath => ath.est_actif !== false)
       .map(ath => {
         const assurance = getAthleteAssurance(ath.id);
         const statusInfo = calculateInsuranceStatus(assurance);
         const federalCategory = getAthleteFederalCategory(ath.date_naissance);
+
+        let lieuNaissance = ath.lieu_naissance || ath.lieu_de_naissance || ath.lieuNaissance || ath.lieu || null;
+        if (!lieuNaissance && localInsc.length > 0) {
+          const matched = localInsc.find(i => 
+            i.nom?.trim().toUpperCase() === ath.nom?.trim().toUpperCase() && 
+            i.prenom?.trim().toLowerCase() === ath.prenom?.trim().toLowerCase()
+          );
+          if (matched?.lieu_naissance) {
+            lieuNaissance = matched.lieu_naissance.trim();
+          }
+        }
+
         return {
           ...ath,
+          lieu_naissance: lieuNaissance || '',
           assurance,
           insuranceStatus: statusInfo,
           federalCategory
@@ -690,6 +747,7 @@ export default function InsuranceManagement() {
       'Prénom': ath.prenom || '',
       'Sexe': ath.sexe || '',
       'Date de Naissance': ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '',
+      'Lieu de Naissance': ath.lieu_naissance || ath.lieu_de_naissance || ath.lieuNaissance || ath.lieu || '',
       'Groupe': ath.groupes?.nom || ath.groupe || '',
       'Téléphone': ath.telephone || '',
       'Statut Assurance': ath.insuranceStatus.label,
@@ -1388,7 +1446,7 @@ export default function InsuranceManagement() {
                             </div>
                             <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                               {ath.telephone || ath.telephone_parent || 'Sans numéro'}
-                              {ath.date_naissance && ` • Né(e) le ${new Date(ath.date_naissance).toLocaleDateString('fr-FR')} (${ath.federalCategory?.age} ans)`}
+                              {ath.date_naissance && ` • Né(e) le ${new Date(ath.date_naissance).toLocaleDateString('fr-FR')}${ath.lieu_naissance ? ` à ${ath.lieu_naissance}` : ''} (${ath.federalCategory?.age} ans)`}
                             </span>
                           </div>
                         </div>

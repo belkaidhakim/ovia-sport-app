@@ -225,7 +225,12 @@ export default function AthleteForm() {
           delete payload.contact_urgence;
           delete payload.groupe_sanguin;
           delete payload.observations_medicales;
-          delete payload.lieu_naissance;
+          delete payload.certificat_medical;
+          delete payload.autorisation_parentale;
+          delete payload.extrait_naissance;
+          if (error.message.includes("lieu_naissance")) {
+            delete payload.lieu_naissance;
+          }
           const retry = await supabase.from("athletes").update(payload).eq("id", id);
           if (retry.error) throw retry.error;
         } else if (error) {
@@ -247,7 +252,12 @@ export default function AthleteForm() {
           delete payload.contact_urgence;
           delete payload.groupe_sanguin;
           delete payload.observations_medicales;
-          delete payload.lieu_naissance;
+          delete payload.certificat_medical;
+          delete payload.autorisation_parentale;
+          delete payload.extrait_naissance;
+          if (error.message.includes("lieu_naissance")) {
+            delete payload.lieu_naissance;
+          }
           const retry = await supabase.from("athletes").insert([payload]).select().single();
           if (retry.error) throw retry.error;
           newAthlete = retry.data;

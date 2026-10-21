@@ -26,6 +26,7 @@ const TEMPLATES = [
       `Bonjour,\n\nLe club de natation *Ovia Sport* vous informe que l'athlète *${athlete.prenom} ${athlete.nom}* (${athlete.groupe || athlete.groupes?.nom || 'Adhérent'}) n'a pas encore de couverture d'assurance sportive enregistrée pour la saison 2026/2027.\n\n` +
       `📅 *Date limite de régularisation :* ${deadline || 'Dimanche prochain'}\n\n` +
       `Pour des raisons légales de conformité et de sécurité au bord du bassin, merci de transmettre l'attestation ou de régler la cotisation d'assurance au secrétariat du club.\n\n` +
+      `📞 Contact Secrétariat / WhatsApp : 0770 71 98 68\n\n` +
       `Cordialement,\nDirection Ovia Sport 🏊‍♂️ · Wilaya de Bouira`
   },
   {

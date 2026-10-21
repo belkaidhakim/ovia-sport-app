@@ -144,7 +144,8 @@ export async function generateBordereauCollectifPdf({
 
       // Calcul des données
       const dateStr = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '-';
-      const lieuStr = ath.lieu_naissance || '-';
+      const rawLieu = ath.lieu_naissance || ath.lieu_de_naissance || ath.lieuNaissance || ath.lieu || ath.commune || '-';
+      const lieuStr = (rawLieu && rawLieu.trim() !== '') ? rawLieu.trim() : '-';
       let age = '-';
       if (ath.date_naissance) {
         const b = new Date(ath.date_naissance);
@@ -443,14 +444,15 @@ export async function generateBordereauFederalFanPdf({
       doc.setTextColor(15, 23, 42);
 
       const cols = [
-        { label: 'N°', x: 18, width: 10 },
-        { label: 'N° LICENCE FAN', x: 30, width: 30 },
-        { label: 'NOM & PRÉNOM', x: 62, width: 55 },
-        { label: 'DATE NAISS.', x: 120, width: 25 },
-        { label: 'SEXE', x: 148, width: 15 },
-        { label: 'CATÉGORIE FÉDÉRALE', x: 165, width: 40 },
-        { label: 'N° QUITTANCE / POLICE', x: 208, width: 45 },
-        { label: 'VISA MÉDECIN', x: 256, width: 25 }
+        { label: 'N°', x: 14, width: 10 },
+        { label: 'N° LICENCE FAN', x: 24, width: 28 },
+        { label: 'NOM & PRÉNOM', x: 52, width: 48 },
+        { label: 'DATE NAISS.', x: 100, width: 24 },
+        { label: 'LIEU DE NAISSANCE', x: 124, width: 38 },
+        { label: 'SEXE', x: 162, width: 14 },
+        { label: 'CATÉGORIE FÉDÉRALE', x: 176, width: 36 },
+        { label: 'N° QUITTANCE / POLICE', x: 212, width: 44 },
+        { label: 'VISA MÉDECIN', x: 256, width: 27 }
       ];
 
       cols.forEach(col => {
@@ -485,28 +487,33 @@ export async function generateBordereauFederalFanPdf({
 
         // Nom & Prénom
         doc.setFont('helvetica', 'bold');
-        doc.text(`${(ath.nom || '').toUpperCase()} ${ath.prenom || ''}`.substring(0, 30), cols[2].x, y + 5);
+        doc.text(`${(ath.nom || '').toUpperCase()} ${ath.prenom || ''}`.substring(0, 26), cols[2].x, y + 5);
         doc.setFont('helvetica', 'normal');
 
         // Date Naissance
         const bDate = ath.date_naissance ? new Date(ath.date_naissance).toLocaleDateString('fr-FR') : '-';
         doc.text(bDate, cols[3].x, y + 5);
 
+        // Lieu de Naissance
+        const rawLieuFan = ath.lieu_naissance || ath.lieu_de_naissance || ath.lieuNaissance || ath.lieu || '-';
+        const bLieu = (rawLieuFan && rawLieuFan.trim() !== '') ? rawLieuFan.trim() : '-';
+        doc.text(bLieu.substring(0, 19), cols[4].x, y + 5);
+
         // Sexe
-        doc.text(ath.sexe === 'Femme' || ath.sexe === 'F' ? 'F' : 'M', cols[4].x, y + 5);
+        doc.text(ath.sexe === 'Femme' || ath.sexe === 'F' ? 'F' : 'M', cols[5].x, y + 5);
 
         // Catégorie
         const cat = ath.categorie || ath.groupes?.nom || ath.groupe || 'Standard';
-        doc.text(cat.substring(0, 24), cols[5].x, y + 5);
+        doc.text(cat.substring(0, 20), cols[6].x, y + 5);
 
         // N° Quittance / Police
         const policeNum = ath.assurance?.numero_police || numeroPolice || 'En attente';
-        doc.text(policeNum.substring(0, 24), cols[6].x, y + 5);
+        doc.text(policeNum.substring(0, 22), cols[7].x, y + 5);
 
         // Visa Médecin
         doc.setFontSize(7);
         doc.setTextColor(16, 185, 129);
-        doc.text(ath.medical_ok !== false ? 'Apte [✓]' : 'En attente', cols[7].x, y + 5);
+        doc.text(ath.medical_ok !== false ? 'Apte [✓]' : 'En attente', cols[8].x, y + 5);
         doc.setTextColor(30, 41, 59);
         doc.setFontSize(8);
 

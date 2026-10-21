@@ -13,7 +13,8 @@ import {
   Camera,
   Upload,
   Trash2,
-  MapPin
+  MapPin,
+  MessageCircle
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useRegistrationSettings } from "../hooks/useRegistrationSettings";
@@ -281,11 +282,19 @@ export default function PublicRegistration() {
           </p>
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left text-xs space-y-2 mb-6">
             <div className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Phone size={14} className="text-sky-500" /> Contact Secrétariat :
+              <Phone size={14} className="text-sky-500" /> Contact Secrétariat & WhatsApp :
             </div>
             <p className="text-slate-500 dark:text-slate-400">
-              Pour toute demande d'adhésion exceptionnelle ou inscription tardive, veuillez vous adresser directement à l'accueil du complexe.
+              Pour toute demande d'adhésion exceptionnelle ou inscription tardive, contactez le club au <strong>0770 71 98 68</strong>.
             </p>
+            <a 
+              href="https://wa.me/213770719868?text=Bonjour,%20je%20souhaite%20des%20renseignements%20pour%20une%20inscription%20au%20club%20Ovia%20Sport."
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline pt-1"
+            >
+              <MessageCircle size={14} /> Contacter sur WhatsApp (0770 71 98 68)
+            </a>
           </div>
           <Link
             to="/"
@@ -346,6 +355,16 @@ export default function PublicRegistration() {
               <Download size={14} className="text-sky-500" />
               Télécharger mon récapitulatif officiel (PDF)
             </button>
+
+            <a
+              href={`https://wa.me/213770719868?text=${encodeURIComponent(`Bonjour Ovia Sport, je viens de finaliser la pré-inscription de mon enfant (Dossier N° ${dossierNumber || '-'}). Pouvez-vous me confirmer les créneaux d'entraînement ? Merci.`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition flex items-center justify-center gap-2"
+            >
+              <MessageCircle size={14} className="text-emerald-500" />
+              Échanger avec le Secrétariat sur WhatsApp (0770 71 98 68)
+            </a>
 
             <button
               type="button"

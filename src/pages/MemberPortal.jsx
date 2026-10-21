@@ -574,7 +574,7 @@ export default function MemberPortal() {
   }, [performances]);
 
   const whatsappRenewalLink = useMemo(() => {
-    const clubPhone = '213550000000';
+    const clubPhone = '213770719868';
     const message = encodeURIComponent(
       `Bonjour Ovia Sport, je souhaite renouveler la cotisation de ${session?.prenom} ${session?.nom} (Matricule: ${session?.token_qr || '-'}). Pouvez-vous me confirmer les modalités ? Merci !`
     );
@@ -727,7 +727,7 @@ export default function MemberPortal() {
             <div className="mt-8 pt-6 border-t border-slate-800 text-center">
               <p className="text-xs text-slate-400 mb-2">{t.supportHelp}</p>
               <a 
-                href="https://wa.me/213550000000?text=Bonjour,%20j'ai%20besoin%20d'aide%20pour%20acc%C3%A9der%20%C3%A0%20l'espace%20adh%C3%A9rent%20Ovia%20Sport."
+                href="https://wa.me/213770719868?text=Bonjour,%20j'ai%20besoin%20d'aide%20pour%20acc%C3%A9der%20%C3%A0%20l'espace%20adh%C3%A9rent%20Ovia%20Sport."
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 text-xs font-extrabold text-emerald-400 hover:text-emerald-300 transition-colors"

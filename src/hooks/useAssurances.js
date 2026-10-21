@@ -56,6 +56,18 @@ FOR SELECT TO authenticated USING (true);
 DROP POLICY IF EXISTS "Modification par le staff et admin" ON public.assurances;
 CREATE POLICY "Modification par le staff et admin" ON public.assurances 
 FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Colonnes lieu_naissance pour le bordereau officiel
+ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS lieu_naissance TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS lieu_naissance TEXT;
+
+-- Synchroniser les lieux de naissance déjà saisis dans les inscriptions vers les athlètes
+UPDATE public.athletes a
+SET lieu_naissance = i.lieu_naissance
+FROM public.inscriptions i
+WHERE (a.nom = i.nom AND a.prenom = i.prenom)
+  AND (a.lieu_naissance IS NULL OR a.lieu_naissance = '')
+  AND (i.lieu_naissance IS NOT NULL AND i.lieu_naissance <> '');
 `;
 
 export function calculateInsuranceStatus(assurance) {

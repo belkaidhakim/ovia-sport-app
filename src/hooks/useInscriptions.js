@@ -121,11 +121,16 @@ export function useInscriptions() {
       delete toInsert.certificat_medical;
       delete toInsert.autorisation_parentale;
       delete toInsert.extrait_naissance;
-      delete toInsert.lieu_naissance;
+      if (error.message?.includes('lieu_naissance')) {
+        delete toInsert.lieu_naissance;
+      }
 
       let retry = await supabase.from('athletes').insert([toInsert]).select().maybeSingle();
       if (retry.error && retry.error.message?.includes('column')) {
         delete toInsert.groupe;
+        if (retry.error.message?.includes('lieu_naissance')) {
+          delete toInsert.lieu_naissance;
+        }
         retry = await supabase.from('athletes').insert([toInsert]).select().maybeSingle();
       }
       return retry;
@@ -253,6 +258,7 @@ export function useInscriptions() {
           nom: (item.nom || '').trim().toUpperCase(),
           prenom: (item.prenom || '').trim(),
           date_naissance: item.date_naissance || null,
+          lieu_naissance: item.lieu_naissance ? item.lieu_naissance.trim() : null,
           sexe: item.sexe || null,
           telephone: item.telephone || null,
           contact_urgence: item.telephone_parent || null,

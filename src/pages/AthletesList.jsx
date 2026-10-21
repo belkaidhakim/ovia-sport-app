@@ -318,6 +318,7 @@ export default function AthletesList() {
                 groupe: row.groupe || null,
                 telephone: row.telephone || null,
                 date_naissance: date_naissance,
+                lieu_naissance: (row.lieu_naissance || row['Lieu de Naissance'] || row['lieu_de_naissance'] || row['Lieu'] || row['lieu'] || '').trim() || null,
                 token_qr
               }]);
               
