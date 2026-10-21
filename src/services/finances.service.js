@@ -118,9 +118,28 @@ export async function createPresence(athleteId) {
 }
 
 /**
- * Réinitialise le quota de présences d'un athlète.
+ * Réinitialise le quota de présences d'un athlète (supprime les scans pour un nouveau cycle).
  * @param {string} athleteId
  */
 export async function resetPresences(athleteId) {
-  return supabase.from('presences').delete().eq('athlete_id', athleteId);
+  const { error } = await supabase.from('presences').delete().eq('athlete_id', athleteId);
+  if (error) {
+    console.error('[finances.service] Erreur resetPresences:', error);
+    throw error;
+  }
+  return true;
+}
+
+/**
+ * Réinitialise le quota de présences en masse pour plusieurs athlètes.
+ * @param {string[]} athleteIds
+ */
+export async function bulkResetPresences(athleteIds) {
+  if (!athleteIds?.length) return true;
+  const { error } = await supabase.from('presences').delete().in('athlete_id', athleteIds);
+  if (error) {
+    console.error('[finances.service] Erreur bulkResetPresences:', error);
+    throw error;
+  }
+  return true;
 }

@@ -44,7 +44,9 @@ export default function AthletesList() {
     fetchArchivedAthletes, 
     archiveAthlete, 
     restoreAthlete,
-    updateSmartAccess
+    updateSmartAccess,
+    resetAthletePresences,
+    bulkResetAthletesPresences
   } = useAthletes();
 
   const { groupes } = useGroupes();
@@ -72,6 +74,7 @@ export default function AthletesList() {
   const [showBulkGroupModal, setShowBulkGroupModal] = useState(false);
   const [showBulkCotisModal, setShowBulkCotisModal] = useState(false);
   const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
+  const [showBulkResetModal, setShowBulkResetModal] = useState(false);
 
   // Modales & Confirmations
   const [selectedAthleteForBadge, setSelectedAthleteForBadge] = useState(null);
@@ -80,6 +83,7 @@ export default function AthletesList() {
   const [smartAccessModalAthlete, setSmartAccessModalAthlete] = useState(null);
   const [athleteToArchive, setAthleteToArchive] = useState(null);
   const [athleteToRestore, setAthleteToRestore] = useState(null);
+  const [athleteToResetPresences, setAthleteToResetPresences] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -676,6 +680,12 @@ export default function AthletesList() {
                     Valider cotisation
                   </button>
                   <button 
+                    onClick={() => setShowBulkResetModal(true)}
+                    className="px-2.5 py-1.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold hover:bg-blue-100 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Réinitialiser assiduité (0/8)
+                  </button>
+                  <button 
                     onClick={() => handleExportBadgeSheet()}
                     className="px-2.5 py-1.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-700 transition flex items-center gap-1 cursor-pointer"
                   >
@@ -743,6 +753,7 @@ export default function AthletesList() {
                         setActiveMenuId={setActiveMenuAthleteId}
                         onArchive={(a) => setAthleteToArchive(a)}
                         onDownloadPdfForm={handleDownloadPdfForm}
+                        onResetPresences={(a) => setAthleteToResetPresences(a)}
                       />
                     ))
                   )}
@@ -937,6 +948,41 @@ export default function AthletesList() {
           }
         }}
         onCancel={() => setAthleteToRestore(null)}
+      />
+
+      {/* MODALE DE CONFIRMATION DE RÉINITIALISATION D'ASSIDUITÉ (INDIVIDUELLE) */}
+      <ConfirmModal
+        isOpen={Boolean(athleteToResetPresences)}
+        title="Réinitialiser l'assiduité du membre"
+        message={`Voulez-vous remettre à zéro le compteur de séances de ${athleteToResetPresences?.nom?.toUpperCase()} ${athleteToResetPresences?.prenom} ? Les présences enregistrées pour ce cycle seront effacées de la base de données et la carte d'accès sera réactivée (0/8 séances).`}
+        confirmText="Réinitialiser à 0/8"
+        cancelText="Annuler"
+        confirmVariant="primary"
+        icon={RotateCcw}
+        onConfirm={async () => {
+          if (athleteToResetPresences) {
+            await resetAthletePresences(athleteToResetPresences.id);
+            setAthleteToResetPresences(null);
+          }
+        }}
+        onCancel={() => setAthleteToResetPresences(null)}
+      />
+
+      {/* MODALE DE CONFIRMATION DE RÉINITIALISATION D'ASSIDUITÉ EN MASSE */}
+      <ConfirmModal
+        isOpen={showBulkResetModal}
+        title="Réinitialiser l'assiduité en masse"
+        message={`Confirmer la réinitialisation du compteur de séances pour les ${selectedAthletes.length} membre(s) sélectionné(s) ? Leurs présences du cycle actuel seront effacées et remises à 0/8, et leurs cartes d'accès seront réactivées.`}
+        confirmText={`Réinitialiser ${selectedAthletes.length} membre(s) (0/8)`}
+        cancelText="Annuler"
+        confirmVariant="primary"
+        icon={RotateCcw}
+        onConfirm={async () => {
+          await bulkResetAthletesPresences(selectedAthletes);
+          setShowBulkResetModal(false);
+          setSelectedAthletes([]);
+        }}
+        onCancel={() => setShowBulkResetModal(false)}
       />
 
     </div>

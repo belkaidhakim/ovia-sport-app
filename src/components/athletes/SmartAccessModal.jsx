@@ -3,19 +3,20 @@ import { ShieldCheck, X, RotateCcw, Check } from 'lucide-react';
 import { getSmartAccess } from '../../utils/athleteHelpers';
 
 export default function SmartAccessModal({ athlete, onClose, onApply }) {
+  const presencesCount = Array.isArray(athlete?.presences) ? athlete.presences.length : 0;
+
   const [targetAction, setTargetAction] = useState(() => {
     if (!athlete) return 'AUTORISE';
     const sa = getSmartAccess(athlete);
     return sa.code === 'AUTORISE' ? 'BLOQUE' : 'AUTORISE';
   });
   const [prolongCotis, setProlongCotis] = useState(false);
-  const [resetQuota, setResetQuota] = useState(false);
+  const [resetQuota, setResetQuota] = useState(() => presencesCount >= 8);
   const [isUpdating, setIsUpdating] = useState(false);
 
   if (!athlete) return null;
 
   const currentSa = getSmartAccess(athlete);
-  const presencesCount = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
 
   const handleSubmit = async () => {
     setIsUpdating(true);

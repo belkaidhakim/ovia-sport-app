@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../supabaseClient';
+import { bulkResetPresences } from '../../services/finances.service';
 
 export function BulkGroupModal({ isOpen, onClose, selectedAthletes, groupes, onComplete }) {
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -75,6 +75,7 @@ export function BulkGroupModal({ isOpen, onClose, selectedAthletes, groupes, onC
 export function BulkCotisationModal({ isOpen, onClose, selectedAthletes, onComplete }) {
   const [montant, setMontant] = useState(3000);
   const [mode, setMode] = useState('Espèces');
+  const [resetQuota, setResetQuota] = useState(true);
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -94,6 +95,15 @@ export function BulkCotisationModal({ isOpen, onClose, selectedAthletes, onCompl
       const { error } = await supabase.from('cotisations').insert(records);
       if (error) throw error;
 
+      // Réinitialisation automatique des présences si sélectionné
+      if (resetQuota) {
+        try {
+          await bulkResetPresences(selectedAthletes);
+        } catch (resetErr) {
+          console.warn('Erreur reset presences:', resetErr);
+        }
+      }
+
       // Réactivation automatique des cartes d'accès
       try {
         await supabase
@@ -107,7 +117,11 @@ export function BulkCotisationModal({ isOpen, onClose, selectedAthletes, onCompl
         console.warn('Erreur mise à jour cartes_acces:', cardErr);
       }
 
-      toast.success(`Cotisations validées et accès réactivés pour ${selectedAthletes.length} membres !`);
+      toast.success(
+        resetQuota
+          ? `Cotisations validées, présences remises à 0/8 et accès réactivés pour ${selectedAthletes.length} membres !`
+          : `Cotisations validées et accès réactivés pour ${selectedAthletes.length} membres !`
+      );
       onComplete();
       onClose();
     } catch (e) {
@@ -151,6 +165,25 @@ export function BulkCotisationModal({ isOpen, onClose, selectedAthletes, onCompl
               <option value="Virement">Virement bancaire</option>
               <option value="Chèque">Chèque</option>
             </select>
+          </div>
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <label className="flex items-start gap-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={resetQuota}
+                onChange={(e) => setResetQuota(e.target.checked)}
+                className="rounded mt-0.5"
+              />
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  Réinitialiser le quota de séances (0/8)
+                </span>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal m-0 mt-0.5">
+                  Remet le compteur de présences à zéro pour le nouveau mois de pratique.
+                </p>
+              </div>
+            </label>
           </div>
         </div>
         <div className="flex justify-end gap-2">

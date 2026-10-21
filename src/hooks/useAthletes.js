@@ -23,7 +23,7 @@ import {
   grantAccess,
   bulkUpdateGroup as bulkUpdateGroupService,
 } from '../services/athletes.service';
-import { createCotisation, bulkCreateCotisations, resetPresences } from '../services/finances.service';
+import { createCotisation, bulkCreateCotisations, resetPresences, bulkResetPresences } from '../services/finances.service';
 import { supabase } from '../supabaseClient';
 
 export function useAthletes() {
@@ -249,6 +249,72 @@ export function useAthletes() {
     }
   };
 
+  // ── Réinitialisation de l'assiduité (Présences & Quota) ───────────
+  const resetAthletePresences = async (athleteId) => {
+    const toastId = toast.loading("Réinitialisation de l'assiduité…");
+    try {
+      await resetPresences(athleteId);
+      await updateAccessStatus(athleteId, 'ACTIVE');
+
+      setAthletes(prev => {
+        const updated = prev.map(a => {
+          if (a.id !== athleteId) return a;
+          return {
+            ...a,
+            presences: [],
+            cartes_acces: Array.isArray(a.cartes_acces)
+              ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
+              : { ...a.cartes_acces, statut: 'ACTIVE' },
+          };
+        });
+        cacheAthletes(updated);
+        return updated;
+      });
+
+      toast.dismiss(toastId);
+      toast.success("Assiduité remise à 0/8 séances avec succès ! 🔄");
+      return true;
+    } catch (err) {
+      toast.dismiss(toastId);
+      console.error('[useAthletes] resetAthletePresences:', err);
+      toast.error("Erreur lors de la réinitialisation : " + err.message);
+      return false;
+    }
+  };
+
+  const bulkResetAthletesPresences = async (athleteIds) => {
+    if (!athleteIds?.length) return false;
+    const toastId = toast.loading(`Réinitialisation de ${athleteIds.length} membre(s)…`);
+    try {
+      await bulkResetPresences(athleteIds);
+      await bulkUpdateAccessStatus(athleteIds, 'ACTIVE');
+
+      setAthletes(prev => {
+        const updated = prev.map(a => {
+          if (!athleteIds.includes(a.id)) return a;
+          return {
+            ...a,
+            presences: [],
+            cartes_acces: Array.isArray(a.cartes_acces)
+              ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
+              : { ...a.cartes_acces, statut: 'ACTIVE' },
+          };
+        });
+        cacheAthletes(updated);
+        return updated;
+      });
+
+      toast.dismiss(toastId);
+      toast.success(`Assiduité remise à 0/8 pour ${athleteIds.length} membres !`);
+      return true;
+    } catch (err) {
+      toast.dismiss(toastId);
+      console.error('[useAthletes] bulkResetAthletesPresences:', err);
+      toast.error('Erreur réinitialisation en masse : ' + err.message);
+      return false;
+    }
+  };
+
   // ── Smart Access (multi-actions) ──────────────────────────────────
   const updateSmartAccess = async (athleteId, action, options = {}) => {
     const toastId = toast.loading('Mise à jour du Smart Access…');
@@ -279,17 +345,21 @@ export function useAthletes() {
           await resetPresences(athleteId);
         }
 
-        setAthletes(prev => prev.map(a => {
-          if (a.id !== athleteId) return a;
-          return {
-            ...a,
-            cartes_acces: Array.isArray(a.cartes_acces)
-              ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
-              : { ...a.cartes_acces, statut: 'ACTIVE' },
-            cotisations: newCotis ? [newCotis, ...(a.cotisations || [])] : (a.cotisations || []),
-            presences: options.resetPresences ? [] : (a.presences || []),
-          };
-        }));
+        setAthletes(prev => {
+          const updated = prev.map(a => {
+            if (a.id !== athleteId) return a;
+            return {
+              ...a,
+              cartes_acces: Array.isArray(a.cartes_acces)
+                ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
+                : { ...a.cartes_acces, statut: 'ACTIVE' },
+              cotisations: newCotis ? [newCotis, ...(a.cotisations || [])] : (a.cotisations || []),
+              presences: options.resetPresences ? [] : (a.presences || []),
+            };
+          });
+          cacheAthletes(updated);
+          return updated;
+        });
 
         toast.dismiss(toastId);
         toast.success('Smart Access : Accès autorisé ✓');
@@ -300,19 +370,23 @@ export function useAthletes() {
         await resetPresences(athleteId);
         await updateAccessStatus(athleteId, 'ACTIVE');
 
-        setAthletes(prev => prev.map(a => {
-          if (a.id !== athleteId) return a;
-          return {
-            ...a,
-            presences: [],
-            cartes_acces: Array.isArray(a.cartes_acces)
-              ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
-              : { ...a.cartes_acces, statut: 'ACTIVE' },
-          };
-        }));
+        setAthletes(prev => {
+          const updated = prev.map(a => {
+            if (a.id !== athleteId) return a;
+            return {
+              ...a,
+              presences: [],
+              cartes_acces: Array.isArray(a.cartes_acces)
+                ? [{ ...a.cartes_acces[0], statut: 'ACTIVE' }]
+                : { ...a.cartes_acces, statut: 'ACTIVE' },
+            };
+          });
+          cacheAthletes(updated);
+          return updated;
+        });
 
         toast.dismiss(toastId);
-        toast.success('Quota réinitialisé : 8/8 séances disponibles !');
+        toast.success('Quota réinitialisé : 0/8 séances consommées (8/8 disponibles) !');
         return true;
       }
 
@@ -356,6 +430,8 @@ export function useAthletes() {
     bulkDeleteAthletesPermanently,
     toggleAccessStatus,
     updateSmartAccess,
+    resetAthletePresences,
+    bulkResetAthletesPresences,
     bulkUpdateGroup,
     bulkToggleAccess,
     bulkValidateCotisation,

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   CheckCircle2, Phone, ChevronDown, Timer, QrCode,
-  MoreVertical, ShieldCheck, Edit, FileText, Trash2, Clock
+  MoreVertical, ShieldCheck, Edit, FileText, Trash2, Clock, RotateCcw
 } from 'lucide-react';
 import { getAgeAndCategory, getCotisationStatus, getSmartAccess } from '../../utils/athleteHelpers';
 import { getSwimmingCategory } from '../../utils/swimmingCategories';
@@ -20,7 +20,8 @@ export default function AthleteTableRow({
   activeMenuId,
   setActiveMenuId,
   onArchive,
-  onDownloadPdfForm
+  onDownloadPdfForm,
+  onResetPresences
 }) {
   const initiales = `${(athlete.nom?.[0] || '').toUpperCase()}${(athlete.prenom?.[0] || '').toUpperCase()}`;
   const seancesEffectuees = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
@@ -190,7 +191,19 @@ export default function AthleteTableRow({
             <span className="text-slate-800 dark:text-slate-200">
               {seancesEffectuees} / {seancesMax}
             </span>
-            <span className="text-slate-500 dark:text-slate-400">{pourcentageSeances}%</span>
+            <div className="flex items-center gap-1">
+              <span className="text-slate-500 dark:text-slate-400">{pourcentageSeances}%</span>
+              {onResetPresences && seancesEffectuees > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onResetPresences(athlete)}
+                  title="Réinitialiser l'assiduité (remettre à 0/8)"
+                  className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-8 gap-1">
             {Array.from({ length: seancesMax }).map((_, idx) => (
@@ -198,7 +211,9 @@ export default function AthleteTableRow({
                 key={idx}
                 className={`h-1.5 rounded-xs transition-all ${
                   idx < seancesEffectuees
-                    ? 'bg-blue-600 dark:bg-blue-500'
+                    ? seancesEffectuees >= seancesMax
+                      ? 'bg-amber-500'
+                      : 'bg-blue-600 dark:bg-blue-500'
                     : 'bg-slate-200 dark:bg-slate-800'
                 }`}
               />
@@ -284,6 +299,18 @@ export default function AthleteTableRow({
                 >
                   <ShieldCheck className="w-3.5 h-3.5" /> Changer Smart Access
                 </button>
+
+                {onResetPresences && (
+                  <button
+                    onClick={() => {
+                      setActiveMenuId(null);
+                      onResetPresences(athlete);
+                    }}
+                    className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Remettre assiduité (0/8)
+                  </button>
+                )}
 
                 <Link
                   to={`/athletes/edit/${athlete.id}`}

@@ -12,8 +12,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Phone, CheckCircle2, Printer } from 'lucide-react';
+import { X, Phone, CheckCircle2, Printer, RotateCcw } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { resetPresences } from '../../services/finances.service';
 import { APP_EVENTS, DEFAULT_SESSION_QUOTA } from '../../config/constants';
 import toast from 'react-hot-toast';
 
@@ -51,6 +52,19 @@ export default function AthleteQuickDrawer() {
       toast.success(`Pointage enregistré pour ${athlete.prenom} ! (+1 séance)`, { icon: '🏊‍♂️' });
     } catch (e) {
       toast.error('Erreur lors du pointage: ' + e.message);
+    }
+  };
+
+  // ── Remise à zéro rapide du quota ──────────────────────────────────
+  const handleResetPresences = async () => {
+    if (!athlete?.id) return;
+    try {
+      await resetPresences(athlete.id);
+      await supabase.from('cartes_acces').update({ statut: 'ACTIVE' }).eq('athlete_id', athlete.id);
+      setAthlete(prev => ({ ...prev, seances: 0, presences: [] }));
+      toast.success(`Assiduité réinitialisée à 0/8 pour ${athlete.prenom} !`, { icon: '🔄' });
+    } catch (e) {
+      toast.error('Erreur lors de la réinitialisation: ' + e.message);
     }
   };
 
@@ -136,6 +150,16 @@ export default function AthleteQuickDrawer() {
               >
                 + Pointer 1 présence
               </button>
+              {presencesCount > 0 && (
+                <button
+                  onClick={handleResetPresences}
+                  title="Remettre le quota à 0/8 séances"
+                  className="px-2.5 py-2 bg-slate-800 hover:bg-rose-950/60 hover:text-rose-400 border border-slate-700 hover:border-rose-500/30 rounded-xl text-slate-300 transition cursor-pointer flex items-center gap-1 font-bold text-xs"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  0/8
+                </button>
+              )}
               <button
                 onClick={() => navigate(`/athletes/edit/${athlete.id}`)}
                 title="Voir Carte & Badge QR"
