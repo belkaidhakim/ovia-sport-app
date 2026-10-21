@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { MessageSquare, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../supabaseClient';
