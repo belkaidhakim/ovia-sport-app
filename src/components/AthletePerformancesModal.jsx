@@ -9,12 +9,19 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, 
   CartesianGrid, ReferenceLine
 } from 'recharts';
-import { SWIMMING_EVENTS, SWIMMING_STYLES, getSwimmingCategory } from '../utils/swimmingCategories';
+import { 
+  SWIMMING_EVENTS, 
+  SWIMMING_STYLES, 
+  getSwimmingCategory,
+  formatSecondsToChrono,
+  parseTimeToSeconds,
+  getAthleteStoredPerformances,
+  saveAthleteStoredPerformances
+} from '../utils/swimmingCategories';
 import { formatName, formatWhatsAppPhone } from '../utils/formatters';
 import { generateSwimmingReportPDF } from '../utils/swimmingReportPdfGenerator';
 import toast from 'react-hot-toast';
 
-const PERFORMANCES_STORAGE_PREFIX = 'scb_athlete_perfs_';
 const TARGETS_STORAGE_PREFIX = 'scb_athlete_targets_';
 
 /** 
@@ -36,26 +43,6 @@ const calculateFINAPoints = (eventId, seconds) => {
   const baseTime = BASE_TIMES[eventId] || BASE_TIMES['50_NL']; // Default fallback
   const points = 1000 * Math.pow((baseTime / seconds), 3);
   return Math.max(0, Math.floor(points));
-};
-
-const parseTimeToSeconds = (str = '') => {
-  if (!str) return 0;
-  const clean = String(str).trim().replace(',', '.');
-  const parts = clean.split(':');
-  if (parts.length === 2) {
-    return (parseFloat(parts[0]) || 0) * 60 + (parseFloat(parts[1]) || 0);
-  }
-  return parseFloat(clean) || 0;
-};
-
-const formatSecondsToChrono = (sec) => {
-  if (!sec || isNaN(sec)) return '--:--';
-  if (sec >= 60) {
-    const min = Math.floor(sec / 60);
-    const remainder = (sec % 60).toFixed(2);
-    return `${min}:${remainder.padStart(5, '0')}`;
-  }
-  return `${sec.toFixed(2)} s`;
 };
 
 export default function AthletePerformancesModal({ athlete, onClose }) {
@@ -106,10 +93,8 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
 
   useEffect(() => {
     if (!athlete?.id) return;
-    const localSwim = localStorage.getItem(`${PERFORMANCES_STORAGE_PREFIX}${athlete.id}`);
-    if (localSwim) {
-      try { setPerformances(JSON.parse(localSwim)); } catch {}
-    }
+    const list = getAthleteStoredPerformances(athlete.id);
+    setPerformances(list);
     const savedTarget = localStorage.getItem(`${TARGETS_STORAGE_PREFIX}${athlete.id}_${selectedEventId}`);
     setTargetGoalTime(savedTarget || '');
   }, [athlete, selectedEventId]);
@@ -130,12 +115,12 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
 
   const savePerformances = (newList) => {
     setPerformances(newList);
-    if (athlete?.id) localStorage.setItem(`${PERFORMANCES_STORAGE_PREFIX}${athlete.id}`, JSON.stringify(newList));
+    if (athlete?.id) saveAthleteStoredPerformances(athlete.id, newList);
   };
 
   const filteredEventPerfs = useMemo(() => {
     return performances
-      .filter(p => p.event_id === selectedEventId)
+      .filter(p => selectedEventId === 'all' || p.event_id === selectedEventId)
       .filter(p => bassinFilter === 'all' || p.bassin === bassinFilter)
       .filter(p => contexteFilter === 'all' || p.contexte === contexteFilter)
       .sort((a, b) => new Date(a.date_perf) - new Date(b.date_perf));
@@ -187,6 +172,7 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
       event_label: selectedEvent.label,
       seconds,
       chrono_str: formatSecondsToChrono(seconds),
+      time_str: formData.time_str?.trim() || formatSecondsToChrono(seconds),
       fina_points: finaPoints,
       date_perf: formData.date_perf,
       bassin: formData.bassin,
@@ -210,6 +196,12 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
       savePerformances([newPerf, ...performances]);
       toast.success(`Nouveau chrono enregistré ! 🏊`);
     }
+
+    // Basculer l'affichage vers l'épreuve enregistrée
+    if (selectedEvent.styleId) {
+      setSelectedStyleId(selectedEvent.styleId);
+    }
+    setSelectedEventId(formData.event_id);
 
     setFormData(initialFormState);
     setShowAddForm(false);
@@ -368,6 +360,15 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
             
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted font-bold mr-1">Distance:</span>
+              <button
+                type="button"
+                onClick={() => setSelectedEventId('all')}
+                className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-lg border transition-all ${selectedEventId === 'all' ? 'bg-sky-500/20 text-sky-400 border-sky-400' : 'bg-white/5 text-[var(--text-primary)] border-[var(--border-color)]'}`}
+                style={{ minWidth: '70px' }}
+              >
+                <span className="text-sm font-bold">Toutes</span>
+                <span className="text-[10px] text-muted font-bold mt-0.5">{performances.length} chrono(s)</span>
+              </button>
               {currentStyleEvents.map(ev => {
                 const isSelected = selectedEventId === ev.id;
                 const bestChrono = performances.filter(p => p.event_id === ev.id).sort((a, b) => a.seconds - b.seconds)[0]?.chrono_str;
@@ -379,7 +380,6 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
                     style={{ minWidth: '70px' }}
                   >
                     <span className="text-sm font-bold">{ev.shortLabel}</span>
-                    {/* Epuration: On n'affiche plus "Aucun PB" */}
                     {bestChrono && <span className="text-[10px] text-emerald-500 font-bold mt-0.5">{bestChrono}</span>}
                   </button>
                 );
@@ -435,6 +435,7 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
               <thead className="bg-black/20 text-xs text-muted">
                 <tr>
                   <th className="py-3 px-4 text-left">Date</th>
+                  <th className="py-3 px-4 text-left">Épreuve</th>
                   <th className="py-3 px-4 text-left">Chrono</th>
                   <th className="py-3 px-4 text-center">FINA</th>
                   <th className="py-3 px-4 text-center">Bassin</th>
@@ -444,7 +445,7 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
               </thead>
               <tbody>
                 {filteredEventPerfs.length === 0 ? (
-                  <tr><td colSpan="6" className="text-center py-8 text-muted">Aucun chrono enregistré.</td></tr>
+                  <tr><td colSpan="7" className="text-center py-8 text-muted">Aucun chrono enregistré.</td></tr>
                 ) : (
                   [...filteredEventPerfs].reverse().map(perf => {
                     const isPB = personalBest?.id === perf.id;
@@ -455,8 +456,11 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
                       <React.Fragment key={perf.id}>
                         <tr className="border-b border-[var(--border-color)] hover:bg-white/5 transition-colors">
                           <td className="py-3 px-4">{new Date(perf.date_perf).toLocaleDateString('fr-FR')}</td>
+                          <td className="py-3 px-4 font-semibold text-sky-400">
+                            {perf.event_label || SWIMMING_EVENTS.find(e => e.id === perf.event_id)?.label || perf.event_id}
+                          </td>
                           <td className="py-3 px-4 font-bold flex items-center gap-2">
-                            <span className={isPB ? 'text-emerald-500' : 'text-[var(--text-primary)]'}>{perf.chrono_str}</span>
+                            <span className={isPB ? 'text-emerald-500' : 'text-[var(--text-primary)]'}>{perf.chrono_str || perf.time_str}</span>
                             {isPB && <span className="bg-emerald-500/20 text-emerald-500 text-[10px] px-1.5 py-0.5 rounded">PB</span>}
                             {isQualif && <span className="bg-amber-500/20 text-amber-500 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5"><Target size={10}/> Q</span>}
                           </td>
@@ -477,7 +481,7 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
                         {/* DETAILS ACCORDEON */}
                         {isExpanded && (
                           <tr className="bg-black/30 border-b border-[var(--border-color)]">
-                            <td colSpan="6" className="p-4">
+                            <td colSpan="7" className="p-4">
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-muted">
                                 <div>
                                   <strong className="text-[var(--text-primary)] block mb-2">Temps de passage (Splits) :</strong>

@@ -14,7 +14,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
 import jsPDF from 'jspdf';
-import { getSwimmingCategory } from '../utils/swimmingCategories';
+import { getSwimmingCategory, getAthleteStoredPerformances } from '../utils/swimmingCategories';
 import { formatDA } from '../utils/formatters';
 import { loadClubLogoBase64 } from '../utils/pdfHelpers';
 import { generateBadgeSheetPDF } from '../utils/badgeSheetPdfGenerator';
@@ -276,11 +276,8 @@ export default function MemberPortal() {
 
   const loadPerformances = (athleteId) => {
     try {
-      const localSwim = localStorage.getItem(`scb_athlete_perfs_${athleteId}`) || localStorage.getItem(`ovs_athlete_perfs_${athleteId}`);
-      if (localSwim) {
-        const parsed = JSON.parse(localSwim);
-        if (Array.isArray(parsed)) setPerformances(parsed);
-      }
+      const perfs = getAthleteStoredPerformances(athleteId);
+      setPerformances(perfs);
     } catch {
       setPerformances([]);
     }

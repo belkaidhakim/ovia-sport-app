@@ -301,3 +301,76 @@ export const SWIMMING_EVENTS = [
   { id: '200_4N', label: '200m 4 Nages', shortLabel: '200m 4N', nage: '4 Nages', styleId: '4N', distance: 200 },
   { id: '400_4N', label: '400m 4 Nages', shortLabel: '400m 4N', nage: '4 Nages', styleId: '4N', distance: 400 },
 ];
+
+export const PERFORMANCES_STORAGE_PREFIX = 'scb_athlete_perfs_';
+export const LEGACY_STORAGE_PREFIX = 'ovs_athlete_perfs_';
+
+/**
+ * Convertit un temps en secondes en chaîne de chrono lisible (ex: "32.45 s" ou "1:04.20")
+ */
+export const formatSecondsToChrono = (sec) => {
+  if (!sec || isNaN(sec)) return '--:--';
+  const num = Number(sec);
+  if (num >= 60) {
+    const min = Math.floor(num / 60);
+    const remainder = (num % 60).toFixed(2);
+    return `${min}:${remainder.padStart(5, '0')}`;
+  }
+  return `${num.toFixed(2)} s`;
+};
+
+/**
+ * Parse une saisie de chrono en secondes décimales (supporte "32.5", "32,5", "1:04.2", "01:04,20")
+ */
+export const parseTimeToSeconds = (str = '') => {
+  if (!str) return 0;
+  const clean = String(str).trim().replace(',', '.');
+  const parts = clean.split(':');
+  if (parts.length === 2) {
+    return (parseFloat(parts[0]) || 0) * 60 + (parseFloat(parts[1]) || 0);
+  }
+  return parseFloat(clean) || 0;
+};
+
+/**
+ * Récupère les performances d'un athlète dans le localStorage (supporte scb_ et ovs_)
+ */
+export const getAthleteStoredPerformances = (athleteId) => {
+  if (!athleteId) return [];
+  try {
+    const raw = localStorage.getItem(`${PERFORMANCES_STORAGE_PREFIX}${athleteId}`) ||
+                localStorage.getItem(`${LEGACY_STORAGE_PREFIX}${athleteId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map(p => {
+          const display = p.chrono_str || p.time_str || (p.seconds ? formatSecondsToChrono(p.seconds) : '-');
+          return {
+            ...p,
+            chrono_str: display,
+            time_str: display
+          };
+        });
+      }
+    }
+  } catch {}
+  return [];
+};
+
+/**
+ * Enregistre les performances d'un athlète dans le localStorage et émet l'événement de mise à jour
+ */
+export const saveAthleteStoredPerformances = (athleteId, performancesList) => {
+  if (!athleteId) return;
+  try {
+    const serialized = JSON.stringify(performancesList);
+    localStorage.setItem(`${PERFORMANCES_STORAGE_PREFIX}${athleteId}`, serialized);
+    localStorage.setItem(`${LEGACY_STORAGE_PREFIX}${athleteId}`, serialized);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ovia_performances_updated', { detail: { athleteId } }));
+    }
+  } catch (e) {
+    console.warn('Erreur sauvegarde localStorage performances:', e);
+  }
+};
+

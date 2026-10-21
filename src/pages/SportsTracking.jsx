@@ -1,16 +1,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Timer, Trophy, Users, Award, CheckCircle2, Waves, Search, ArrowUpRight
+  Timer, Trophy, Users, Award, CheckCircle2, Waves, Search, ArrowUpRight, History, Calendar
 } from 'lucide-react';
 import { Card, Button, Badge, Skeleton } from '../components/ui';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
-import { SWIMMING_EVENTS, getSwimmingCategory } from '../utils/swimmingCategories';
+import { 
+  SWIMMING_EVENTS, 
+  getSwimmingCategory,
+  formatSecondsToChrono,
+  parseTimeToSeconds,
+  getAthleteStoredPerformances,
+  saveAthleteStoredPerformances,
+  PERFORMANCES_STORAGE_PREFIX,
+  LEGACY_STORAGE_PREFIX
+} from '../utils/swimmingCategories';
 import AthletePerformancesModal from '../components/AthletePerformancesModal';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
-
-const PERFORMANCES_STORAGE_PREFIX = 'scb_athlete_perfs_';
 
 export default function SportsTracking() {
   const { athletes, loading: loadingAthletes, fetchAthletes } = useAthletes();
@@ -20,7 +27,7 @@ export default function SportsTracking() {
     fetchAthletes();
   }, [fetchAthletes]);
 
-  const [activeTab, setActiveTab] = useState('feuille_match'); // 'feuille_match' | 'records' | 'niveaux'
+  const [activeTab, setActiveTab] = useState('feuille_match'); // 'feuille_match' | 'records' | 'historique' | 'niveaux'
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [selectedEventId, setSelectedEventId] = useState('50_NL');
   const [bassin, setBassin] = useState('25m');
@@ -33,8 +40,24 @@ export default function SportsTracking() {
   // Modale détaillée individuelle
   const [modalAthlete, setModalAthlete] = useState(null);
 
-  // Recherche dans les records
+  // Recherche dans les records et l'historique
   const [recordSearch, setRecordSearch] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyEventFilter, setHistoryEventFilter] = useState('all');
+  const [historyBassinFilter, setHistoryBassinFilter] = useState('all');
+
+  // Déclencheur réactif pour recharger les chronos dès qu'un ajout est fait
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setRefreshTrigger(t => t + 1);
+    window.addEventListener('ovia_performances_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('ovia_performances_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
 
   // Initialisation du groupe sélectionné
   useEffect(() => {
@@ -52,28 +75,72 @@ export default function SportsTracking() {
     );
   }, [athletes, selectedGroupId, groupes]);
 
-  // Récupération des perfs locales de tous les athlètes
+  // Récupération de TOUS les chronos enregistrés (scan des athlètes + scan direct du localStorage)
   const allPerformances = useMemo(() => {
     const list = [];
-    athletes.forEach(athlete => {
-      try {
-        const stored = localStorage.getItem(`${PERFORMANCES_STORAGE_PREFIX}${athlete.id}`);
-        if (stored) {
-          const perfs = JSON.parse(stored);
-          perfs.forEach(p => {
-            list.push({ ...p, athlete });
+    const seenPerfKeys = new Set();
+    const athletesMap = new Map((athletes || []).map(a => [String(a.id), a]));
+
+    // 1. Scan pour tous les athlètes chargés en mémoire
+    (athletes || []).forEach(athlete => {
+      const perfs = getAthleteStoredPerformances(athlete.id);
+      perfs.forEach(p => {
+        const perfKey = p.id || `${athlete.id}_${p.event_id}_${p.seconds}_${p.date_perf}`;
+        if (!seenPerfKeys.has(perfKey)) {
+          seenPerfKeys.add(perfKey);
+          list.push({
+            ...p,
+            athlete,
+            time_str: p.time_str || p.chrono_str || formatSecondsToChrono(p.seconds),
+            chrono_str: p.chrono_str || p.time_str || formatSecondsToChrono(p.seconds)
           });
         }
-      } catch {}
+      });
     });
-    return list;
-  }, [athletes]);
 
-  // Calcul des Records Personnels (PB)
+    // 2. Scan direct de localStorage pour ne rater aucun chrono (même si athlète non chargé)
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith(PERFORMANCES_STORAGE_PREFIX) || key.startsWith(LEGACY_STORAGE_PREFIX))) {
+            const athleteId = key.replace(PERFORMANCES_STORAGE_PREFIX, '').replace(LEGACY_STORAGE_PREFIX, '');
+            const matchedAthlete = athletesMap.get(String(athleteId)) || {
+              id: athleteId,
+              nom: 'Nageur',
+              prenom: `#${athleteId.toString().slice(0, 5)}`,
+              groupe: '-'
+            };
+            const perfs = getAthleteStoredPerformances(athleteId);
+            perfs.forEach(p => {
+              const perfKey = p.id || `${athleteId}_${p.event_id}_${p.seconds}_${p.date_perf}`;
+              if (!seenPerfKeys.has(perfKey)) {
+                seenPerfKeys.add(perfKey);
+                list.push({
+                  ...p,
+                  athlete: matchedAthlete,
+                  time_str: p.time_str || p.chrono_str || formatSecondsToChrono(p.seconds),
+                  chrono_str: p.chrono_str || p.time_str || formatSecondsToChrono(p.seconds)
+                });
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur scan local des performances:', e);
+    }
+
+    // Tri par date décroissante (les plus récents en premier)
+    return list.sort((a, b) => new Date(b.date_perf || b.created_at || 0) - new Date(a.date_perf || a.created_at || 0));
+  }, [athletes, refreshTrigger]);
+
+  // Calcul des Records Personnels (PB) - un meilleur temps par athlète / épreuve / bassin
   const personalBests = useMemo(() => {
     const map = new Map();
     allPerformances.forEach(perf => {
-      const key = `${perf.athlete.id}_${perf.event_id}_${perf.bassin || '25m'}`;
+      const athleteId = perf.athlete?.id || perf.athlete_id || 'unknown';
+      const key = `${athleteId}_${perf.event_id}_${perf.bassin || '25m'}`;
       const existing = map.get(key);
       if (!existing || perf.seconds < existing.seconds) {
         map.set(key, perf);
@@ -107,24 +174,19 @@ export default function SportsTracking() {
 
     entriesToSave.forEach(([athleteId, data]) => {
       try {
-        const key = `${PERFORMANCES_STORAGE_PREFIX}${athleteId}`;
-        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-        
-        // Parse time to seconds
-        const clean = data.timeStr.trim().replace(',', '.');
-        let sec = 0;
-        const parts = clean.split(':');
-        if (parts.length === 2) {
-          sec = (parseFloat(parts[0]) || 0) * 60 + (parseFloat(parts[1]) || 0);
-        } else {
-          sec = parseFloat(clean) || 0;
-        }
-
+        const sec = parseTimeToSeconds(data.timeStr);
         if (sec > 0) {
+          const existing = getAthleteStoredPerformances(athleteId);
+          const formattedChrono = formatSecondsToChrono(sec);
+          const evObj = SWIMMING_EVENTS.find(e => e.id === selectedEventId);
+
           const newPerf = {
             id: `perf_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            athlete_id: athleteId,
             event_id: selectedEventId,
-            time_str: data.timeStr,
+            event_label: evObj?.label || selectedEventId,
+            time_str: data.timeStr.trim(),
+            chrono_str: formattedChrono,
             seconds: sec,
             date_perf: testDate,
             bassin,
@@ -133,8 +195,8 @@ export default function SportsTracking() {
             created_at: new Date().toISOString()
           };
 
-          existing.unshift(newPerf);
-          localStorage.setItem(key, JSON.stringify(existing));
+          const updated = [newPerf, ...existing];
+          saveAthleteStoredPerformances(athleteId, updated);
           count++;
         }
       } catch (err) {
@@ -143,8 +205,9 @@ export default function SportsTracking() {
     });
 
     setSavingBatch(false);
-    toast.success(`${count} chronos enregistrés avec succès sur la feuille de match ! ⏱️`);
+    toast.success(`${count} chrono(s) enregistré(s) avec succès ! ⏱️`);
     setBatchTimes({});
+    setRefreshTrigger(t => t + 1);
   };
 
   // Passage de niveau / Promotion de groupe
@@ -240,6 +303,19 @@ export default function SportsTracking() {
         >
           <Trophy size={16} />
           <span>Palmarès & Records Personnels (PB)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('historique')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+            activeTab === 'historique'
+              ? 'bg-[var(--accent-primary)] text-white shadow-md'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--table-row-hover)]'
+          }`}
+          style={{ border: 'none' }}
+        >
+          <History size={16} />
+          <span>Historique de tous les chronos ({allPerformances.length})</span>
         </button>
 
         <button
@@ -380,7 +456,7 @@ export default function SportsTracking() {
                         <td style={{ padding: '0.85rem 1rem' }}>
                           {currentPB ? (
                             <span style={{ fontWeight: 800, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <Trophy size={13} /> {currentPB.time_str}
+                              <Trophy size={13} /> {currentPB.time_str || currentPB.chrono_str || formatSecondsToChrono(currentPB.seconds)}
                             </span>
                           ) : (
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Premier test</span>
@@ -426,6 +502,35 @@ export default function SportsTracking() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* APERÇU IMMÉDIAT DES DERNIERS CHRONOS ENREGISTRÉS */}
+          {allPerformances.length > 0 && (
+            <div className="p-3.5 bg-[var(--bg-tertiary)] border-t border-[var(--border-color)]">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-muted uppercase flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  Derniers chronos enregistrés récemment ({Math.min(allPerformances.length, 5)}) :
+                </span>
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('historique')}
+                  className="text-xs text-sky-400 hover:underline font-bold bg-transparent border-none cursor-pointer"
+                >
+                  Voir l'historique complet ({allPerformances.length}) →
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {allPerformances.slice(0, 5).map((p, i) => (
+                  <div key={p.id || i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-black/20 border border-white/5 text-xs">
+                    <span className="font-bold text-[var(--text-primary)]">{p.athlete?.nom} {p.athlete?.prenom}</span>
+                    <span className="text-sky-400 font-semibold">{p.event_label || SWIMMING_EVENTS.find(e => e.id === p.event_id)?.shortLabel || p.event_id}</span>
+                    <span className="font-bold text-emerald-400">{p.time_str || p.chrono_str || formatSecondsToChrono(p.seconds)}</span>
+                    <span className="text-[10px] text-muted">({p.bassin || '25m'})</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </Card>
@@ -498,7 +603,7 @@ export default function SportsTracking() {
                           </td>
                           <td style={{ padding: '0.85rem 1rem' }}>
                             <span style={{ fontSize: '1rem', fontWeight: 800, color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                              <Trophy size={14} /> {pb.time_str}
+                              <Trophy size={14} /> {pb.time_str || pb.chrono_str || formatSecondsToChrono(pb.seconds)}
                             </span>
                           </td>
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -512,6 +617,155 @@ export default function SportsTracking() {
                             >
                               Courbe
                             </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* CONTENU ONGLET : HISTORIQUE DE TOUS LES CHRONOS */}
+      {activeTab === 'historique' && (
+        <Card noPadding>
+          <div className="p-4 flex flex-wrap gap-3 justify-between items-center" style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <History size={18} style={{ color: '#38bdf8' }} /> Journal & Historique de tous les Chronos
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Consultez l'ensemble des {allPerformances.length} chrono(s) enregistrés, du plus récent au plus ancien.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative" style={{ minWidth: '220px' }}>
+                <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Rechercher par nageur..." 
+                  className="form-input" 
+                  style={{ paddingLeft: '2.2rem', fontSize: '0.85rem' }}
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                />
+              </div>
+
+              <select 
+                className="form-select text-xs" 
+                value={historyEventFilter} 
+                onChange={(e) => setHistoryEventFilter(e.target.value)}
+                style={{ minWidth: '150px' }}
+              >
+                <option value="all">Toutes épreuves</option>
+                {SWIMMING_EVENTS.map(ev => (
+                  <option key={ev.id} value={ev.id}>{ev.label}</option>
+                ))}
+              </select>
+
+              <select 
+                className="form-select text-xs" 
+                value={historyBassinFilter} 
+                onChange={(e) => setHistoryBassinFilter(e.target.value)}
+                style={{ minWidth: '110px' }}
+              >
+                <option value="all">Tous bassins</option>
+                <option value="25m">Bassin 25m</option>
+                <option value="50m">Bassin 50m</option>
+              </select>
+            </div>
+          </div>
+
+          {allPerformances.length === 0 ? (
+            <div className="p-12 text-center text-muted">
+              <Timer size={32} className="mx-auto mb-2 opacity-30" />
+              Aucun chrono enregistré dans le club pour l'instant. Utilisez la Feuille de Match ou la Fiche d'un athlète pour enregistrer les temps !
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    <th style={{ padding: '0.85rem 1rem' }}>Date</th>
+                    <th style={{ padding: '0.85rem 1rem' }}>Nageur</th>
+                    <th style={{ padding: '0.85rem 1rem' }}>Épreuve</th>
+                    <th style={{ padding: '0.85rem 1rem' }}>Bassin</th>
+                    <th style={{ padding: '0.85rem 1rem' }}>Chrono</th>
+                    <th style={{ padding: '0.85rem 1rem' }}>Contexte</th>
+                    <th style={{ padding: '0.85rem 1rem' }}>Observations</th>
+                    <th style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allPerformances
+                    .filter(perf => {
+                      if (historyEventFilter !== 'all' && perf.event_id !== historyEventFilter) return false;
+                      if (historyBassinFilter !== 'all' && (perf.bassin || '25m') !== historyBassinFilter) return false;
+                      const q = historySearch.toLowerCase().trim();
+                      if (!q) return true;
+                      const name = `${perf.athlete?.nom || ''} ${perf.athlete?.prenom || ''}`.toLowerCase();
+                      const obs = (perf.observations || '').toLowerCase();
+                      const evLabel = (perf.event_label || SWIMMING_EVENTS.find(e => e.id === perf.event_id)?.label || '').toLowerCase();
+                      return name.includes(q) || obs.includes(q) || evLabel.includes(q);
+                    })
+                    .map((perf, idx) => {
+                      const evObj = SWIMMING_EVENTS.find(e => e.id === perf.event_id);
+                      const athleteId = perf.athlete?.id || perf.athlete_id;
+                      const isCurrentPB = personalBests.some(pb => 
+                        (String(pb.athlete?.id) === String(athleteId) || String(pb.athlete_id) === String(athleteId)) && 
+                        pb.event_id === perf.event_id && 
+                        (pb.bassin || '25m') === (perf.bassin || '25m') && 
+                        Math.abs(pb.seconds - perf.seconds) < 0.001
+                      );
+
+                      return (
+                        <tr key={perf.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.85rem' }}>
+                            <div className="flex items-center gap-1.5 text-muted">
+                              <Calendar size={13} />
+                              <span>{perf.date_perf ? new Date(perf.date_perf).toLocaleDateString('fr-FR') : '-'}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <strong style={{ color: 'var(--text-primary)' }}>{perf.athlete?.nom} {perf.athlete?.prenom}</strong>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{perf.athlete?.groupes?.nom || perf.athlete?.groupe || '-'}</div>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <span style={{ fontWeight: 600, color: '#38bdf8' }}>{perf.event_label || evObj?.label || perf.event_id}</span>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <Badge status="ACTIVE" style={{ fontSize: '0.7rem' }}>{perf.bassin || '25m'}</Badge>
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem' }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: isCurrentPB ? '#10b981' : 'var(--text-primary)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                              <Timer size={14} style={{ color: isCurrentPB ? '#10b981' : '#38bdf8' }} />
+                              {perf.time_str || perf.chrono_str || formatSecondsToChrono(perf.seconds)}
+                            </span>
+                            {isCurrentPB && (
+                              <span style={{ marginLeft: '6px', fontSize: '0.68rem', fontWeight: 700, padding: '2px 5px', borderRadius: '4px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
+                                PB
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {perf.contexte || 'Test Entraînement'}
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px' }}>
+                            {perf.observations ? <span className="italic">{perf.observations}</span> : '-'}
+                          </td>
+                          <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
+                            {perf.athlete && (
+                              <Button 
+                                variant="secondary"
+                                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                                onClick={() => setModalAthlete(perf.athlete)}
+                              >
+                                Fiche
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -611,7 +865,10 @@ export default function SportsTracking() {
       {modalAthlete && (
         <AthletePerformancesModal
           athlete={modalAthlete}
-          onClose={() => setModalAthlete(null)}
+          onClose={() => {
+            setModalAthlete(null);
+            setRefreshTrigger(t => t + 1);
+          }}
         />
       )}
     </div>
