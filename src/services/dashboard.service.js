@@ -72,7 +72,8 @@ export async function getDashboardOverview() {
       // Analyse des dates de cotisations
       const rawGroup = athlete.groupes;
       const grpObj = Array.isArray(rawGroup) ? rawGroup[0] : rawGroup;
-      const tarifToUse = grpObj?.tarif || 3000;
+      // Montant par défaut (la colonne `tarif` n'existe pas dans la table groupes)
+      const tarifToUse = 3000;
 
       const validCotis = Array.isArray(athlete.cotisations)
         ? athlete.cotisations.filter(c => c && c.periode_couverte_fin && !isNaN(new Date(c.periode_couverte_fin).getTime()))
