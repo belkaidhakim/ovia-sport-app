@@ -13,8 +13,11 @@ import { Link } from 'react-router-dom';
 import { 
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
+import jsPDF from 'jspdf';
 import { getSwimmingCategory } from '../utils/swimmingCategories';
 import { formatDA } from '../utils/formatters';
+import { loadClubLogoBase64 } from '../utils/pdfHelpers';
+import { generateBadgeSheetPDF } from '../utils/badgeSheetPdfGenerator';
 
 const translations = {
   fr: {

@@ -147,6 +147,8 @@ export default function AthletesList() {
   const [showBulkCotisModal, setShowBulkCotisModal] = useState(false);
   const [bulkCotisMontant, setBulkCotisMontant] = useState(3000);
   const [bulkCotisMode, setBulkCotisMode] = useState('Espèces');
+  const [showBulkMessageModal, setShowBulkMessageModal] = useState(false);
+  const [messageBody, setMessageBody] = useState('');
 
   // Modales
   const [selectedAthlete, setSelectedAthlete] = useState(null);

@@ -29,11 +29,6 @@ export default function InsuranceOcrModal({
     if (!droppedFile) return;
 
     setFile(droppedFile);
-    if (droppedFile.type.startsWith('image/')) {
-      setPreviewUrl(URL.createObjectURL(droppedFile));
-    } else {
-      setPreviewUrl(null);
-    }
 
     // Lancer la reconnaissance OCR intelligente
     runOcrAnalysis(droppedFile);

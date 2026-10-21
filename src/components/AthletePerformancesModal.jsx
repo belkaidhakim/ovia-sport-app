@@ -217,7 +217,6 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
 
   const handleConfirmDelete = (perfId) => {
     savePerformances(performances.filter(p => p.id !== perfId));
-    setDeletingPerfId(null);
     toast.success('Chrono supprimé avec succès ! 🗑️');
   };
 

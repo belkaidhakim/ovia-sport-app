@@ -87,7 +87,7 @@ export default function SportsTracking() {
     setBatchTimes(prev => ({
       ...prev,
       [athleteId]: {
-        ...(prev[athleteId] || {}),
+        ...prev[athleteId],
         timeStr: value
       }
     }));
@@ -407,7 +407,7 @@ export default function SportsTracking() {
                             value={batchTimes[athlete.id]?.notes || ''}
                             onChange={(e) => setBatchTimes(prev => ({
                               ...prev,
-                              [athlete.id]: { ...(prev[athlete.id] || {}), notes: e.target.value }
+                              [athlete.id]: { ...prev[athlete.id], notes: e.target.value }
                             }))}
                           />
                         </td>
