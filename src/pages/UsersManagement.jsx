@@ -140,26 +140,40 @@ export default function UsersManagement() {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!newEmail || !newPassword) {
+    const cleanEmail = (newEmail || '').trim().toLowerCase();
+    
+    if (!cleanEmail || !newPassword) {
       toast.error("Veuillez remplir l'email et le mot de passe.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Le mot de passe doit comporter au moins 6 caractères.");
       return;
     }
 
     try {
       setCreateLoading(true);
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newEmail,
+        email: cleanEmail,
         password: newPassword,
       });
 
       if (authError) throw authError;
+
+      // Supabase renvoie un tableau identities vide si le compte existe déjà
+      if (authData?.user?.identities && authData.user.identities.length === 0) {
+        toast.error("Un compte existe déjà avec cette adresse email.");
+        setCreateLoading(false);
+        return;
+      }
 
       if (authData?.user) {
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
             id: authData.user.id,
-            email: newEmail,
+            email: cleanEmail,
             role: newRole,
             is_active: true
           });
@@ -169,7 +183,21 @@ export default function UsersManagement() {
         }
       }
 
-      toast.success(`Le membre ${newEmail} a été ajouté avec succès !`);
+      const isConfirmed = authData?.user?.email_confirmed_at || authData?.user?.confirmed_at || authData?.session;
+      if (!isConfirmed) {
+        toast.success(`Le compte ${cleanEmail} a été créé !`, { duration: 5000 });
+        toast(
+          (t) => (
+            <div style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
+              💡 <b>Important :</b> Si la confirmation email est activée sur Supabase, validez le compte dans <b>Supabase &gt; Authentication &gt; Users &gt; Confirm email</b> pour que l'entraîneur puisse se connecter immédiatement.
+            </div>
+          ),
+          { duration: 10000, icon: '⚠️' }
+        );
+      } else {
+        toast.success(`Le membre ${cleanEmail} a été ajouté avec succès !`);
+      }
+
       setIsModalOpen(false);
       setNewEmail('');
       setNewPassword('');
@@ -522,6 +550,18 @@ export default function UsersManagement() {
                   <option value="secretaire">Secrétaire (Gestion Athlètes & Finances)</option>
                   <option value="admin">Administrateur (Tout accès)</option>
                 </select>
+              </div>
+
+              <div style={{
+                background: 'rgba(59, 130, 246, 0.08)',
+                border: '1px solid rgba(59, 130, 246, 0.25)',
+                borderRadius: '0.5rem',
+                padding: '0.75rem',
+                fontSize: '0.8rem',
+                color: 'var(--text-secondary)',
+                lineHeight: '1.4'
+              }}>
+                ℹ️ <b>Important :</b> Si l'entraîneur reçoit le message <i>« Identifiants incorrects »</i>, pensez à cliquer sur <b>Confirm email</b> sur son compte dans votre console Supabase (Authentication &gt; Users) ou désactivez la confirmation d'email dans Supabase.
               </div>
 
               <div className="flex gap-3 justify-end mt-4">

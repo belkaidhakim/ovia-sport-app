@@ -21,9 +21,11 @@ export default function Login() {
 
     setLoading(true);
     
+    const cleanEmail = (email || '').trim().toLowerCase();
+    
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
       });
 
@@ -37,12 +39,20 @@ export default function Login() {
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password,
       });
 
       if (error) {
-        toast.error('Identifiants incorrects');
+        console.error('[Login Error]', error);
+        const msg = (error.message || '').toLowerCase();
+        if (msg.includes('email not confirmed')) {
+          toast.error("Votre adresse email n'a pas encore été confirmée. Veuillez vérifier votre boîte mail ou demander à l'administrateur d'activer votre compte sur Supabase.", { duration: 7000 });
+        } else if (msg.includes('invalid login credentials')) {
+          toast.error("Identifiants incorrects. Vérifiez votre email et mot de passe (ou assurez-vous que le compte a bien été confirmé dans Supabase).", { duration: 6000 });
+        } else {
+          toast.error(`Erreur de connexion : ${error.message}`);
+        }
         setLoading(false);
       } else {
         toast.success('Connexion réussie');
