@@ -56,6 +56,22 @@ export default function Login() {
         setLoading(false);
       } else {
         toast.success('Connexion réussie');
+        try {
+          const { data: { user: loggedUser } } = await supabase.auth.getUser();
+          if (loggedUser) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', loggedUser.id)
+              .single();
+            if (profile?.role === 'entraineur') {
+              navigate('/scanner');
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('[Login] Role redirect fallback:', e);
+        }
         navigate('/dashboard');
       }
     }

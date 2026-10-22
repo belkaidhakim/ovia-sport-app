@@ -18,6 +18,7 @@ import Papa from 'papaparse';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
 import { useRegistrationSettings } from '../hooks/useRegistrationSettings';
+import { useAuth } from '../contexts/AuthContext';
 import PendingInscriptions from './PendingInscriptions';
 
 // Sous-composants modulaires
@@ -33,6 +34,8 @@ import {
 
 export default function AthletesList() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { role } = useAuth();
+  const isEntraineur = role === 'entraineur';
 
   // Données de base via hooks
   const { 
@@ -52,9 +55,9 @@ export default function AthletesList() {
   const { groupes } = useGroupes();
   const { isOpen: inscriptionsOuvertes, toggleInscriptions } = useRegistrationSettings();
 
-  // Onglet actif : 'tous', 'attente', 'archives'
-  const initialTab = searchParams.get('tab') === 'inscriptions' ? 'attente' : 
-                     searchParams.get('tab') === 'archives' ? 'archives' : 'tous';
+  // Onglet actif : 'tous', 'attente', 'archives' (entraîneur restreint uniquement à 'tous')
+  const initialTab = (!isEntraineur && searchParams.get('tab') === 'inscriptions') ? 'attente' : 
+                     (!isEntraineur && searchParams.get('tab') === 'archives') ? 'archives' : 'tous';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -431,46 +434,52 @@ export default function AthletesList() {
 
         {/* Barre d'outils unifiée */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Toggle Inscriptions */}
-          <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg shadow-xs">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                inscriptionsOuvertes ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
-              }`}
-            />
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              {inscriptionsOuvertes ? "Inscriptions Ouvertes" : "Inscriptions Fermées"}
-            </span>
-            <button
-              onClick={() => toggleInscriptions()}
-              className={`text-xs font-semibold px-2 py-0.5 rounded transition cursor-pointer ${
-                inscriptionsOuvertes
-                  ? "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
-                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100"
-              }`}
-            >
-              {inscriptionsOuvertes ? "Fermer" : "Ouvrir"}
-            </button>
-          </div>
+          {/* Toggle Inscriptions (Admin / Secrétaire) */}
+          {!isEntraineur && (
+            <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-lg shadow-xs">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  inscriptionsOuvertes ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                }`}
+              />
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {inscriptionsOuvertes ? "Inscriptions Ouvertes" : "Inscriptions Fermées"}
+              </span>
+              <button
+                onClick={() => toggleInscriptions()}
+                className={`text-xs font-semibold px-2 py-0.5 rounded transition cursor-pointer ${
+                  inscriptionsOuvertes
+                    ? "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                    : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100"
+                }`}
+              >
+                {inscriptionsOuvertes ? "Fermer" : "Ouvrir"}
+              </button>
+            </div>
+          )}
 
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />
+          {!isEntraineur && <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-1 hidden sm:block" />}
 
           {/* Actions secondaires */}
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5 text-slate-500" />
-            Importer CSV
-          </button>
-          
-          <button 
-            onClick={handleExport}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            Exporter
-          </button>
+          {!isEntraineur && (
+            <>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5 text-slate-500" />
+                Importer CSV
+              </button>
+              
+              <button 
+                onClick={handleExport}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition shadow-xs cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                Exporter
+              </button>
+            </>
+          )}
 
           <button 
             onClick={handleCopyPublicLink}
@@ -481,13 +490,15 @@ export default function AthletesList() {
           </button>
 
           {/* Bouton Primaire Unique */}
-          <Link 
-            to="/athletes/new"
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            Nouvel Athlète
-          </Link>
+          {!isEntraineur && (
+            <Link 
+              to="/athletes/new"
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              Nouvel Athlète
+            </Link>
+          )}
         </div>
       </div>
 
@@ -501,6 +512,7 @@ export default function AthletesList() {
         autorisesAccessCount={autorisesAccessCount}
         essaiAccessCount={essaiAccessCount}
         medicalPercent={medicalPercent}
+        isEntraineur={isEntraineur}
       />
 
       {/* =========================================================
@@ -530,49 +542,57 @@ export default function AthletesList() {
               </span>
             </button>
 
-            <button
-              onClick={() => {
-                setActiveTab("attente");
-                setSearchParams({ tab: 'inscriptions' });
-              }}
-              className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
-                activeTab === "attente"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
-            >
-              Inscriptions en attente
-              <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
-                pendingCount > 0 ? "bg-amber-500 text-slate-950" : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-              }`}>
-                {pendingCount}
-              </span>
-            </button>
+            {!isEntraineur && (
+              <button
+                onClick={() => {
+                  setActiveTab("attente");
+                  setSearchParams({ tab: 'inscriptions' });
+                }}
+                className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                  activeTab === "attente"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                Inscriptions en attente
+                <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${
+                  pendingCount > 0 ? "bg-amber-500 text-slate-950" : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                }`}>
+                  {pendingCount}
+                </span>
+              </button>
+            )}
 
-            <button
-              onClick={() => {
-                setActiveTab("archives");
-                setSearchParams({ tab: 'archives' });
-                fetchArchivedAthletes();
-              }}
-              className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
-                activeTab === "archives"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-              }`}
-            >
-              Archives / Anciens
-              <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                {archivedAthletes.length}
-              </span>
-            </button>
+            {!isEntraineur && (
+              <button
+                onClick={() => {
+                  setActiveTab("archives");
+                  setSearchParams({ tab: 'archives' });
+                  fetchArchivedAthletes();
+                }}
+                className={`pb-3 text-sm font-bold border-b-2 transition flex items-center gap-2 cursor-pointer ${
+                  activeTab === "archives"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                Archives / Anciens
+                <span className="px-2 py-0.5 text-xs rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                  {archivedAthletes.length}
+                </span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-3 pb-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
-            <Link to="/assurances" className="hover:text-blue-600 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Assurances
-            </Link>
-            <span>•</span>
+            {!isEntraineur && (
+              <>
+                <Link to="/assurances" className="hover:text-blue-600 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Assurances
+                </Link>
+                <span>•</span>
+              </>
+            )}
             <a href="/inscription" target="_blank" rel="noreferrer" className="hover:text-blue-600 flex items-center gap-1">
               Formulaire Public <ExternalLink className="w-3 h-3" />
             </a>
@@ -649,6 +669,7 @@ export default function AthletesList() {
               genderFilter={genderFilter}
               setGenderFilter={setGenderFilter}
               groupes={groupes}
+              isEntraineur={isEntraineur}
             />
 
             {/* BANDEAU D'ACTIONS GROUPÉES */}
@@ -673,12 +694,14 @@ export default function AthletesList() {
                   >
                     Changer groupe
                   </button>
-                  <button 
-                    onClick={() => setShowBulkCotisModal(true)}
-                    className="px-2.5 py-1.5 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition cursor-pointer"
-                  >
-                    Valider cotisation
-                  </button>
+                  {!isEntraineur && (
+                    <button 
+                      onClick={() => setShowBulkCotisModal(true)}
+                      className="px-2.5 py-1.5 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition cursor-pointer"
+                    >
+                      Valider cotisation
+                    </button>
+                  )}
                   <button 
                     onClick={() => setShowBulkResetModal(true)}
                     className="px-2.5 py-1.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-bold hover:bg-blue-100 transition flex items-center gap-1 cursor-pointer"
@@ -718,7 +741,7 @@ export default function AthletesList() {
                     </th>
                     <th className="py-3.5 px-4">Membre & Dossier</th>
                     <th className="py-3.5 px-4">Profil Sportif</th>
-                    <th className="py-3.5 px-4">Cotisation</th>
+                    {!isEntraineur && <th className="py-3.5 px-4">Cotisation</th>}
                     <th className="py-3.5 px-4">Assiduité (Séances)</th>
                     <th className="py-3.5 px-4">Smart Access</th>
                     <th className="py-3.5 pl-4 pr-6 text-right">Actions</th>
@@ -727,13 +750,13 @@ export default function AthletesList() {
                 <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800/70 text-sm">
                   {loading ? (
                     <tr>
-                      <td colSpan="7" className="py-8 text-center text-slate-400">
+                      <td colSpan={isEntraineur ? 6 : 7} className="py-8 text-center text-slate-400">
                         Chargement des nageurs...
                       </td>
                     </tr>
                   ) : filteredAthletes.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="py-8 text-center text-slate-400">
+                      <td colSpan={isEntraineur ? 6 : 7} className="py-8 text-center text-slate-400">
                         Aucun membre trouvé correspondant aux filtres.
                       </td>
                     </tr>
@@ -754,6 +777,7 @@ export default function AthletesList() {
                         onArchive={(a) => setAthleteToArchive(a)}
                         onDownloadPdfForm={handleDownloadPdfForm}
                         onResetPresences={(a) => setAthleteToResetPresences(a)}
+                        isEntraineur={isEntraineur}
                       />
                     ))
                   )}

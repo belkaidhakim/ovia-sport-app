@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Scanner as QRScanner } from '@yudiel/react-qr-scanner';
 import { supabase } from '../supabaseClient';
 import { 
   CheckCircle2, XCircle, Users, Wifi, WifiOff, Volume2, VolumeX, 
   RefreshCw, Sparkles, AlertTriangle, Maximize, Minimize,
-  ShieldCheck, ShieldAlert
+  ShieldCheck, ShieldAlert, ArrowLeft
 } from 'lucide-react';
 import BadgeGenerator from '../components/BadgeGenerator';
 import { soundController } from '../utils/audioFeedback';
@@ -546,7 +547,7 @@ export default function Scanner() {
           
           <div style={{ backgroundColor: 'rgba(0,0,0,0.4)', padding: '0.65rem 1.25rem', borderRadius: '12px', textAlign: 'center', maxWidth: '420px', marginTop: '0.75rem' }}>
             <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#fef3c7' }}>
-              Rappel : Merci d'inviter l'adhérent à régler sa cotisation à l'accueil avant la 3ème séance.
+              Rappel : Merci d'inviter l'adhérent à régulariser sa situation à l'accueil avant la 3ème séance.
             </p>
           </div>
           
@@ -627,13 +628,35 @@ export default function Scanner() {
       
       {/* HEADER DU SCANNER AVEC STATUT RÉSEAU & COMMANDES */}
       <div style={{ padding: '0.85rem 1.25rem', backgroundColor: '#0f172a', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            Scanner de Contrôle Bassin
-          </h1>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
-            Pointage instantané & Smart Access (Quotas & Cotisations)
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <Link
+            to="/athletes"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '0.45rem 0.85rem',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              color: '#f8fafc',
+              fontSize: '0.8rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              border: '1px solid rgba(255,255,255,0.15)',
+              transition: 'background 0.2s'
+            }}
+          >
+            <ArrowLeft size={15} />
+            <span>Menu Athlètes</span>
+          </Link>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Scanner de Contrôle Bassin
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>
+              Pointage instantané & Smart Access Bassin
+            </p>
+          </div>
         </div>
         
         {/* BARRE D'OUTILS ET BADGES */}

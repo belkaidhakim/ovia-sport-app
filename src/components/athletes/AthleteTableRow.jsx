@@ -21,7 +21,8 @@ export default function AthleteTableRow({
   setActiveMenuId,
   onArchive,
   onDownloadPdfForm,
-  onResetPresences
+  onResetPresences,
+  isEntraineur = false
 }) {
   const initiales = `${(athlete.nom?.[0] || '').toUpperCase()}${(athlete.prenom?.[0] || '').toUpperCase()}`;
   const seancesEffectuees = Array.isArray(athlete.presences) ? athlete.presences.length : 0;
@@ -169,20 +170,22 @@ export default function AthleteTableRow({
         </div>
       </td>
 
-      {/* 3. Cotisation */}
-      <td className="py-3.5 px-4 align-middle">
-        {cotisInfo.type === 'paid' ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            À jour (Payé)
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-            En attente
-          </span>
-        )}
-      </td>
+      {/* 3. Cotisation (Masqué pour l'entraîneur) */}
+      {!isEntraineur && (
+        <td className="py-3.5 px-4 align-middle">
+          {cotisInfo.type === 'paid' ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              À jour (Payé)
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              En attente
+            </span>
+          )}
+        </td>
+      )}
 
       {/* 4. Assiduité (Jauge 8 séances) */}
       <td className="py-3.5 px-4 align-middle">
@@ -312,12 +315,14 @@ export default function AthleteTableRow({
                   </button>
                 )}
 
-                <Link
-                  to={`/athletes/edit/${athlete.id}`}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                >
-                  <Edit className="w-3.5 h-3.5" /> Modifier la fiche
-                </Link>
+                {!isEntraineur && (
+                  <Link
+                    to={`/athletes/edit/${athlete.id}`}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  >
+                    <Edit className="w-3.5 h-3.5" /> Modifier la fiche
+                  </Link>
+                )}
 
                 <button
                   onClick={() => {
@@ -329,17 +334,20 @@ export default function AthleteTableRow({
                   <FileText className="w-3.5 h-3.5" /> Fiche officielle PDF
                 </button>
 
-                <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
-
-                <button
-                  onClick={() => {
-                    setActiveMenuId(null);
-                    onArchive(athlete);
-                  }}
-                  className="w-full text-left flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Archiver le membre
-                </button>
+                {!isEntraineur && (
+                  <>
+                    <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
+                    <button
+                      onClick={() => {
+                        setActiveMenuId(null);
+                        onArchive(athlete);
+                      }}
+                      className="w-full text-left flex items-center gap-2 px-3 py-2 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Archiver le membre
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>

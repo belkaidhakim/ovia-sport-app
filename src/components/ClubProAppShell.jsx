@@ -60,7 +60,7 @@ export default function ClubProAppShell({ children }) {
       try {
         const data = await fetchSidebarCounts();
         setCounts(data);
-        setPendingNotifications(data.inscriptions > 0 || data.pendingCotis > 0);
+        setPendingNotifications(role === 'entraineur' ? false : (data.inscriptions > 0 || data.pendingCotis > 0));
       } catch (e) {
         console.warn("[AppShell] Counts fetch warning:", e);
       }
@@ -117,12 +117,16 @@ export default function ClubProAppShell({ children }) {
 
   const activeMenu = getActiveMenuId();
 
-  // ── Définition du menu ────────────────────────────────────────────
+  const isEntraineur = role === 'entraineur';
+  const isAdmin = role === 'admin';
+
+  // ── Définition du menu selon le rôle ──────────────────────────────
   const navigation = [
     {
       section: "PILOTAGE",
       items: [
-        { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard, path: "/dashboard", badge: null },
+        // Masqué pour les entraîneurs
+        ...(!isEntraineur ? [{ id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard, path: "/dashboard", badge: null }] : []),
         { id: "smart-access", label: "Smart Access (Scan)", icon: QrCode, path: "/scanner", badge: "Live" },
       ],
     },
@@ -130,8 +134,8 @@ export default function ClubProAppShell({ children }) {
       section: "ACADÉMIE & MEMBRES",
       items: [
         { id: "membres", label: "Annuaire Athlètes", icon: Users, path: "/athletes", badge: counts.athletes ? String(counts.athletes) : null },
-        { id: "inscriptions", label: "Demandes en ligne", icon: UserPlus, path: "/athletes?tab=inscriptions", badge: counts.inscriptions ? String(counts.inscriptions) : null },
-        { id: "assurances", label: "Médical & Assurances", icon: ShieldCheck, path: "/assurances", badge: null },
+        ...(!isEntraineur ? [{ id: "inscriptions", label: "Demandes en ligne", icon: UserPlus, path: "/athletes?tab=inscriptions", badge: counts.inscriptions ? String(counts.inscriptions) : null }] : []),
+        ...(!isEntraineur ? [{ id: "assurances", label: "Médical & Assurances", icon: ShieldCheck, path: "/assurances", badge: null }] : []),
       ],
     },
     {
@@ -142,18 +146,19 @@ export default function ClubProAppShell({ children }) {
         { id: "planning", label: "Planning", icon: Calendar, path: "/planning", badge: null },
       ],
     },
-    {
+    // Section FINANCES totalement masquée pour les entraîneurs (Cotisations & Manque à gagner)
+    ...(!isEntraineur ? [{
       section: "FINANCES",
       items: [
         { id: "cotisations", label: "Cotisations & Caisse", icon: CreditCard, path: "/finances", badge: counts.pendingCotis > 0 ? `${counts.pendingCotis} att.` : null },
       ],
-    },
+    }] : []),
     {
       section: "ADMINISTRATION",
       items: [
-        { id: "archives", label: "Archives", icon: Archive, path: "/archives", badge: null },
+        ...(!isEntraineur ? [{ id: "archives", label: "Archives", icon: Archive, path: "/archives", badge: null }] : []),
         { id: "profil", label: "Mon Profil", icon: UserCheck, path: "/profil", badge: null },
-        { id: "parametres", label: "Configuration Club", icon: Settings, path: "/users", badge: null },
+        ...(isAdmin ? [{ id: "parametres", label: "Configuration Club", icon: Settings, path: "/users", badge: null }] : []),
       ],
     },
   ];
@@ -190,7 +195,7 @@ export default function ClubProAppShell({ children }) {
       >
         {/* Logo */}
         <div className="h-16 px-5 flex items-center justify-between border-b border-slate-800">
-          <Link to="/dashboard" className="flex items-center gap-3 no-underline">
+          <Link to={isEntraineur ? "/scanner" : "/dashboard"} className="flex items-center gap-3 no-underline">
             <img
               src="/logo.jpg"
               alt={`Logo ${CLUB_NAME}`}

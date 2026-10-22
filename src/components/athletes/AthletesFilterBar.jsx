@@ -12,10 +12,11 @@ export default function AthletesFilterBar({
   setAccessFilter,
   genderFilter,
   setGenderFilter,
-  groupes = []
+  groupes = [],
+  isEntraineur = false
 }) {
   const hasActiveFilters = Boolean(
-    search || groupFilter || cotisationFilter || accessFilter || genderFilter
+    search || groupFilter || (!isEntraineur && cotisationFilter) || accessFilter || genderFilter
   );
 
   const handleReset = () => {
@@ -57,18 +58,21 @@ export default function AthletesFilterBar({
           ))}
         </select>
 
-        <select
-          value={cotisationFilter}
-          onChange={(e) => setCotisationFilter(e.target.value)}
-          className={`px-3 py-2 bg-white dark:bg-slate-950 border rounded-lg text-xs font-semibold outline-none cursor-pointer transition ${
-            cotisationFilter ? 'border-blue-500 text-blue-600 dark:text-cyan-400 bg-blue-50/50 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
-          }`}
-        >
-          <option value="">Toutes cotisations</option>
-          <option value="paye">À jour (Payé)</option>
-          <option value="attente">En attente</option>
-          <option value="epuise">Quota épuisé (8/8)</option>
-        </select>
+        {/* Filtre Cotisations (Masqué pour l'entraîneur) */}
+        {!isEntraineur && (
+          <select
+            value={cotisationFilter}
+            onChange={(e) => setCotisationFilter(e.target.value)}
+            className={`px-3 py-2 bg-white dark:bg-slate-950 border rounded-lg text-xs font-semibold outline-none cursor-pointer transition ${
+              cotisationFilter ? 'border-blue-500 text-blue-600 dark:text-cyan-400 bg-blue-50/50 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+            }`}
+          >
+            <option value="">Toutes cotisations</option>
+            <option value="paye">À jour (Payé)</option>
+            <option value="attente">En attente</option>
+            <option value="epuise">Quota épuisé (8/8)</option>
+          </select>
+        )}
 
         <select
           value={accessFilter}

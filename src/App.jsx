@@ -143,7 +143,7 @@ function AppRoutes() {
 
             {/* ── Routes admin protégées ───────────────────────────── */}
             <Route path="/dashboard" element={
-              <AdminLayout>
+              <AdminLayout allowedRoles={WRITE_ROLES}>
                 <Dashboard />
               </AdminLayout>
             } />

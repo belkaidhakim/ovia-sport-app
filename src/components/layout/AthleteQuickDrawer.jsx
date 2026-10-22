@@ -16,10 +16,13 @@ import { X, Phone, CheckCircle2, Printer, RotateCcw } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { resetPresences } from '../../services/finances.service';
 import { APP_EVENTS, DEFAULT_SESSION_QUOTA } from '../../config/constants';
+import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function AthleteQuickDrawer() {
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isEntraineur = role === 'entraineur';
   const [athlete, setAthlete] = useState(null);
 
   // ── Écouter l'événement d'ouverture depuis n'importe où dans l'app ──
@@ -170,24 +173,26 @@ export default function AthleteQuickDrawer() {
             </div>
           </div>
 
-          {/* Situation financière */}
-          <div className="space-y-2 border-b border-slate-200 dark:border-slate-800 pb-4">
-            <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
-              Situation Financière
-            </h3>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-500">Statut Cotisation</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                {athlete.cotisation || 'À jour'}
-              </span>
+          {/* Situation financière (Masqué pour l'entraîneur) */}
+          {!isEntraineur && (
+            <div className="space-y-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <h3 className="font-bold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
+                Situation Financière
+              </h3>
+              <div className="flex justify-between py-1">
+                <span className="text-slate-500">Statut Cotisation</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {athlete.cotisation || 'À jour'}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 items-center">
+                <span className="text-slate-500">Tarification appliquée</span>
+                <span className="font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800">
+                  {athlete.remise || 'Standard'}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between py-1 items-center">
-              <span className="text-slate-500">Tarification appliquée</span>
-              <span className="font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 rounded border border-violet-200 dark:border-violet-800">
-                {athlete.remise || 'Standard'}
-              </span>
-            </div>
-          </div>
+          )}
 
           {/* Contact tuteur */}
           {athlete.telephone && (
