@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { 
   Sun, 
@@ -14,7 +14,12 @@ import {
   Upload,
   Trash2,
   MapPin,
-  MessageCircle
+  MessageCircle,
+  HeartPulse,
+  Check,
+  Info,
+  Plus,
+  X
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useRegistrationSettings } from "../hooks/useRegistrationSettings";
@@ -27,24 +32,38 @@ export default function PublicRegistration() {
   const { theme, toggleTheme } = useTheme();
   const { isOpen: isRegistrationOpen, loading: settingsLoading } = useRegistrationSettings();
 
+  // ÉTAPE 1 : IDENTITÉ
   const [nom, setNom] = useState("");
   const [prenom, setPrenom] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [lieuNaissance, setLieuNaissance] = useState("");
+  const [sexe, setSexe] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+
+  // ÉTAPE 2 : COORDONNÉES ADAPTÉES À L'ÂGE
+  // Téléphone direct : obligatoire pour les majeurs, optionnel pour les ados
+  const [athletePhone, setAthletePhone] = useState("");
+  const [showChildPhone, setShowChildPhone] = useState(false);
+
+  // Pour les mineurs (< 18 ans) : Tuteur légal obligatoire
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [parentRelation, setParentRelation] = useState("Père");
+  const [hasSecondaryEmergency, setHasSecondaryEmergency] = useState(false);
+
+  // Contact d'urgence : obligatoire pour majeurs, optionnel 2nd contact pour mineurs
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState("Conjoint(e)");
+
+  // ÉTAPE 3 : DOCUMENTS
   const [certificatMedical, setCertificatMedical] = useState(null);
   const [certificatMedicalName, setCertificatMedicalName] = useState("");
   const [extraitNaissance, setExtraitNaissance] = useState(null);
   const [extraitNaissanceName, setExtraitNaissanceName] = useState("");
-  const [sexe, setSexe] = useState("");
-  const [athletePhone, setAthletePhone] = useState("");
-  const [parentName, setParentName] = useState("");
-  const [parentPhone, setParentPhone] = useState("");
-  const [emergencyContactName, setEmergencyContactName] = useState("");
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
-  const [emergencyContactRelation, setEmergencyContactRelation] = useState("Parent");
-  const [emergencyIsParent, setEmergencyIsParent] = useState(true);
+
+  // STATUT DU FORMULAIRE
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [dossierNumber, setDossierNumber] = useState("");
@@ -76,6 +95,19 @@ export default function PublicRegistration() {
   const categoryInfo = getCategoryInfo(birthDate);
   const isMinor = categoryInfo ? categoryInfo.isMinor : null;
 
+  // Ajustement de la relation d'urgence par défaut selon l'âge détecté
+  useEffect(() => {
+    if (isMinor === true) {
+      if (emergencyContactRelation === "Conjoint(e)") {
+        setEmergencyContactRelation("Mère");
+      }
+    } else if (isMinor === false) {
+      if (emergencyContactRelation === "Mère" || emergencyContactRelation === "Père") {
+        setEmergencyContactRelation("Conjoint(e)");
+      }
+    }
+  }, [isMinor]);
+
   // Traitement et compression de la photo
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -103,7 +135,7 @@ export default function PublicRegistration() {
     setPhotoPreview(null);
   };
 
-  // Traitement et compression des documents officiels (Fiche / Certificat & Extrait de Naissance)
+  // Traitement et compression des documents officiels
   const handleDocumentUpload = async (e, setDoc, setDocName, label) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,7 +182,7 @@ export default function PublicRegistration() {
     e.preventDefault();
 
     if (!nom.trim() || !prenom.trim() || !birthDate || !sexe) {
-      toast.error("Veuillez renseigner votre nom, prénom, date de naissance et sexe (*)");
+      toast.error("Veuillez renseigner le nom, prénom, date de naissance et sexe (*)");
       return;
     }
 
@@ -158,34 +190,35 @@ export default function PublicRegistration() {
       ? categoryInfo.age < 18 
       : true;
 
-    // Validation conditionnelle :
+    // Validation adaptée à l'âge
     if (minor) {
-      // Pour les mineurs : le parent/tuteur légal est obligatoire
+      // Pour les mineurs : Tuteur légal obligatoire
       if (!parentName.trim()) {
-        toast.error("Pour un candidat mineur (< 18 ans), le nom du parent ou tuteur légal est obligatoire.");
+        toast.error("Pour un candidat mineur (< 18 ans), veuillez renseigner le nom du parent ou tuteur légal (*).");
         return;
       }
       if (!parentPhone.trim()) {
-        toast.error("Pour un candidat mineur (< 18 ans), le numéro de téléphone du parent/tuteur est obligatoire.");
+        toast.error("Pour un candidat mineur (< 18 ans), veuillez renseigner le téléphone WhatsApp du parent (*).");
         return;
       }
-      if (!emergencyIsParent && (!emergencyContactName.trim() || !emergencyContactPhone.trim())) {
-        toast.error("Veuillez renseigner le contact d'urgence spécifique ou cocher l'option parent/tuteur.");
-        return;
+      if (hasSecondaryEmergency) {
+        if (!emergencyContactName.trim() || !emergencyContactPhone.trim()) {
+          toast.error("Veuillez renseigner le nom et le numéro de téléphone du second contact d'urgence (*).");
+          return;
+        }
       }
     } else {
-      // Pour les majeurs : téléphone personnel et contact d'urgence distinct obligatoire
-      const personalPhone = athletePhone.trim() || parentPhone.trim();
-      if (!personalPhone) {
-        toast.error("Veuillez renseigner votre numéro de téléphone personnel (WhatsApp).");
-        return;
-      }
-      if (!emergencyContactPhone.trim()) {
-        toast.error("Pour votre sécurité au bassin, veuillez indiquer un numéro de contact d'urgence (*).");
+      // Pour les majeurs : Téléphone direct WhatsApp et Contact d'urgence obligatoires
+      if (!athletePhone.trim()) {
+        toast.error("Veuillez renseigner votre numéro de téléphone WhatsApp (*).");
         return;
       }
       if (!emergencyContactName.trim()) {
-        toast.error("Veuillez renseigner le nom de votre contact d'urgence (*).");
+        toast.error("Pour votre sécurité au complexe sportif, veuillez indiquer le nom de votre contact d'urgence (*).");
+        return;
+      }
+      if (!emergencyContactPhone.trim()) {
+        toast.error("Pour votre sécurité au complexe sportif, veuillez indiquer le numéro de votre contact d'urgence (*).");
         return;
       }
     }
@@ -196,38 +229,37 @@ export default function PublicRegistration() {
 
     const cat = categoryInfo?.category || "Seniors (18+ ans)";
 
-    const cleanMainPhone = (minor 
-      ? (athletePhone.trim() || parentPhone.trim()) 
-      : (athletePhone.trim() || parentPhone.trim())
-    ).replace(/\s+/g, "");
-
+    // Nettoyage des numéros
+    const cleanAdultPhone = athletePhone.trim().replace(/\s+/g, "");
     const cleanParentPhone = parentPhone.trim() ? parentPhone.trim().replace(/\s+/g, "") : null;
+    const cleanChildPhone = showChildPhone && athletePhone.trim() ? athletePhone.trim().replace(/\s+/g, "") : null;
 
+    // Contact d'urgence effectif
     const effectiveEmergencyName = minor
-      ? (emergencyIsParent ? (parentName.trim() || "Parent / Tuteur") : (emergencyContactName.trim() || parentName.trim()))
+      ? (hasSecondaryEmergency ? emergencyContactName.trim() : parentName.trim())
       : emergencyContactName.trim();
 
-    const effectiveEmergencyPhone = (minor
-      ? (emergencyIsParent ? (cleanParentPhone || cleanMainPhone) : (emergencyContactPhone.trim().replace(/\s+/g, "") || cleanParentPhone))
-      : emergencyContactPhone.trim().replace(/\s+/g, "")
-    );
+    const effectiveEmergencyPhone = minor
+      ? (hasSecondaryEmergency ? emergencyContactPhone.trim().replace(/\s+/g, "") : cleanParentPhone)
+      : emergencyContactPhone.trim().replace(/\s+/g, "");
 
     const effectiveEmergencyRel = minor
-      ? (emergencyIsParent ? "Parent / Tuteur légal" : (emergencyContactRelation || "Proche"))
+      ? (hasSecondaryEmergency ? (emergencyContactRelation || "Proche") : (parentRelation || "Parent / Tuteur légal"))
       : (emergencyContactRelation || "Contact d'urgence");
 
-    // Construire le récapitulatif pour les observations
+    // Résumé médical / administratif dans observations_medicales
     let medicalObservations = minor
-      ? `Tuteur légal: ${parentName.trim()} (${cleanParentPhone || cleanMainPhone})`
-      : `Contact d'urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
+      ? `Tuteur légal: ${parentName.trim()} (${parentRelation || 'Parent'} - ${cleanParentPhone})`
+      : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
 
-    if (minor && !emergencyIsParent) {
-      medicalObservations += ` | Contact d'urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
-    } else if (!minor && parentName.trim()) {
-      medicalObservations += ` | Parent/Tuteur: ${parentName.trim()}`;
+    if (minor && hasSecondaryEmergency) {
+      medicalObservations += ` | Second contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
+    }
+    if (minor && cleanChildPhone) {
+      medicalObservations += ` | Tél direct enfant: ${cleanChildPhone}`;
     }
 
-    // Schéma de base universel compatible Supabase
+    // Schéma universel Supabase
     const basePayload = {
       numero_dossier: numDossier,
       nom: nom.trim().toUpperCase(),
@@ -238,8 +270,8 @@ export default function PublicRegistration() {
       certificat_medical: certificatMedical || null,
       extrait_naissance: extraitNaissance || null,
       sexe: sexe === "F" ? "Femme" : "Homme",
-      telephone: cleanMainPhone,
-      telephone_parent: cleanParentPhone || effectiveEmergencyPhone,
+      telephone: minor ? (cleanChildPhone || cleanParentPhone) : cleanAdultPhone,
+      telephone_parent: minor ? cleanParentPhone : null,
       observations_medicales: medicalObservations,
       groupe_nom: cat,
       statut: "EN_ATTENTE",
@@ -252,7 +284,7 @@ export default function PublicRegistration() {
     try {
       let payloadToTry = {
         ...basePayload,
-        nom_parent: parentName.trim() || null,
+        nom_parent: minor ? (parentName.trim() || null) : null,
         categorie: cat,
         contact_urgence: effectiveEmergencyPhone,
         nom_contact_urgence: effectiveEmergencyName,
@@ -291,7 +323,7 @@ export default function PublicRegistration() {
       const list = stored ? JSON.parse(stored) : [];
       list.unshift({ 
         ...basePayload, 
-        nom_parent: parentName.trim() || null,
+        nom_parent: minor ? (parentName.trim() || null) : null,
         categorie: cat,
         contact_urgence: effectiveEmergencyPhone,
         nom_contact_urgence: effectiveEmergencyName,
@@ -316,17 +348,19 @@ export default function PublicRegistration() {
         ? categoryInfo.age < 18 
         : false;
 
+      const cleanParentPhone = parentPhone.trim() ? parentPhone.trim().replace(/\s+/g, "") : null;
+      const cleanChildPhone = showChildPhone && athletePhone.trim() ? athletePhone.trim().replace(/\s+/g, "") : null;
+
       const effectiveEmergencyName = minor
-        ? (emergencyIsParent ? (parentName.trim() || "Parent / Tuteur") : (emergencyContactName.trim() || parentName.trim()))
+        ? (hasSecondaryEmergency ? emergencyContactName.trim() : parentName.trim())
         : emergencyContactName.trim();
 
-      const effectiveEmergencyPhone = (minor
-        ? (emergencyIsParent ? (parentPhone.trim() || athletePhone.trim()) : (emergencyContactPhone.trim() || parentPhone.trim()))
-        : emergencyContactPhone.trim()
-      );
+      const effectiveEmergencyPhone = minor
+        ? (hasSecondaryEmergency ? emergencyContactPhone.trim().replace(/\s+/g, "") : cleanParentPhone)
+        : emergencyContactPhone.trim().replace(/\s+/g, "");
 
       const effectiveEmergencyRel = minor
-        ? (emergencyIsParent ? "Parent / Tuteur" : (emergencyContactRelation || "Proche"))
+        ? (hasSecondaryEmergency ? (emergencyContactRelation || "Proche") : (parentRelation || "Parent / Tuteur légal"))
         : (emergencyContactRelation || "Contact d'urgence");
 
       await generateOfficialRegistrationFormPdf({
@@ -337,16 +371,16 @@ export default function PublicRegistration() {
           lieu_naissance: lieuNaissance.trim(),
           photo: photo,
           sexe: sexe === "F" ? "Femme" : "Homme",
-          telephone: athletePhone.trim() || parentPhone.trim(),
-          telephone_parent: parentPhone.trim() || effectiveEmergencyPhone,
-          nom_parent: parentName.trim() || null,
+          telephone: minor ? (cleanChildPhone || cleanParentPhone) : athletePhone.trim(),
+          telephone_parent: minor ? cleanParentPhone : null,
+          nom_parent: minor ? `${parentName.trim()} (${parentRelation || 'Parent'})` : null,
           contact_urgence: effectiveEmergencyPhone,
           nom_contact_urgence: effectiveEmergencyName,
           lien_contact_urgence: effectiveEmergencyRel,
           isMinor: minor,
           observations_medicales: minor
-            ? `Tuteur légal: ${parentName.trim()} | Urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
-            : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
+            ? `Tuteur légal: ${parentName.trim()} (${parentRelation || 'Parent'}) | Urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
+            : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`
         },
         numeroDossier: dossierNumber || `OVS-${Date.now().toString().slice(-6)}`,
         photoBase64: photo,
@@ -372,14 +406,21 @@ export default function PublicRegistration() {
     setExtraitNaissanceName("");
     setSexe("");
     setAthletePhone("");
+    setShowChildPhone(false);
     setParentName("");
     setParentPhone("");
+    setParentRelation("Père");
+    setHasSecondaryEmergency(false);
     setEmergencyContactName("");
     setEmergencyContactPhone("");
-    setEmergencyContactRelation("Parent");
-    setEmergencyIsParent(true);
+    setEmergencyContactRelation("Conjoint(e)");
     setSubmitted(false);
   };
+
+  // Message WhatsApp adapté pour le secrétariat
+  const whatsappPreRegistrationMessage = isMinor
+    ? `Bonjour Ovia Sport, je viens de finaliser la pré-inscription de mon enfant ${prenom.trim()} ${nom.trim()} (Dossier N° ${dossierNumber || '-'}). Pouvez-vous me confirmer les créneaux et les prochaines étapes ? Merci.`
+    : `Bonjour Ovia Sport, je viens de finaliser ma pré-inscription (Dossier N° ${dossierNumber || '-'}). Pouvez-vous me confirmer les créneaux d'entraînement ? Merci.`;
 
   // ÉCRAN 1 : INSCRIPTIONS CLÔTURÉES
   if (!settingsLoading && !isRegistrationOpen && !submitted) {
@@ -449,7 +490,7 @@ export default function PublicRegistration() {
           )}
 
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-            Votre dossier a bien été transmis à la direction du club. Un SMS de confirmation et les instructions de finalisation vous seront envoyés sous 24h.
+            Votre dossier a bien été transmis à la direction du club. Un message de confirmation vous sera envoyé par le secrétariat.
           </p>
 
           <div className="space-y-3">
@@ -470,7 +511,7 @@ export default function PublicRegistration() {
             </button>
 
             <a
-              href={`https://wa.me/213770719868?text=${encodeURIComponent(`Bonjour Ovia Sport, je viens de finaliser la pré-inscription de mon enfant (Dossier N° ${dossierNumber || '-'}). Pouvez-vous me confirmer les créneaux d'entraînement ? Merci.`)}`}
+              href={`https://wa.me/213770719868?text=${encodeURIComponent(whatsappPreRegistrationMessage)}`}
               target="_blank"
               rel="noreferrer"
               className="w-full py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition flex items-center justify-center gap-2"
@@ -485,7 +526,7 @@ export default function PublicRegistration() {
               className="w-full py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-medium transition flex items-center justify-center gap-1.5"
             >
               <FileText size={13} />
-              Télécharger aussi la fiche vierge pour le médecin
+              Télécharger la fiche vierge pour le médecin traitant
             </button>
 
             <Link
@@ -539,11 +580,11 @@ export default function PublicRegistration() {
           Ovia Sport · Inscription Saison 2026 / 2027
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-lg mx-auto">
-          Remplissez le formulaire ci-dessous pour effectuer votre demande d'adhésion au club.
+          Pré-inscription simple et rapide en 3 étapes. Le formulaire s'adapte automatiquement selon l'âge de l'adhérent.
         </p>
       </div>
 
-      {/* BANDEAU FICHE D'INSCRIPTION VIERGE (TÉLÉCHARGEMENT DIRECT) */}
+      {/* BANDEAU FICHE D'INSCRIPTION VIERGE (TÉLÉCHARGEMENT DIRECT POUR VISITE MÉDICALE) */}
       <div className="max-w-3xl mx-auto mb-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4 text-left w-full sm:w-auto">
           <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center flex-shrink-0">
@@ -551,10 +592,10 @@ export default function PublicRegistration() {
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-              Fiche d'Inscription Officielle Vierge (PDF)
+              Fiche d'Inscription Vierge à Imprimer (PDF)
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Document officiel tout-en-un à imprimer, incluant le volet médical pour le médecin traitant.
+              Téléchargez et imprimez le document officiel pour la visite chez votre médecin traitant.
             </p>
           </div>
         </div>
@@ -568,22 +609,39 @@ export default function PublicRegistration() {
         </button>
       </div>
 
-      {/* FORMULAIRE */}
+      {/* FORMULAIRE PRINCIPAL */}
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
         
+        {/* ========================================================================= */}
         {/* SECTION 1 : INFORMATIONS DE L'ATHLÈTE */}
+        {/* ========================================================================= */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm">
-          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
-            <span className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
-              1
-            </span>
-            <h2 className="text-lg font-bold">Informations de l'Athlète</h2>
+          <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-sm">
+                1
+              </span>
+              <div>
+                <h2 className="text-lg font-bold">Identité de l'Athlète</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0">Renseignez le futur adhérent</p>
+              </div>
+            </div>
+
+            {categoryInfo && (
+              <span className={`px-3 py-1 rounded-full text-xs font-extrabold border ${
+                isMinor 
+                  ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60"
+              }`}>
+                {categoryInfo.age} ans · {isMinor ? "Mineur" : "Majeur"}
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Nom <span className="text-rose-500">*</span>
+                Nom de Famille <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -591,7 +649,7 @@ export default function PublicRegistration() {
                 value={nom}
                 onChange={(e) => setNom(e.target.value.toUpperCase())}
                 placeholder="EX: BENALI"
-                className="w-full uppercase px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                className="w-full uppercase px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
               />
             </div>
 
@@ -605,36 +663,26 @@ export default function PublicRegistration() {
                 value={prenom}
                 onChange={(e) => setPrenom(e.target.value)}
                 placeholder="Ex: Anis"
-                className="w-full capitalize px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                className="w-full capitalize px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
               />
             </div>
 
+            {/* Date de naissance avec détection instantanée de l'âge */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Date de Naissance <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                <span>Date de Naissance <span className="text-rose-500">*</span></span>
+                <span className="text-[11px] text-sky-600 dark:text-sky-400 font-normal">Adapte la suite du formulaire</span>
               </label>
               <input
                 type="date"
                 required
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-                <MapPin size={13} className="text-sky-500" /> Lieu de Naissance
-              </label>
-              <input
-                type="text"
-                value={lieuNaissance}
-                onChange={(e) => setLieuNaissance(e.target.value)}
-                placeholder="Ex: Alger, Oran, Blida..."
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
-              />
-            </div>
-
+            {/* Sexe */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                 Sexe <span className="text-rose-500">*</span>
@@ -643,12 +691,64 @@ export default function PublicRegistration() {
                 required 
                 value={sexe}
                 onChange={(e) => setSexe(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
               >
-                <option value="">Sélectionner</option>
-                <option value="M">Masculin (Homme)</option>
-                <option value="F">Féminin (Femme)</option>
+                <option value="">Sélectionner le sexe</option>
+                <option value="M">Masculin (Garçon / Homme)</option>
+                <option value="F">Féminin (Fille / Femme)</option>
               </select>
+            </div>
+
+            {/* BANDEAU INTELLIGENT DE DÉTECTION DE L'ÂGE ET DE LA CATÉGORIE */}
+            {categoryInfo && (
+              <div className={`sm:col-span-2 p-4 rounded-2xl border transition-all ${
+                isMinor 
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200" 
+                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200"
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                      isMinor 
+                        ? "bg-amber-500 text-white shadow-md shadow-amber-500/30" 
+                        : "bg-emerald-500 text-white shadow-md shadow-emerald-500/30"
+                    }`}>
+                      {categoryInfo.age} <span className="text-[10px] ml-0.5">ans</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                        Catégorie Fédérale : <span className="font-extrabold text-slate-900 dark:text-white">{categoryInfo.category}</span>
+                      </div>
+                      <div className="text-xs font-semibold mt-0.5">
+                        {isMinor 
+                          ? "✓ Candidat Mineur — Étape 2 adaptée : contact du représentant légal requis" 
+                          : "✓ Adhérent Majeur — Étape 2 adaptée : inscription autonome sans tuteur"}
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`self-start sm:self-center px-3 py-1 rounded-full text-xs font-extrabold border ${
+                    isMinor 
+                      ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700" 
+                      : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
+                  }`}>
+                    {isMinor ? "Tuteur Légal Requis" : "Adhérent Autonome"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Lieu de naissance */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
+                <MapPin size={13} className="text-sky-500" /> Lieu de Naissance (Optionnel)
+              </label>
+              <input
+                type="text"
+                value={lieuNaissance}
+                onChange={(e) => setLieuNaissance(e.target.value)}
+                placeholder="Ex: Alger, Bir Mourad Raïs, Hydra, Blida..."
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
+              />
             </div>
 
             {/* Photo d'identité de l'Athlète */}
@@ -669,7 +769,7 @@ export default function PublicRegistration() {
                     {photoPreview ? "Photo chargée avec succès !" : "Ajouter une photo d'identité"}
                   </p>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
-                    Format portrait JPEG ou PNG, max 8 Mo. Utilisée pour le badge officiel du club.
+                    Format portrait JPEG ou PNG. Utilisée pour le badge et la licence sportive du club.
                   </p>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                     <label className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl cursor-pointer transition shadow-sm">
@@ -696,219 +796,332 @@ export default function PublicRegistration() {
                 </div>
               </div>
             </div>
-
-            {/* Affichage dynamique de la catégorie détectée */}
-            {categoryInfo && (
-              <div className="sm:col-span-2 p-4 rounded-xl bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-500/20 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider block">
-                    Catégorie Fédérale Attribuée
-                  </span>
-                  <span className="text-base font-extrabold text-slate-900 dark:text-white">
-                    {categoryInfo.category}
-                  </span>
-                </div>
-                <span className="px-3 py-1 bg-white dark:bg-slate-900 text-sky-700 dark:text-sky-300 rounded-lg text-xs font-bold shadow-sm">
-                  {categoryInfo.age} ans
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* SECTION 2 : CONTACT & SÉCURITÉ (TUTEUR LÉGAL CONDITIONNEL & CONTACT D'URGENCE) */}
+        {/* ========================================================================= */}
+        {/* SECTION 2 : COORDONNÉES & SÉCURITÉ (DYNAMIQUEMENT ADAPTÉES À L'ÂGE) */}
+        {/* ========================================================================= */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm transition-all">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3">
               <span className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
                 2
               </span>
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-0.5">
-                  Coordonnées & Sécurité
+                  {isMinor === true 
+                    ? "Tuteur Légal & Sécurité au Bassin" 
+                    : isMinor === false 
+                    ? "Vos Coordonnées & Sécurité au Bassin" 
+                    : "Coordonnées & Sécurité"}
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
                   {isMinor === true 
-                    ? "Tuteur légal obligatoire pour mineur et contact d'urgence sécurisé"
+                    ? "Coordonnées du responsable légal pour le suivi et les urgences" 
                     : isMinor === false 
-                    ? "Coordonnées de l'adhérent majeur et contact d'urgence obligatoire"
-                    : "Téléphone personnel, responsable légal si mineur, et contact d'urgence"}
+                    ? "Votre contact direct et une personne de confiance en cas d'urgence au complexe" 
+                    : "Renseignez d'abord la date de naissance pour afficher les champs adaptés"}
                 </p>
               </div>
             </div>
 
-            {/* Badge de statut d'âge dynamique */}
             {categoryInfo && (
-              <div>
-                {isMinor ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 shadow-2xs">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    Candidat Mineur ({categoryInfo.age} ans) — Tuteur requis
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    Candidat Majeur ({categoryInfo.age} ans) — Tuteur optionnel
-                  </span>
-                )}
-              </div>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                isMinor 
+                  ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60"
+                  : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60"
+              }`}>
+                {isMinor ? "Profil Mineur (< 18 ans)" : "Profil Majeur (18+ ans)"}
+              </span>
             )}
           </div>
 
-          {/* Grille 1 : Coordonnées Adhérent / Parent */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
-            {/* Téléphone personnel de l'adhérent */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Téléphone Adhérent (WhatsApp) {!isMinor && <span className="text-rose-500">*</span>}
-                {isMinor && <span className="text-slate-400 font-normal ml-1">(Optionnel si enfant)</span>}
-              </label>
-              <input
-                type="tel"
-                required={!isMinor}
-                value={athletePhone}
-                onChange={(e) => setAthletePhone(e.target.value)}
-                placeholder={isMinor ? "0550 12 34 56 (Si disponible)" : "0550 12 34 56 (Votre numéro principal)"}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
-              />
-            </div>
-
-            {/* Nom du Parent / Tuteur (Conditionnel selon l'âge) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Nom du Parent / Tuteur {isMinor ? (
-                  <span className="text-rose-500">* <span className="text-[11px] font-normal text-amber-600 dark:text-amber-400">(Requis &lt; 18 ans)</span></span>
-                ) : (
-                  <span className="text-slate-400 font-normal ml-1">(Facultatif pour les majeurs)</span>
-                )}
-              </label>
-              <input
-                type="text"
-                required={Boolean(isMinor)}
-                value={parentName}
-                onChange={(e) => setParentName(e.target.value)}
-                placeholder={isMinor ? "Ex: BENALI Mohamed (Père / Mère / Tuteur)" : "Ex: BENALI Mohamed (Optionnel)"}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
-              />
-            </div>
-
-            {/* Téléphone du Parent / Responsable Légal */}
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Téléphone du Parent / Responsable Légal {isMinor ? (
-                  <span className="text-rose-500">* <span className="text-[11px] font-normal text-amber-600 dark:text-amber-400">(Numéro WhatsApp prioritaire pour le suivi)</span></span>
-                ) : (
-                  <span className="text-slate-400 font-normal ml-1">(Optionnel pour les majeurs)</span>
-                )}
-              </label>
-              <input
-                type="tel"
-                required={Boolean(isMinor)}
-                value={parentPhone}
-                onChange={(e) => setParentPhone(e.target.value)}
-                placeholder="0550 12 34 56"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
-              />
-            </div>
-          </div>
-
-          {/* SOUS-SECTION DISTINCTE : CONTACT D'URGENCE (SÉCURITÉ AU BASSIN) */}
-          <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
-                  <Phone size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white m-0">
-                    Contact d'Urgence Distinct
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">
-                    Personne à alerter immédiatement par l'encadrement en cas de malaise ou accident au complexe sportif.
-                  </p>
-                </div>
+          {/* CAS 0 : DATE DE NAISSANCE NON RENSEIGNÉE ENCORE */}
+          {!categoryInfo && (
+            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 text-center space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto">
+                <Info size={20} />
               </div>
-
-              {isMinor && (
-                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
-                  <input
-                    type="checkbox"
-                    checked={emergencyIsParent}
-                    onChange={(e) => setEmergencyIsParent(e.target.checked)}
-                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500"
-                  />
-                  <span>Identique au parent / tuteur légal</span>
-                </label>
-              )}
-            </div>
-
-            {/* Si mineur et option cochée */}
-            {isMinor && emergencyIsParent ? (
-              <div className="text-xs p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                <span>
-                  ✓ En cas d'incident médical au bassin, le club contactera en priorité <strong>{parentName || 'le parent/tuteur'}</strong> au <strong>{parentPhone || 'numéro renseigné ci-dessus'}</strong>.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setEmergencyIsParent(false)}
-                  className="text-xs font-bold underline hover:opacity-80 cursor-pointer ml-3 whitespace-nowrap"
-                >
-                  Désigner un autre contact
-                </button>
+              <div className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                Indiquez la date de naissance à l'Étape 1
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                Cette section s'ajustera automatiquement : coordonnées du représentant légal pour les mineurs (&lt; 18 ans) ou inscription autonome pour les majeurs (18+ ans).
+              </p>
+            </div>
+          )}
+
+          {/* CAS 1 : CANDIDAT MINEUR (< 18 ANS) */}
+          {isMinor === true && (
+            <div className="space-y-6">
+              {/* 1.1 RESPONSABLE LÉGAL */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Nom du Contact d'Urgence <span className="text-rose-500">*</span>
+                    Nom et Prénom du Parent / Tuteur <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    value={emergencyContactName}
-                    onChange={(e) => setEmergencyContactName(e.target.value)}
-                    placeholder="Ex: BENALI Sarah, KACI Amine..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                    value={parentName}
+                    onChange={(e) => setParentName(e.target.value)}
+                    placeholder="Ex: BENALI Mohamed"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Lien / Relation <span className="text-rose-500">*</span>
+                    Lien de Parenté <span className="text-rose-500">*</span>
                   </label>
                   <select
-                    value={emergencyContactRelation}
-                    onChange={(e) => setEmergencyContactRelation(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-semibold"
+                    value={parentRelation}
+                    onChange={(e) => setParentRelation(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-medium"
                   >
-                    <option value="Conjoint(e)">Conjoint(e) / Époux(se)</option>
-                    <option value="Parent">Parent (Père / Mère)</option>
-                    <option value="Frère / Sœur">Frère / Sœur</option>
-                    <option value="Enfant majeur">Enfant majeur</option>
-                    <option value="Ami(e) proche">Ami(e) proche</option>
-                    <option value="Autre">Autre proche</option>
+                    <option value="Père">Père</option>
+                    <option value="Mère">Mère</option>
+                    <option value="Tuteur légal">Tuteur légal</option>
+                    <option value="Autre représentant">Autre représentant légal</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Numéro de Téléphone d'Urgence <span className="text-rose-500">*</span>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                    <span>Numéro de Téléphone WhatsApp du Parent / Tuteur <span className="text-rose-500">*</span></span>
+                    <span className="text-[11px] text-sky-600 dark:text-sky-400 font-normal">Numéro prioritaire pour le club</span>
                   </label>
                   <input
                     type="tel"
                     required
-                    value={emergencyContactPhone}
-                    onChange={(e) => setEmergencyContactPhone(e.target.value)}
-                    placeholder="0555 99 88 77"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-mono"
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    placeholder="0550 12 34 56"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
                   />
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* 1.2 PROTOCOLE DE SÉCURITÉ AU BASSIN (PARENT EN PRIORITÉ, OPTION SECOND CONTACT) */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                      <HeartPulse size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white m-0">
+                        Sécurité au Bassin & Contact d'Urgence
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">
+                        Procédure en cas de malaise ou incident lors des entraînements.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setHasSecondaryEmergency(!hasSecondaryEmergency)}
+                    className="text-xs font-bold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    {hasSecondaryEmergency ? "✓ Revenir au parent comme seul contact" : "+ Désigner un 2e contact d'urgence"}
+                  </button>
+                </div>
+
+                {!hasSecondaryEmergency ? (
+                  <div className="text-xs p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 flex items-start gap-2.5">
+                    <Check size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      En cas d'urgence au complexe sportif, le club appellera en priorité absolue le responsable légal :{" "}
+                      <strong>{parentName || "Nom du parent"}</strong> au <strong>{parentPhone || "Numéro WhatsApp"}</strong> ({parentRelation}).
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Second contact à joindre si le parent principal est injoignable :
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                          Nom du 2e Contact <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required={hasSecondaryEmergency}
+                          value={emergencyContactName}
+                          onChange={(e) => setEmergencyContactName(e.target.value)}
+                          placeholder="Ex: KACI Sarah"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                          Relation / Lien <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          value={emergencyContactRelation}
+                          onChange={(e) => setEmergencyContactRelation(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-rose-500"
+                        >
+                          <option value="Mère">Mère</option>
+                          <option value="Père">Père</option>
+                          <option value="Grand-parent">Grand-parent</option>
+                          <option value="Oncle / Tante">Oncle / Tante</option>
+                          <option value="Médecin de famille">Médecin de famille</option>
+                          <option value="Autre proche">Autre proche</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                          Téléphone d'Urgence <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required={hasSecondaryEmergency}
+                          value={emergencyContactPhone}
+                          onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                          placeholder="0555 99 88 77"
+                          className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-rose-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 1.3 OPTIONNEL : TÉLÉPHONE DIRECT DU JEUNE ATHLÈTE */}
+              <div className="pt-1">
+                {!showChildPhone ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowChildPhone(true)}
+                    className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    Ajouter le numéro de téléphone portable de l'enfant (Optionnel pour ados/juniors)
+                  </button>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Téléphone Personnel de l'Enfant (WhatsApp - Optionnel)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowChildPhone(false);
+                          setAthletePhone("");
+                        }}
+                        className="text-xs text-rose-500 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <X size={13} /> Retirer ce numéro
+                      </button>
+                    </div>
+                    <input
+                      type="tel"
+                      value={athletePhone}
+                      onChange={(e) => setAthletePhone(e.target.value)}
+                      placeholder="0550 00 00 00 (Pour recevoir les convocations d'entraînement)"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CAS 2 : ADHÉRENT MAJEUR (18+ ANS) — ZÉRO CHAMP PARENTAL */}
+          {isMinor === false && (
+            <div className="space-y-6">
+              {/* 2.1 COORDONNÉES DIRECTES */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>Votre Numéro de Téléphone Mobile (WhatsApp) <span className="text-rose-500">*</span></span>
+                  <span className="text-[11px] text-sky-600 dark:text-sky-400 font-normal">Pour plannings & convocations</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={athletePhone}
+                  onChange={(e) => setAthletePhone(e.target.value)}
+                  placeholder="0550 12 34 56"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
+                />
+              </div>
+
+              {/* 2.2 CONTACT D'URGENCE SÉCURISÉ */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-rose-500/5 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-900/40 space-y-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center font-bold shadow-sm shadow-rose-500/30">
+                    <HeartPulse size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white m-0">
+                      Contact d'Urgence Obligatoire au Bassin <span className="text-rose-500">*</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 m-0">
+                      Personne de confiance à alerter immédiatement par l'encadrement en cas de malaise ou blessure.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Nom du Contact d'Urgence <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={emergencyContactName}
+                      onChange={(e) => setEmergencyContactName(e.target.value)}
+                      placeholder="Ex: BENALI Sarah, KACI Amine..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Lien / Relation <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={emergencyContactRelation}
+                      onChange={(e) => setEmergencyContactRelation(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-semibold"
+                    >
+                      <option value="Conjoint(e)">Conjoint(e) / Époux(se)</option>
+                      <option value="Parent">Parent (Père / Mère)</option>
+                      <option value="Frère / Sœur">Frère / Sœur</option>
+                      <option value="Enfant majeur">Enfant majeur</option>
+                      <option value="Ami(e) proche">Ami(e) proche</option>
+                      <option value="Autre proche">Autre proche</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Numéro de Téléphone d'Urgence <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={emergencyContactPhone}
+                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                      placeholder="0555 99 88 77"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* ========================================================================= */}
         {/* SECTION 3 : PIÈCES JOINTES & DOCUMENTS OFFICIELS */}
+        {/* ========================================================================= */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm">
           <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
             <span className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm">
@@ -916,27 +1129,33 @@ export default function PublicRegistration() {
             </span>
             <div>
               <h2 className="text-lg font-bold">Pièces Justificatives Numériques</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">Fiche d'inscription signée par le médecin et extrait de naissance</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
+                Fiche médicale d'aptitude et document d'état civil
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
             {/* 1. Fiche d'inscription / Certificat médical */}
             <div className="p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <FileText size={16} className="text-sky-500" />
-                    Fiche d'Inscription / Certificat Médical
+                    Certificat Médical / Fiche Officielle
                   </span>
-                  {certificatMedical && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                      ✔ Fichier joint
+                  {certificatMedical ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                      <Check size={11} /> Joint
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300">
+                      Recommandé
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
-                  Fiche médicale officielle complétée et visée par le médecin traitant (PDF ou photo lisible).
+                  Fiche médicale officielle visée par votre médecin traitant (PDF ou photo lisible).
                 </p>
               </div>
 
@@ -967,7 +1186,7 @@ export default function PublicRegistration() {
                   <input
                     type="file"
                     accept=".pdf,image/*"
-                    onChange={(e) => handleDocumentUpload(e, setCertificatMedical, setCertificatMedicalName, "Fiche d'inscription")}
+                    onChange={(e) => handleDocumentUpload(e, setCertificatMedical, setCertificatMedicalName, "Fiche médicale")}
                     className="hidden"
                   />
                 </label>
@@ -982,14 +1201,24 @@ export default function PublicRegistration() {
                     <FileCheck size={16} className="text-emerald-500" />
                     Extrait de Naissance (Acte N°12)
                   </span>
-                  {extraitNaissance && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                      ✔ Fichier joint
+                  {extraitNaissance ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                      <Check size={11} /> Joint
+                    </span>
+                  ) : (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isMinor 
+                        ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300" 
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}>
+                      {isMinor ? "Recommandé mineurs" : "Optionnel"}
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">
-                  Extrait d'acte de naissance officiel ou copie lisible du livret de famille (PDF ou photo).
+                  {isMinor 
+                    ? "Extrait d'acte de naissance officiel ou livret de famille pour la licence fédérale." 
+                    : "Extrait de naissance ou copie de la pièce d'identité (PDF ou photo lisible)."}
                 </p>
               </div>
 
@@ -1027,19 +1256,29 @@ export default function PublicRegistration() {
               )}
             </div>
           </div>
+
+          {/* ENCART RASSURANT : AUCUN DOCUMENT BLOQUANT POUR LA PRÉ-INSCRIPTION */}
+          <div className="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40 text-xs text-sky-800 dark:text-sky-300 flex items-start gap-2.5">
+            <Info size={16} className="text-sky-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <strong>Pré-inscription 100% facilitée :</strong> Si vous n'avez pas encore effectué la visite médicale ou numérisé vos pièces, vous pouvez valider votre demande dès maintenant. Vous pourrez remettre les documents originaux directement au secrétariat du club avant votre première séance de rentrée.
+            </div>
+          </div>
         </div>
 
+        {/* ========================================================================= */}
         {/* BOUTON DE SOUMISSION */}
+        {/* ========================================================================= */}
         <button
           type="submit"
           disabled={submitting}
-          className="w-full py-4 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-base shadow-xl shadow-sky-600/25 transition transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full py-4 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-base shadow-xl shadow-sky-600/25 transition transform active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
         >
           {submitting ? "Transmission en cours..." : "Valider ma pré-inscription"}
         </button>
 
         <p className="text-center text-xs text-slate-400">
-          En validant ce formulaire, vous certifiez l'exactitude des informations fournies et l'acceptation du règlement intérieur du club.
+          En validant ce formulaire, vous certifiez l'exactitude des informations fournies et l'acceptation du règlement intérieur du club Ovia Sport.
         </p>
       </form>
     </div>
