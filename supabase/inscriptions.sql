@@ -85,12 +85,16 @@ CREATE POLICY "Admins can update club_settings"
   USING (true)
   WITH CHECK (true);
 
--- 6. Extension de la table athletes pour le contact d'urgence et les observations médicales
+-- 6. Extension de la table athletes pour le contact d'urgence, nom du parent et les observations médicales
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS contact_urgence TEXT;
+ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS nom_parent TEXT;
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS observations_medicales TEXT;
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS groupe_id UUID REFERENCES public.groupes(id) ON DELETE SET NULL;
 
--- 7. Extension de la table inscriptions (compatibilité formulaire étendu)
+-- 7. Extension de la table inscriptions (compatibilité formulaire étendu et contact d'urgence)
 ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS nom_parent TEXT;
 ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS categorie TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS contact_urgence TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS nom_contact_urgence TEXT;
+ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS lien_contact_urgence TEXT;
 ALTER TABLE public.inscriptions ADD COLUMN IF NOT EXISTS extrait_naissance TEXT;

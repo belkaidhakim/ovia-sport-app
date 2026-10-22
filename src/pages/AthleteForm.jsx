@@ -25,6 +25,7 @@ export default function AthleteForm() {
     date_naissance: "",
     lieu_naissance: "",
     telephone: "",
+    nom_parent: "",
     contact_urgence: "",
     groupe_sanguin: "",
     observations_medicales: "",
@@ -60,6 +61,7 @@ export default function AthleteForm() {
               date_naissance: data.date_naissance ? data.date_naissance.split("T")[0] : "",
               lieu_naissance: data.lieu_naissance || "",
               telephone: data.telephone || "",
+              nom_parent: data.nom_parent || data.nom_tuteur || "",
               contact_urgence: data.contact_urgence || data.telephone_urgence || "",
               groupe_sanguin: data.groupe_sanguin || "",
               observations_medicales: data.observations_medicales || data.remarques_medicales || "",
@@ -101,10 +103,11 @@ export default function AthleteForm() {
     else if (age <= 15) category = "Cadets";
     else if (age <= 17) category = "Juniors";
 
-    return { age, category };
+    return { age, category, isMinor: age < 18 };
   };
 
   const categoryInfo = getCategoryInfo(formData.date_naissance);
+  const isMinor = categoryInfo ? categoryInfo.isMinor : null;
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -189,18 +192,35 @@ export default function AthleteForm() {
       return;
     }
 
+    const minor = categoryInfo?.isMinor;
+    if (minor && !formData.nom_parent?.trim()) {
+      toast.error("Pour un athlète mineur (< 18 ans), le nom du parent ou tuteur légal est obligatoire.");
+      return;
+    }
+
+    if (!formData.contact_urgence?.trim()) {
+      toast.error("Le contact d'urgence est obligatoire pour la sécurité de l'athlète au bassin.");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      let obs = formData.observations_medicales ? formData.observations_medicales.trim() : "";
+      if (formData.nom_parent?.trim() && !obs.includes(formData.nom_parent.trim())) {
+        obs = `Tuteur: ${formData.nom_parent.trim()}${obs ? ` | ${obs}` : ""}`;
+      }
+
       const payload = {
         nom: formData.nom.trim().toUpperCase(),
         prenom: formData.prenom.trim().charAt(0).toUpperCase() + formData.prenom.trim().slice(1),
         date_naissance: formData.date_naissance || null,
         lieu_naissance: formData.lieu_naissance ? formData.lieu_naissance.trim() : null,
         telephone: formData.telephone ? formData.telephone.trim() : null,
+        nom_parent: formData.nom_parent ? formData.nom_parent.trim() : null,
         contact_urgence: formData.contact_urgence ? formData.contact_urgence.trim() : null,
         groupe_sanguin: formData.groupe_sanguin || null,
-        observations_medicales: formData.observations_medicales ? formData.observations_medicales.trim() : null,
+        observations_medicales: obs || null,
         groupe_id: formData.groupe_id || null,
         sexe: formData.sexe || null,
         certificat_medical_valide: Boolean(formData.certificat_medical_valide),
@@ -217,6 +237,7 @@ export default function AthleteForm() {
           .eq("id", id);
 
         if (error && error.message.includes("column")) {
+          delete payload.nom_parent;
           delete payload.contact_urgence;
           delete payload.groupe_sanguin;
           delete payload.observations_medicales;
@@ -244,6 +265,7 @@ export default function AthleteForm() {
           .single();
 
         if (error && error.message.includes("column")) {
+          delete payload.nom_parent;
           delete payload.contact_urgence;
           delete payload.groupe_sanguin;
           delete payload.observations_medicales;
@@ -440,15 +462,36 @@ export default function AthleteForm() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Téléphone Personnel / WhatsApp
+                  Téléphone Adhérent (WhatsApp) {!isMinor && <span className="text-rose-500">*</span>}
+                  {isMinor && <span className="text-slate-400 font-normal ml-1">(Optionnel pour mineur)</span>}
                 </label>
                 <input
                   type="tel"
                   name="telephone"
                   value={formData.telephone}
                   onChange={handleChange}
-                  placeholder="ex: 0550 12 34 56"
+                  required={!isMinor}
+                  placeholder={isMinor ? "ex: 0550 12 34 56 (Si disponible)" : "ex: 0550 12 34 56 (Numéro personnel)"}
                   className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nom du Parent / Tuteur {isMinor ? (
+                    <span className="text-rose-500">* <span className="text-[11px] font-normal text-amber-600 dark:text-amber-400">(Requis &lt; 18 ans)</span></span>
+                  ) : (
+                    <span className="text-slate-400 font-normal ml-1">(Optionnel pour les majeurs)</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  name="nom_parent"
+                  value={formData.nom_parent}
+                  onChange={handleChange}
+                  required={Boolean(isMinor)}
+                  placeholder={isMinor ? "ex: BENALI Mohamed (Père / Tuteur)" : "ex: BENALI Mohamed (Optionnel)"}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
                 />
               </div>
 
@@ -523,7 +566,9 @@ export default function AthleteForm() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-5">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Contact d'Urgence (Parent / Tuteur) <span className="text-rose-500">*</span>
+                {isMinor 
+                  ? "Contact d'Urgence (Parent / Tuteur Légal)" 
+                  : "Contact d'Urgence (Conjoint, Proche, Famille)"} <span className="text-rose-500">*</span>
               </label>
               <input
                 type="tel"
@@ -531,7 +576,9 @@ export default function AthleteForm() {
                 value={formData.contact_urgence}
                 onChange={handleChange}
                 required
-                placeholder="ex: 0555 99 88 77 (Numéro prioritaire en cas d'urgence)"
+                placeholder={isMinor 
+                  ? "ex: 0555 99 88 77 (Numéro du parent ou représentant légal)" 
+                  : "ex: 0555 99 88 77 (Personne de confiance à prévenir en cas d'urgence au bassin)"}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
               />
             </div>

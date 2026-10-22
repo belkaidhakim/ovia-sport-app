@@ -38,8 +38,13 @@ export default function PublicRegistration() {
   const [extraitNaissance, setExtraitNaissance] = useState(null);
   const [extraitNaissanceName, setExtraitNaissanceName] = useState("");
   const [sexe, setSexe] = useState("");
+  const [athletePhone, setAthletePhone] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
+  const [emergencyContactName, setEmergencyContactName] = useState("");
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState("Parent");
+  const [emergencyIsParent, setEmergencyIsParent] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [dossierNumber, setDossierNumber] = useState("");
@@ -47,11 +52,16 @@ export default function PublicRegistration() {
   // Calcul automatique de la catégorie selon l'âge
   const getCategoryInfo = (dateString) => {
     if (!dateString) return null;
-    const birthYear = new Date(dateString).getFullYear();
-    const currentYear = new Date().getFullYear();
-    const age = currentYear - birthYear;
+    const birthDateObj = new Date(dateString);
+    if (isNaN(birthDateObj.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDateObj.getFullYear();
+    const m = today.getMonth() - birthDateObj.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
+      age--;
+    }
 
-    if (age < 4 || age > 90) return null;
+    if (age < 3 || age > 95) return null;
     let category = "Seniors (18+ ans)";
     if (age <= 7) category = "École / Éveil Aquatique";
     else if (age <= 9) category = "Poussins (9-10 ans)";
@@ -60,10 +70,11 @@ export default function PublicRegistration() {
     else if (age <= 15) category = "Cadets (15-16 ans)";
     else if (age <= 17) category = "Juniors (17-18 ans)";
 
-    return { age, category };
+    return { age, category, isMinor: age < 18 };
   };
 
   const categoryInfo = getCategoryInfo(birthDate);
+  const isMinor = categoryInfo ? categoryInfo.isMinor : null;
 
   // Traitement et compression de la photo
   const handlePhotoUpload = async (e) => {
@@ -137,9 +148,46 @@ export default function PublicRegistration() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!nom.trim() || !prenom.trim() || !birthDate || !sexe || !parentName.trim() || !parentPhone.trim()) {
-      toast.error("Veuillez renseigner tous les champs obligatoires (*)");
+
+    if (!nom.trim() || !prenom.trim() || !birthDate || !sexe) {
+      toast.error("Veuillez renseigner votre nom, prénom, date de naissance et sexe (*)");
       return;
+    }
+
+    const minor = categoryInfo?.age !== undefined && categoryInfo?.age !== null 
+      ? categoryInfo.age < 18 
+      : true;
+
+    // Validation conditionnelle :
+    if (minor) {
+      // Pour les mineurs : le parent/tuteur légal est obligatoire
+      if (!parentName.trim()) {
+        toast.error("Pour un candidat mineur (< 18 ans), le nom du parent ou tuteur légal est obligatoire.");
+        return;
+      }
+      if (!parentPhone.trim()) {
+        toast.error("Pour un candidat mineur (< 18 ans), le numéro de téléphone du parent/tuteur est obligatoire.");
+        return;
+      }
+      if (!emergencyIsParent && (!emergencyContactName.trim() || !emergencyContactPhone.trim())) {
+        toast.error("Veuillez renseigner le contact d'urgence spécifique ou cocher l'option parent/tuteur.");
+        return;
+      }
+    } else {
+      // Pour les majeurs : téléphone personnel et contact d'urgence distinct obligatoire
+      const personalPhone = athletePhone.trim() || parentPhone.trim();
+      if (!personalPhone) {
+        toast.error("Veuillez renseigner votre numéro de téléphone personnel (WhatsApp).");
+        return;
+      }
+      if (!emergencyContactPhone.trim()) {
+        toast.error("Pour votre sécurité au bassin, veuillez indiquer un numéro de contact d'urgence (*).");
+        return;
+      }
+      if (!emergencyContactName.trim()) {
+        toast.error("Veuillez renseigner le nom de votre contact d'urgence (*).");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -147,7 +195,37 @@ export default function PublicRegistration() {
     setDossierNumber(numDossier);
 
     const cat = categoryInfo?.category || "Seniors (18+ ans)";
-    const cleanPhone = parentPhone.replace(/\s+/g, "");
+
+    const cleanMainPhone = (minor 
+      ? (athletePhone.trim() || parentPhone.trim()) 
+      : (athletePhone.trim() || parentPhone.trim())
+    ).replace(/\s+/g, "");
+
+    const cleanParentPhone = parentPhone.trim() ? parentPhone.trim().replace(/\s+/g, "") : null;
+
+    const effectiveEmergencyName = minor
+      ? (emergencyIsParent ? (parentName.trim() || "Parent / Tuteur") : (emergencyContactName.trim() || parentName.trim()))
+      : emergencyContactName.trim();
+
+    const effectiveEmergencyPhone = (minor
+      ? (emergencyIsParent ? (cleanParentPhone || cleanMainPhone) : (emergencyContactPhone.trim().replace(/\s+/g, "") || cleanParentPhone))
+      : emergencyContactPhone.trim().replace(/\s+/g, "")
+    );
+
+    const effectiveEmergencyRel = minor
+      ? (emergencyIsParent ? "Parent / Tuteur légal" : (emergencyContactRelation || "Proche"))
+      : (emergencyContactRelation || "Contact d'urgence");
+
+    // Construire le récapitulatif pour les observations
+    let medicalObservations = minor
+      ? `Tuteur légal: ${parentName.trim()} (${cleanParentPhone || cleanMainPhone})`
+      : `Contact d'urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
+
+    if (minor && !emergencyIsParent) {
+      medicalObservations += ` | Contact d'urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
+    } else if (!minor && parentName.trim()) {
+      medicalObservations += ` | Parent/Tuteur: ${parentName.trim()}`;
+    }
 
     // Schéma de base universel compatible Supabase
     const basePayload = {
@@ -160,9 +238,9 @@ export default function PublicRegistration() {
       certificat_medical: certificatMedical || null,
       extrait_naissance: extraitNaissance || null,
       sexe: sexe === "F" ? "Femme" : "Homme",
-      telephone: cleanPhone,
-      telephone_parent: cleanPhone,
-      observations_medicales: parentName.trim() ? `Tuteur légal: ${parentName.trim()}` : null,
+      telephone: cleanMainPhone,
+      telephone_parent: cleanParentPhone || effectiveEmergencyPhone,
+      observations_medicales: medicalObservations,
       groupe_nom: cat,
       statut: "EN_ATTENTE",
       date_demande: new Date().toISOString(),
@@ -174,8 +252,11 @@ export default function PublicRegistration() {
     try {
       let payloadToTry = {
         ...basePayload,
-        nom_parent: parentName.trim(),
-        categorie: cat
+        nom_parent: parentName.trim() || null,
+        categorie: cat,
+        contact_urgence: effectiveEmergencyPhone,
+        nom_contact_urgence: effectiveEmergencyName,
+        lien_contact_urgence: effectiveEmergencyRel
       };
 
       let { error } = await supabase.from("inscriptions").insert([payloadToTry]);
@@ -210,8 +291,11 @@ export default function PublicRegistration() {
       const list = stored ? JSON.parse(stored) : [];
       list.unshift({ 
         ...basePayload, 
-        nom_parent: parentName.trim(),
+        nom_parent: parentName.trim() || null,
         categorie: cat,
+        contact_urgence: effectiveEmergencyPhone,
+        nom_contact_urgence: effectiveEmergencyName,
+        lien_contact_urgence: effectiveEmergencyRel,
         id: `local-${Date.now()}` 
       });
       localStorage.setItem("local_inscriptions_backup", JSON.stringify(list));
@@ -228,6 +312,23 @@ export default function PublicRegistration() {
 
   const handleDownloadPdf = async () => {
     try {
+      const minor = categoryInfo?.age !== undefined && categoryInfo?.age !== null 
+        ? categoryInfo.age < 18 
+        : false;
+
+      const effectiveEmergencyName = minor
+        ? (emergencyIsParent ? (parentName.trim() || "Parent / Tuteur") : (emergencyContactName.trim() || parentName.trim()))
+        : emergencyContactName.trim();
+
+      const effectiveEmergencyPhone = (minor
+        ? (emergencyIsParent ? (parentPhone.trim() || athletePhone.trim()) : (emergencyContactPhone.trim() || parentPhone.trim()))
+        : emergencyContactPhone.trim()
+      );
+
+      const effectiveEmergencyRel = minor
+        ? (emergencyIsParent ? "Parent / Tuteur" : (emergencyContactRelation || "Proche"))
+        : (emergencyContactRelation || "Contact d'urgence");
+
       await generateOfficialRegistrationFormPdf({
         data: {
           nom: nom.trim().toUpperCase(),
@@ -236,9 +337,16 @@ export default function PublicRegistration() {
           lieu_naissance: lieuNaissance.trim(),
           photo: photo,
           sexe: sexe === "F" ? "Femme" : "Homme",
-          telephone: parentPhone,
-          telephone_parent: parentPhone,
-          observations_medicales: `Tuteur légal: ${parentName.trim()}`
+          telephone: athletePhone.trim() || parentPhone.trim(),
+          telephone_parent: parentPhone.trim() || effectiveEmergencyPhone,
+          nom_parent: parentName.trim() || null,
+          contact_urgence: effectiveEmergencyPhone,
+          nom_contact_urgence: effectiveEmergencyName,
+          lien_contact_urgence: effectiveEmergencyRel,
+          isMinor: minor,
+          observations_medicales: minor
+            ? `Tuteur légal: ${parentName.trim()} | Urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
+            : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
         },
         numeroDossier: dossierNumber || `OVS-${Date.now().toString().slice(-6)}`,
         photoBase64: photo,
@@ -263,8 +371,13 @@ export default function PublicRegistration() {
     setExtraitNaissance(null);
     setExtraitNaissanceName("");
     setSexe("");
+    setAthletePhone("");
     setParentName("");
     setParentPhone("");
+    setEmergencyContactName("");
+    setEmergencyContactPhone("");
+    setEmergencyContactRelation("Parent");
+    setEmergencyIsParent(true);
     setSubmitted(false);
   };
 
@@ -603,43 +716,195 @@ export default function PublicRegistration() {
           </div>
         </div>
 
-        {/* SECTION 2 : CONTACT & RESPONSABLE LÉGAL */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm">
-          <div className="flex items-center gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
-            <span className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
-              2
-            </span>
-            <h2 className="text-lg font-bold">Contact & Tuteur Légal</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Nom du Parent / Tuteur <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={parentName}
-                onChange={(e) => setParentName(e.target.value)}
-                placeholder="Ex: BENALI Mohamed"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
-              />
+        {/* SECTION 2 : CONTACT & SÉCURITÉ (TUTEUR LÉGAL CONDITIONNEL & CONTACT D'URGENCE) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-sm transition-all">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm">
+                2
+              </span>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-0.5">
+                  Coordonnées & Sécurité
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
+                  {isMinor === true 
+                    ? "Tuteur légal obligatoire pour mineur et contact d'urgence sécurisé"
+                    : isMinor === false 
+                    ? "Coordonnées de l'adhérent majeur et contact d'urgence obligatoire"
+                    : "Téléphone personnel, responsable légal si mineur, et contact d'urgence"}
+                </p>
+              </div>
             </div>
 
+            {/* Badge de statut d'âge dynamique */}
+            {categoryInfo && (
+              <div>
+                {isMinor ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    Candidat Mineur ({categoryInfo.age} ans) — Tuteur requis
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60 shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    Candidat Majeur ({categoryInfo.age} ans) — Tuteur optionnel
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Grille 1 : Coordonnées Adhérent / Parent */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6">
+            {/* Téléphone personnel de l'adhérent */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Numéro de Téléphone (WhatsApp) <span className="text-rose-500">*</span>
+                Téléphone Adhérent (WhatsApp) {!isMinor && <span className="text-rose-500">*</span>}
+                {isMinor && <span className="text-slate-400 font-normal ml-1">(Optionnel si enfant)</span>}
               </label>
               <input
                 type="tel"
-                required
-                value={parentPhone}
-                onChange={(e) => setParentPhone(e.target.value)}
-                placeholder="0550 12 34 56"
+                required={!isMinor}
+                value={athletePhone}
+                onChange={(e) => setAthletePhone(e.target.value)}
+                placeholder={isMinor ? "0550 12 34 56 (Si disponible)" : "0550 12 34 56 (Votre numéro principal)"}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
+              />
+            </div>
+
+            {/* Nom du Parent / Tuteur (Conditionnel selon l'âge) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Nom du Parent / Tuteur {isMinor ? (
+                  <span className="text-rose-500">* <span className="text-[11px] font-normal text-amber-600 dark:text-amber-400">(Requis &lt; 18 ans)</span></span>
+                ) : (
+                  <span className="text-slate-400 font-normal ml-1">(Facultatif pour les majeurs)</span>
+                )}
+              </label>
+              <input
+                type="text"
+                required={Boolean(isMinor)}
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                placeholder={isMinor ? "Ex: BENALI Mohamed (Père / Mère / Tuteur)" : "Ex: BENALI Mohamed (Optionnel)"}
                 className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm"
               />
             </div>
+
+            {/* Téléphone du Parent / Responsable Légal */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Téléphone du Parent / Responsable Légal {isMinor ? (
+                  <span className="text-rose-500">* <span className="text-[11px] font-normal text-amber-600 dark:text-amber-400">(Numéro WhatsApp prioritaire pour le suivi)</span></span>
+                ) : (
+                  <span className="text-slate-400 font-normal ml-1">(Optionnel pour les majeurs)</span>
+                )}
+              </label>
+              <input
+                type="tel"
+                required={Boolean(isMinor)}
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                placeholder="0550 12 34 56"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono"
+              />
+            </div>
+          </div>
+
+          {/* SOUS-SECTION DISTINCTE : CONTACT D'URGENCE (SÉCURITÉ AU BASSIN) */}
+          <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center font-bold">
+                  <Phone size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white m-0">
+                    Contact d'Urgence Distinct
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 m-0">
+                    Personne à alerter immédiatement par l'encadrement en cas de malaise ou accident au complexe sportif.
+                  </p>
+                </div>
+              </div>
+
+              {isMinor && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <input
+                    type="checkbox"
+                    checked={emergencyIsParent}
+                    onChange={(e) => setEmergencyIsParent(e.target.checked)}
+                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500"
+                  />
+                  <span>Identique au parent / tuteur légal</span>
+                </label>
+              )}
+            </div>
+
+            {/* Si mineur et option cochée */}
+            {isMinor && emergencyIsParent ? (
+              <div className="text-xs p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                <span>
+                  ✓ En cas d'incident médical au bassin, le club contactera en priorité <strong>{parentName || 'le parent/tuteur'}</strong> au <strong>{parentPhone || 'numéro renseigné ci-dessus'}</strong>.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEmergencyIsParent(false)}
+                  className="text-xs font-bold underline hover:opacity-80 cursor-pointer ml-3 whitespace-nowrap"
+                >
+                  Désigner un autre contact
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Nom du Contact d'Urgence <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={emergencyContactName}
+                    onChange={(e) => setEmergencyContactName(e.target.value)}
+                    placeholder="Ex: BENALI Sarah, KACI Amine..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Lien / Relation <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={emergencyContactRelation}
+                    onChange={(e) => setEmergencyContactRelation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-semibold"
+                  >
+                    <option value="Conjoint(e)">Conjoint(e) / Époux(se)</option>
+                    <option value="Parent">Parent (Père / Mère)</option>
+                    <option value="Frère / Sœur">Frère / Sœur</option>
+                    <option value="Enfant majeur">Enfant majeur</option>
+                    <option value="Ami(e) proche">Ami(e) proche</option>
+                    <option value="Autre">Autre proche</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Numéro de Téléphone d'Urgence <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={emergencyContactPhone}
+                    onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                    placeholder="0555 99 88 77"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

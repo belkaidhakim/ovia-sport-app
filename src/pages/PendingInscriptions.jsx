@@ -209,6 +209,7 @@ export default function PendingInscriptions({ embedded = false }) {
     sexe: 'Homme',
     nom_parent: '',
     telephone: '',
+    contact_urgence: '',
     groupe_nom: 'École / Éveil Aquatique',
     observations_medicales: ''
   });
@@ -249,8 +250,16 @@ export default function PendingInscriptions({ embedded = false }) {
       return;
     }
 
+    const age = calculateAge(newInscription.date_naissance);
+    const isMinor = age !== null && age < 18;
+    if (isMinor && !newInscription.nom_parent.trim()) {
+      toast.error('Pour un mineur (< 18 ans), le nom du parent / tuteur légal est obligatoire.');
+      return;
+    }
+
     setIsAdding(true);
     const cleanPhone = newInscription.telephone.replace(/\s+/g, '');
+    const cleanEmergency = (newInscription.contact_urgence || '').replace(/\s+/g, '') || cleanPhone;
     const res = await ajouterInscription({
       nom: newInscription.nom.trim().toUpperCase(),
       prenom: newInscription.prenom.trim(),
@@ -261,7 +270,8 @@ export default function PendingInscriptions({ embedded = false }) {
       extrait_naissance: newInscription.extrait_naissance || null,
       sexe: newInscription.sexe,
       telephone: cleanPhone,
-      telephone_parent: cleanPhone,
+      telephone_parent: isMinor ? cleanPhone : (cleanEmergency || cleanPhone),
+      contact_urgence: cleanEmergency,
       nom_parent: newInscription.nom_parent.trim(),
       groupe_nom: newInscription.groupe_nom,
       observations_medicales: newInscription.observations_medicales.trim() || (newInscription.nom_parent ? `Tuteur légal: ${newInscription.nom_parent.trim()}` : null)
@@ -284,6 +294,7 @@ export default function PendingInscriptions({ embedded = false }) {
         sexe: 'Homme',
         nom_parent: '',
         telephone: '',
+        contact_urgence: '',
         groupe_nom: 'École / Éveil Aquatique',
         observations_medicales: ''
       });
@@ -1007,14 +1018,30 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                       </strong>
                     </div>
                     <div>
-                      <span className="text-muted block text-xs">Téléphone :</span>
+                      <span className="text-muted block text-xs">Téléphone Adhérent :</span>
                       <a href={`tel:${selectedInscription.telephone}`} style={{ color: '#818cf8', fontWeight: 700, textDecoration: 'none' }}>
                         {selectedInscription.telephone}
                       </a>
                     </div>
                     <div>
-                      <span className="text-muted block text-xs">Contact Parent / Tuteur :</span>
-                      <strong>{selectedInscription.telephone_parent || 'Non renseigné'}</strong>
+                      <span className="text-muted block text-xs">
+                        {calculateAge(selectedInscription.date_naissance) !== null && calculateAge(selectedInscription.date_naissance) < 18 
+                          ? 'Parent / Tuteur Légal :' 
+                          : 'Nom du Parent / Tuteur :'}
+                      </span>
+                      <strong>
+                        {selectedInscription.nom_parent 
+                          ? `${selectedInscription.nom_parent} ${selectedInscription.telephone_parent ? `(${selectedInscription.telephone_parent})` : ''}` 
+                          : (calculateAge(selectedInscription.date_naissance) !== null && calculateAge(selectedInscription.date_naissance) >= 18 
+                              ? 'Non requis (Adhérent majeur)' 
+                              : (selectedInscription.telephone_parent || 'Non renseigné'))}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-muted block text-xs">Contact d'Urgence :</span>
+                      <strong style={{ color: '#f43f5e' }}>
+                        {selectedInscription.contact_urgence || selectedInscription.telephone_parent || selectedInscription.telephone || 'Non renseigné'}
+                      </strong>
                     </div>
                     <div>
                       <span className="text-muted block text-xs">Adresse :</span>
@@ -1507,13 +1534,30 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                 </div>
               </div>
 
+              {newInscription.date_naissance && (
+                <div>
+                  {calculateAge(newInscription.date_naissance) < 18 ? (
+                    <span className="text-[11px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-block">
+                      👶 Candidat mineur ({calculateAge(newInscription.date_naissance)} ans) — Tuteur légal obligatoire
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 inline-block">
+                      👤 Candidat majeur ({calculateAge(newInscription.date_naissance)} ans) — Tuteur optionnel
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Nom du Tuteur / Parent
+                    Nom du Tuteur / Parent {calculateAge(newInscription.date_naissance) !== null && calculateAge(newInscription.date_naissance) < 18 && (
+                      <span className="text-rose-400">*</span>
+                    )}
                   </label>
                   <input
                     type="text"
+                    required={calculateAge(newInscription.date_naissance) !== null && calculateAge(newInscription.date_naissance) < 18}
                     placeholder="Ex: BENALI Mohamed"
                     value={newInscription.nom_parent}
                     onChange={(e) => setNewInscription({ ...newInscription, nom_parent: e.target.value })}
@@ -1533,6 +1577,20 @@ CREATE POLICY "Admins can delete inscriptions" ON public.inscriptions FOR DELETE
                     className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Contact d'Urgence (Prioritaire au bassin) <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="0555 99 88 77 (Numéro d'urgence)"
+                  value={newInscription.contact_urgence}
+                  onChange={(e) => setNewInscription({ ...newInscription, contact_urgence: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
               <div>

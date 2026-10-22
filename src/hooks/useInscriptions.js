@@ -115,6 +115,7 @@ export function useInscriptions() {
 
     if (error && (error.message?.includes('column') || error.message?.includes('schema cache') || error.code === '42703')) {
       console.warn('Colonnes étendues non trouvées dans athletes, repli sur le schéma standard:', error.message);
+      delete toInsert.nom_parent;
       delete toInsert.contact_urgence;
       delete toInsert.observations_medicales;
       delete toInsert.groupe_id;
@@ -154,7 +155,8 @@ export function useInscriptions() {
         lieu_naissance: inscription.lieu_naissance || null,
         sexe: inscription.sexe || null,
         telephone: inscription.telephone || null,
-        contact_urgence: inscription.telephone_parent || null,
+        nom_parent: inscription.nom_parent || null,
+        contact_urgence: inscription.contact_urgence || inscription.telephone_parent || inscription.telephone || null,
         observations_medicales: inscription.observations_medicales || null,
         groupe_id: inscription.groupe_id || null,
         groupe: inscription.groupes?.nom || inscription.groupe_nom || null,
@@ -261,7 +263,8 @@ export function useInscriptions() {
           lieu_naissance: item.lieu_naissance ? item.lieu_naissance.trim() : null,
           sexe: item.sexe || null,
           telephone: item.telephone || null,
-          contact_urgence: item.telephone_parent || null,
+          nom_parent: item.nom_parent || null,
+          contact_urgence: item.contact_urgence || item.telephone_parent || item.telephone || null,
           observations_medicales: item.observations_medicales || null,
           groupe_id: item.groupe_id || null,
           groupe: item.groupes?.nom || item.groupe_nom || null,
@@ -427,7 +430,9 @@ export function useInscriptions() {
       let extendedPayload = {
         ...basePayload,
         nom_parent: payload.nom_parent || null,
-        categorie: payload.categorie || payload.groupe_nom || null
+        categorie: payload.categorie || payload.groupe_nom || null,
+        contact_urgence: payload.contact_urgence || null,
+        nom_contact_urgence: payload.nom_contact_urgence || null
       };
 
       let { data, error } = await supabase.from('inscriptions').insert([extendedPayload]).select().maybeSingle();

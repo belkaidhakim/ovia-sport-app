@@ -47,13 +47,17 @@ export async function generateOfficialRegistrationFormPdf({
       : null;
 
     let ageStr = '';
+    let isMinor = true;
     if (!isBlank && data.date_naissance) {
       const birth = new Date(data.date_naissance);
       const today = new Date();
       let age = today.getFullYear() - birth.getFullYear();
       const m = today.getMonth() - birth.getMonth();
       if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-      if (age >= 0) ageStr = `${age} ans ${age < 18 ? '(Mineur)' : '(Majeur)'}`;
+      if (age >= 0) {
+        isMinor = data.isMinor !== undefined ? data.isMinor : (age < 18);
+        ageStr = `${age} ans ${isMinor ? '(Mineur)' : '(Majeur)'}`;
+      }
     }
 
     const groupeName = isBlank 
@@ -210,12 +214,17 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setTextColor(15, 23, 42);
     doc.text((!isBlank && data.telephone) ? data.telephone : '................................', 47, s1Y + 33);
 
+    const secondPhoneLabel = (!isBlank && !isMinor) ? "CONTACT URGENCE :" : "CONTACT PARENT :";
+    const secondPhoneVal = (!isBlank && !isMinor) 
+      ? (data.contact_urgence || data.telephone_parent || '')
+      : (data.telephone_parent || data.contact_urgence || '');
+
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text("CONTACT PARENT :", 84, s1Y + 33);
+    doc.text(secondPhoneLabel, 84, s1Y + 33);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    doc.text((!isBlank && data.telephone_parent) ? data.telephone_parent : '................................', 113, s1Y + 33);
+    doc.text((!isBlank && secondPhoneVal) ? secondPhoneVal : '................................', 116, s1Y + 33);
 
     // Bloc Photo (À droite)
     const photoX = 163;
@@ -310,34 +319,69 @@ export async function generateOfficialRegistrationFormPdf({
     doc.setLineWidth(0.4);
     doc.roundedRect(15, s3Y, 180, s3H, 2, 2, 'S');
 
-    doc.setFillColor(254, 243, 199); // Jaune ambre très clair
-    doc.roundedRect(15, s3Y, 180, 6.5, 2, 2, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(146, 64, 14);
-    doc.text("3. AUTORISATION PARENTALE (Obligatoire pour les mineurs de moins de 18 ans)", 20, s3Y + 4.8);
+    if (!isBlank && !isMinor) {
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(15, s3Y, 180, 6.5, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text("3. AUTORISATION PARENTALE — NON APPLICABLE (Adhérent Majeur)", 20, s3Y + 4.8);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(30, 41, 59);
-    doc.text("Je soussigné(e) M. / Mme : ............................................................................ Qualité : [  ] Père   [  ] Mère   [  ] Tuteur légal", 20, s3Y + 12);
-    doc.text("Autorise mon enfant mineur désigné ci-dessus à adhérer à Ovia Sport et à participer régulièrement", 20, s3Y + 17);
-    doc.text("aux séances d'entraînement et compétitions. En cas d'urgence, j'autorise les encadrants à prendre toute mesure médicale utile.", 20, s3Y + 21.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(71, 85, 105);
+      doc.text("L'adhérent étant majeur (18 ans et plus), l'adhésion s'effectue sous sa propre responsabilité légale.", 20, s3Y + 13);
+      doc.text("En cas d'accident ou de malaise au complexe aquatique, le contact d'urgence désigné ci-dessus sera alerté.", 20, s3Y + 18);
+      if (data.contact_urgence) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(`Contact d'urgence enregistré : ${data.nom_contact_urgence || 'Proche'} (${data.contact_urgence})`, 20, s3Y + 23);
+      }
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(71, 85, 105);
-    doc.text("Fait à : ............................................... le : ...... / ...... / 202...", 20, s3Y + 31);
+      // Boîte mention
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(118, s3Y + 24.5, 72, 11.5, 1.5, 1.5, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(118, s3Y + 24.5, 72, 11.5, 1.5, 1.5, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(16, 185, 129);
+      doc.text("✓ ADHÉRENT MAJEUR (18+ ANS)", 154, s3Y + 31.5, { align: 'center' });
+    } else {
+      doc.setFillColor(254, 243, 199); // Jaune ambre très clair
+      doc.roundedRect(15, s3Y, 180, 6.5, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(146, 64, 14);
+      doc.text("3. AUTORISATION PARENTALE (Obligatoire pour les mineurs de moins de 18 ans)", 20, s3Y + 4.8);
 
-    // Boîte Signature Parent
-    doc.setFillColor(255, 255, 255);
-    doc.roundedRect(118, s3Y + 24.5, 72, 11.5, 1.5, 1.5, 'F');
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(118, s3Y + 24.5, 72, 11.5, 1.5, 1.5, 'S');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
-    doc.setTextColor(148, 163, 184);
-    doc.text("Signature du Parent / Représentant Légal", 154, s3Y + 29, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(30, 41, 59);
+      doc.text(
+        (!isBlank && data.nom_parent)
+          ? `Je soussigné(e) M. / Mme : ${data.nom_parent}   Qualité : Représentant Légal`
+          : "Je soussigné(e) M. / Mme : ............................................................................ Qualité : [  ] Père   [  ] Mère   [  ] Tuteur légal", 
+        20, s3Y + 12
+      );
+      doc.text("Autorise mon enfant mineur désigné ci-dessus à adhérer à Ovia Sport et à participer régulièrement", 20, s3Y + 17);
+      doc.text("aux séances d'entraînement et compétitions. En cas d'urgence, j'autorise les encadrants à prendre toute mesure médicale utile.", 20, s3Y + 21.5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(71, 85, 105);
+      doc.text("Fait à : ............................................... le : ...... / ...... / 202...", 20, s3Y + 31);
+
+      // Boîte Signature Parent
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(118, s3Y + 24.5, 72, 11.5, 1.5, 1.5, 'F');
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(118, s3Y + 24.5, 72, 11.5, 1.5, 1.5, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text("Signature du Parent / Représentant Légal", 154, s3Y + 29, { align: 'center' });
+    }
 
     // ==========================================
     // 6. SECTION 4 : ENGAGEMENT LOI 18-07 & RÈGLEMENT (y=160 à 193mm)
