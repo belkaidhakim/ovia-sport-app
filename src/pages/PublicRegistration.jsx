@@ -1,6 +1,5 @@
-"use client";
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { 
   Sun, 
   Moon, 
@@ -8,18 +7,19 @@ import {
   Download, 
   Lock, 
   Phone, 
-  FileText,
-  FileCheck,
-  Camera,
-  Upload,
-  Trash2,
-  MapPin,
-  MessageCircle,
-  HeartPulse,
-  Check,
-  Info,
-  Plus,
-  X
+  FileText, 
+  FileCheck, 
+  Camera, 
+  Upload, 
+  Trash2, 
+  MapPin, 
+  MessageCircle, 
+  HeartPulse, 
+  Check, 
+  Info, 
+  Plus, 
+  X,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useRegistrationSettings } from "../hooks/useRegistrationSettings";
@@ -28,9 +28,54 @@ import { generateOfficialRegistrationFormPdf } from "../utils/registrationFormPd
 import { compressImageFile } from "../utils/imageCompressor";
 import toast from "react-hot-toast";
 
+export const PROGRAMMES_CONFIG = {
+  apprentissage: {
+    id: "apprentissage",
+    title: "Apprentissage",
+    ageRange: "6 - 10 ans",
+    badge: "École de Natation",
+    color: "from-cyan-500 to-blue-600",
+    description: "Acquérir l'aisance aquatique en toute confiance et maîtriser les fondamentaux techniques des 4 nages."
+  },
+  perfectionnement: {
+    id: "perfectionnement",
+    title: "Perfectionnement",
+    ageRange: "11 - 15 ans",
+    badge: "Le plus demandé · Pré-Compétition",
+    color: "from-blue-600 to-cyan-500",
+    description: "Affiner l'hydrodynamisme, développer l'endurance aérobie et s'initier aux virages et chronos officiels."
+  },
+  elite: {
+    id: "elite",
+    title: "Élite & Compétition",
+    ageRange: "16+ ans & Compétition",
+    badge: "Haute Performance",
+    color: "from-purple-600 to-indigo-600",
+    description: "Entraînements intensifs, préparation physique à sec (PPG), analyse vidéo et qualification aux championnats."
+  }
+};
+
 export default function PublicRegistration() {
   const { theme, toggleTheme } = useTheme();
   const { isOpen: isRegistrationOpen, loading: settingsLoading } = useRegistrationSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Détection du programme présélectionné depuis l'URL (?programme=apprentissage|perfectionnement|elite)
+  const initialProgKey = (() => {
+    const raw = (searchParams.get("programme") || searchParams.get("groupe") || "").toLowerCase();
+    return Object.keys(PROGRAMMES_CONFIG).find(k => raw.includes(k)) || null;
+  })();
+
+  const [selectedProgramme, setSelectedProgramme] = useState(initialProgKey);
+
+  // Synchronisation si l'URL change
+  useEffect(() => {
+    const raw = (searchParams.get("programme") || searchParams.get("groupe") || "").toLowerCase();
+    const found = Object.keys(PROGRAMMES_CONFIG).find(k => raw.includes(k)) || null;
+    if (found && found !== selectedProgramme) {
+      setSelectedProgramme(found);
+    }
+  }, [searchParams]);
 
   // ÉTAPE 1 : IDENTITÉ
   const [nom, setNom] = useState("");
@@ -247,8 +292,12 @@ export default function PublicRegistration() {
       ? (hasSecondaryEmergency ? (emergencyContactRelation || "Proche") : (parentRelation || "Parent / Tuteur légal"))
       : (emergencyContactRelation || "Contact d'urgence");
 
+    const chosenProg = selectedProgramme ? PROGRAMMES_CONFIG[selectedProgramme] : null;
+    const progLabel = chosenProg ? `${chosenProg.title} (${chosenProg.ageRange})` : null;
+
     // Résumé médical / administratif dans observations_medicales
-    let medicalObservations = minor
+    let medicalObservations = progLabel ? `[Filière souhaitée: ${progLabel}] | ` : "";
+    medicalObservations += minor
       ? `Tuteur légal: ${parentName.trim()} (${parentRelation || 'Parent'} - ${cleanParentPhone})`
       : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
 
@@ -258,6 +307,8 @@ export default function PublicRegistration() {
     if (minor && cleanChildPhone) {
       medicalObservations += ` | Tél direct enfant: ${cleanChildPhone}`;
     }
+
+    const assignedGroupe = progLabel ? `${chosenProg.title} · ${cat}` : cat;
 
     // Schéma universel Supabase
     const basePayload = {
@@ -273,7 +324,7 @@ export default function PublicRegistration() {
       telephone: minor ? (cleanChildPhone || cleanParentPhone) : cleanAdultPhone,
       telephone_parent: minor ? cleanParentPhone : null,
       observations_medicales: medicalObservations,
-      groupe_nom: cat,
+      groupe_nom: assignedGroupe,
       statut: "EN_ATTENTE",
       date_demande: new Date().toISOString(),
       reglement_accepte: true,
@@ -286,6 +337,7 @@ export default function PublicRegistration() {
         ...basePayload,
         nom_parent: minor ? (parentName.trim() || null) : null,
         categorie: cat,
+        filiere_souhaitee: progLabel,
         contact_urgence: effectiveEmergencyPhone,
         nom_contact_urgence: effectiveEmergencyName,
         lien_contact_urgence: effectiveEmergencyRel
@@ -325,6 +377,7 @@ export default function PublicRegistration() {
         ...basePayload, 
         nom_parent: minor ? (parentName.trim() || null) : null,
         categorie: cat,
+        filiere_souhaitee: progLabel,
         contact_urgence: effectiveEmergencyPhone,
         nom_contact_urgence: effectiveEmergencyName,
         lien_contact_urgence: effectiveEmergencyRel,
@@ -363,6 +416,15 @@ export default function PublicRegistration() {
         ? (hasSecondaryEmergency ? (emergencyContactRelation || "Proche") : (parentRelation || "Parent / Tuteur légal"))
         : (emergencyContactRelation || "Contact d'urgence");
 
+      const chosenProg = selectedProgramme ? PROGRAMMES_CONFIG[selectedProgramme] : null;
+      const progLabel = chosenProg ? `${chosenProg.title} (${chosenProg.ageRange})` : null;
+      const assignedGroupe = progLabel ? `${chosenProg.title} · ${categoryInfo?.category || "Natation"}` : (categoryInfo?.category || "Natation");
+
+      let pdfObservations = progLabel ? `[Filière: ${progLabel}] | ` : '';
+      pdfObservations += minor
+        ? `Tuteur légal: ${parentName.trim()} (${parentRelation || 'Parent'}) | Urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
+        : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`;
+
       await generateOfficialRegistrationFormPdf({
         data: {
           nom: nom.trim().toUpperCase(),
@@ -378,13 +440,11 @@ export default function PublicRegistration() {
           nom_contact_urgence: effectiveEmergencyName,
           lien_contact_urgence: effectiveEmergencyRel,
           isMinor: minor,
-          observations_medicales: minor
-            ? `Tuteur légal: ${parentName.trim()} (${parentRelation || 'Parent'}) | Urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone})`
-            : `Contact urgence: ${effectiveEmergencyName} (${effectiveEmergencyPhone} - ${effectiveEmergencyRel})`
+          observations_medicales: pdfObservations
         },
         numeroDossier: dossierNumber || `OVS-${Date.now().toString().slice(-6)}`,
         photoBase64: photo,
-        selectedGroupeNom: categoryInfo?.category || "Natation"
+        selectedGroupeNom: assignedGroupe
       });
       toast.success("Fiche officielle PDF téléchargée !");
     } catch (err) {
@@ -612,6 +672,84 @@ export default function PublicRegistration() {
       {/* FORMULAIRE PRINCIPAL */}
       <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-6">
         
+        {/* ========================================================================= */}
+        {/* SECTION 0 : FILIÈRE DE FORMATION SOUHAITÉE (MÉMORISÉE DEPUIS LA LANDING) */}
+        {/* ========================================================================= */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-7 shadow-sm">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-bold text-sm">
+                ★
+              </span>
+              <div>
+                <h2 className="text-lg font-bold">Filière de Formation Souhaitée</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 m-0">
+                  Sélectionnez le groupe d'entraînement visé pour cette saison
+                </p>
+              </div>
+            </div>
+
+            {selectedProgramme && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedProgramme(null);
+                  setSearchParams({});
+                }}
+                className="text-xs text-slate-400 hover:text-rose-500 transition font-medium"
+              >
+                Réinitialiser
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {Object.values(PROGRAMMES_CONFIG).map((p) => {
+              const isSelected = selectedProgramme === p.id;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => {
+                    setSelectedProgramme(p.id);
+                    setSearchParams({ programme: p.id });
+                  }}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative ${
+                    isSelected 
+                      ? 'border-cyan-500 bg-cyan-500/10 shadow-md ring-2 ring-cyan-500/20' 
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                      {p.ageRange}
+                    </span>
+                    {isSelected && (
+                      <span className="w-5 h-5 rounded-full bg-cyan-500 text-white flex items-center justify-center text-xs font-bold">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                    {p.title}
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    {p.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {selectedProgramme && PROGRAMMES_CONFIG[selectedProgramme] && (
+            <div className="mt-4 p-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/60 flex items-center gap-2.5 text-xs text-cyan-800 dark:text-cyan-300">
+              <Check className="w-4 h-4 text-cyan-500 shrink-0" />
+              <span>
+                Filière sélectionnée : <strong>{PROGRAMMES_CONFIG[selectedProgramme].title}</strong> ({PROGRAMMES_CONFIG[selectedProgramme].ageRange}). Votre dossier sera orienté en priorité vers ce créneau.
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* ========================================================================= */}
         {/* SECTION 1 : INFORMATIONS DE L'ATHLÈTE */}
         {/* ========================================================================= */}

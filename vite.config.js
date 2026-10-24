@@ -5,9 +5,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    port: 5190,
+    host: true,
+  },
   plugins: [
     react(), 
-    basicSsl(),
+    ...(process.env.VITE_DISABLE_SSL ? [] : [basicSsl()]),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.jpg'],
