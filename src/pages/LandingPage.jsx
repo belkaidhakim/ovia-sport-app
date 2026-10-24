@@ -163,13 +163,15 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* CTA S'INSCRIRE AVEC CONTRASTE WCAG OPTIMAL (TEXTE BLANC PUR ET SHADOW COLORÉE) */}
-            <a 
-              href="/inscription" 
-              className="px-5 py-2.5 text-sm font-bold rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all transform hover:-translate-y-0.5 flex items-center gap-2"
+            {/* Bouton CTA Principal (Navbar) */}
+            <a
+              href="/inscription"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40 active:translate-y-0"
             >
-              <span>S'inscrire</span>
-              <ArrowRight className="w-4 h-4 text-white" />
+              <span>Rejoindre le club</span>
+              <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </a>
           </div>
 
@@ -245,10 +247,12 @@ export default function HomePage() {
               <a 
                 href="/inscription" 
                 onClick={() => setMobileMenuOpen(false)} 
-                className="w-full py-3 text-center rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold shadow-md shadow-cyan-500/30 flex items-center justify-center gap-2"
+                className="group w-full py-3.5 text-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-md shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all duration-200 hover:from-cyan-400 hover:to-blue-500"
               >
-                <span>S'inscrire maintenant</span>
-                <ArrowRight className="w-4 h-4 text-white" />
+                <span>Rejoindre le club</span>
+                <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
               </a>
             </div>
           </div>
@@ -289,18 +293,20 @@ export default function HomePage() {
             L'académie et club professionnel de natation de référence. De l'apprentissage sécurisé à la haute compétition, évoluez dans une structure d'élite équipée d'un suivi biométrique et chronométrique.
           </p>
 
-          {/* Boutons d'action (CTA Rehaussé en blanc avec ombre cyanée) */}
+          {/* Boutons d'action (CTA Principal Hero) */}
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a 
               href="/inscription" 
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-base shadow-xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-3"
+              className="group w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-7 py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg shadow-cyan-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40 active:translate-y-0"
             >
               <span>Rejoindre le club</span>
-              <ArrowRight className="w-5 h-5 text-white" />
+              <svg className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </a>
             <a 
               href="#programmes" 
-              className={`w-full sm:w-auto px-8 py-4 rounded-2xl border font-semibold text-base transition flex items-center justify-center gap-2 ${
+              className={`w-full sm:w-auto px-7 py-3.5 rounded-full border font-semibold text-sm sm:text-base transition flex items-center justify-center gap-2 ${
                 isDark 
                   ? 'bg-slate-900/90 hover:bg-slate-800 border-slate-700 text-white' 
                   : 'bg-white/95 hover:bg-white border-slate-300 text-slate-900 shadow-lg'
@@ -843,7 +849,7 @@ export default function HomePage() {
                   <div>
                     <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Sécurité & Encadrement</p>
                     <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Surveillance continue assurée par des Maîtres-Nageurs Sauveteurs (BNSSA) et un staff qualifié.
+                      Surveillance continue assurée par des Maîtres-Nageurs Sauveteurs et un staff qualifié.
                     </p>
                   </div>
                 </div>
@@ -916,9 +922,12 @@ export default function HomePage() {
                 </div>
                 <a
                   href="/inscription"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shrink-0 shadow-md shadow-cyan-500/25 flex items-center gap-1.5"
+                  className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-cyan-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40 active:translate-y-0 shrink-0"
                 >
-                  Pré-inscription immédiate <ArrowRight className="w-3.5 h-3.5 text-white" />
+                  <span>Rejoindre le club</span>
+                  <svg className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
                 </a>
               </div>
             </div>
