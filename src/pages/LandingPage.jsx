@@ -21,19 +21,11 @@ export default function HomePage() {
     },
     {
       question: "Comment se déroule la séance de test de niveau préalable ?",
-      answer: "Dès votre pré-inscription validée, une évaluation aquatique de 15 minutes est organisée avec nos entraîneurs certifiés DJS / FAA. Cette séance permet d'évaluer l'aisance technique, la flottaison et la respiration afin d'orienter le nageur dans le groupe le plus stimulant et sécurisé."
-    },
-    {
-      question: "Quels sont les jours et horaires des entraînements ?",
-      answer: "Les créneaux sont adaptés par tranche d'âge : École de natation (6-10 ans) le Mercredi après-midi et Samedi matin ; Perfectionnement Ados (11-15 ans) les Lundi, Mercredi et Vendredi de 17h30 à 19h00 ; Pôle Élite (16+ ans) bénéficie d'entraînements quotidiens et de créneaux matinaux."
+      answer: "Dès votre pré-inscription validée, une évaluation aquatique de 15 minutes est organisée avec notre staff qualifié. Cette séance permet d'évaluer l'aisance technique, la flottaison et la respiration afin d'orienter l'enfant dans le groupe le plus stimulant et sécurisé."
     },
     {
       question: "Comment fonctionne la carte d'accès digitale QR Pass ?",
       answer: "Dès validation de votre dossier, votre Espace Adhérent génère un badge numérique individuel sécurisé. Vous pouvez le présenter sur votre smartphone à l'entrée du bassin pour un pointage instantané sans contact et un suivi transparent des présences."
-    },
-    {
-      question: "Quelle est la couverture d'assurance sportive incluse ?",
-      answer: "Chaque membre est affilié à la Fédération dès le premier entraînement et bénéficie d'une assurance individuelle accidents et responsabilité civile sportive. L'encadrement est assuré à 100% par des éducateurs sportifs diplômés et maîtres-nageurs (BNSSA)."
     }
   ];
 
@@ -342,7 +334,7 @@ export default function HomePage() {
           <div className={`text-center border-r ${isDark ? 'border-slate-800/80' : 'border-slate-200'}`}>
             <p className="text-3xl sm:text-4xl font-black text-cyan-500">Élite</p>
             <p className={`text-xs sm:text-sm mt-1 font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              Staff Certifié DJS / FAA
+              Staff Qualifié
             </p>
           </div>
           <div className="text-center">
@@ -441,30 +433,30 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
-                    ENFANTS 6 - 10 ANS
+                    ENFANTS 5 - 7 ANS
                   </span>
                   <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>École de Natation</span>
                 </div>
                 <h3 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Apprentissage</h3>
                 <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Acquérir l'aisance aquatique en toute confiance et maîtriser les fondamentaux techniques.
+                  Acquérir l'aisance aquatique en toute confiance, vaincre l'appréhension et maîtriser les bases techniques.
                 </p>
                 <ul className={`space-y-3.5 text-sm mb-8 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Familiarisation et sécurité aquatique
+                    Familiarisation et sécurité aquatique complète
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Équilibre, flottaison et respiration aquatique
+                    Équilibre, flottaison ventrale et dorsale
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Initiation technique aux 4 nages
+                    Respiration aquatique et immersion en douceur
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Passage des tests fédéraux (Poussins)
+                    Initiation progressive aux mouvements de nage
                   </li>
                 </ul>
               </div>
@@ -493,13 +485,13 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-500 border border-blue-400/30">
-                    ADOS 11 - 15 ANS
+                    ENFANTS 8 - 10 ANS
                   </span>
-                  <span className="text-xs text-cyan-600 dark:text-cyan-400 font-bold">Pré-Compétition</span>
+                  <span className="text-xs text-cyan-600 dark:text-cyan-400 font-bold">Technique 4 Nages</span>
                 </div>
                 <h3 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Perfectionnement</h3>
                 <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Affiner l'hydrodynamisme, développer l'endurance aérobie et découvrir l'exigence du chronomètre.
+                  Maîtrise des 4 nages (crawl, dos, brasse, dauphin), perfectionnement des virages culbutes et endurance.
                 </p>
                 <ul className={`space-y-3.5 text-sm mb-8 ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                   <li className="flex items-center gap-3">
@@ -512,11 +504,11 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Développement de l'endurance et vitesse
+                    Développement de l'endurance aquatique et régularité
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Initiation au chronométrage officiel
+                    Validation des paliers techniques officiels
                   </li>
                 </ul>
               </div>
@@ -529,7 +521,7 @@ export default function HomePage() {
               </a>
             </div>
 
-            {/* Carte 3 : Élite & Compétition */}
+            {/* Carte 3 : Compétition (Enfants 7 - 10 ans) */}
             <div className={`rounded-3xl border p-8 flex flex-col justify-between transition-all ${
               isDark 
                 ? 'bg-slate-900 border-slate-800 hover:border-slate-700' 
@@ -538,42 +530,42 @@ export default function HomePage() {
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/10 text-purple-500 border border-purple-500/20">
-                    16+ ANS & ÉLITE
+                    ENFANTS 7 - 10 ANS
                   </span>
-                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Haute Performance</span>
+                  <span className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Pôle Compétition</span>
                 </div>
-                <h3 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Élite & Compétition</h3>
+                <h3 className={`text-2xl font-black mb-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>Compétition</h3>
                 <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Pour les nageurs ambitieux visant les qualifications régionales, nationales et les podiums.
+                  Filière sportive pour les jeunes nageurs motivés visant le chronomètre, l'exigence technique et les compétitions officielles.
                 </p>
                 <ul className={`space-y-3.5 text-sm mb-8 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Entraînements intensifs et biquotidiens
+                    Entraînements dynamiques axés vitesse et explosivité
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Préparation physique générale (PPG) à sec
+                    Apprentissage des départs sur plots et chronométrage
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Analyse vidéo et suivi des temps de passage
+                    Préparation physique adaptée aux jeunes sportifs
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle2 className="w-5 h-5 text-cyan-500 shrink-0" />
-                    Engagement aux meetings et championnats
+                    Engagement aux meetings et championnats Avenirs
                   </li>
                 </ul>
               </div>
               <a 
-                href="/inscription?programme=elite" 
+                href="/inscription?programme=competition" 
                 className={`w-full py-3.5 rounded-xl text-center font-bold text-sm transition flex items-center justify-center gap-2 ${
                   isDark 
                     ? 'bg-slate-800 hover:bg-slate-700 text-white' 
                     : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300'
                 }`}
               >
-                <span>Postuler au groupe Élite</span>
+                <span>Intégrer le groupe Compétition</span>
                 <ChevronRight className="w-4 h-4" />
               </a>
             </div>
@@ -849,9 +841,9 @@ export default function HomePage() {
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Sécurité & Encadrement d'Élite</p>
+                    <p className={`font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Sécurité & Encadrement</p>
                     <p className={`text-xs mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Surveillance continue assurée par des Maîtres-Nageurs Sauveteurs (BNSSA) et staff certifié DJS / FAA.
+                      Surveillance continue assurée par des Maîtres-Nageurs Sauveteurs (BNSSA) et un staff qualifié.
                     </p>
                   </div>
                 </div>
@@ -966,7 +958,7 @@ export default function HomePage() {
               </p>
               <div className="flex items-center gap-2">
                 <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
-                  DJS & FAA Agréé
+                  Staff Qualifié & Agréé
                 </span>
                 <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20">
                   Saison 2026/2027
@@ -983,25 +975,25 @@ export default function HomePage() {
                 <li>
                   <a href="/inscription?programme=apprentissage" className="hover:text-cyan-500 transition-colors flex items-center gap-1.5">
                     <ChevronRight className="w-3 h-3 text-cyan-500" />
-                    Apprentissage Enfants (6 - 10 ans)
+                    Apprentissage Enfants (5 - 7 ans)
                   </a>
                 </li>
                 <li>
                   <a href="/inscription?programme=perfectionnement" className="hover:text-cyan-500 transition-colors flex items-center gap-1.5">
                     <ChevronRight className="w-3 h-3 text-cyan-500" />
-                    Perfectionnement Ados (11 - 15 ans)
+                    Perfectionnement (8 - 10 ans)
                   </a>
                 </li>
                 <li>
-                  <a href="/inscription?programme=elite" className="hover:text-cyan-500 transition-colors flex items-center gap-1.5">
+                  <a href="/inscription?programme=competition" className="hover:text-cyan-500 transition-colors flex items-center gap-1.5">
                     <ChevronRight className="w-3 h-3 text-cyan-500" />
-                    Pôle Élite & Compétition (16+ ans)
+                    Pôle Compétition (7 - 10 ans)
                   </a>
                 </li>
                 <li>
                   <a href="#infos-pratiques" className="hover:text-cyan-500 transition-colors flex items-center gap-1.5">
                     <ChevronRight className="w-3 h-3 text-cyan-500" />
-                    Stages Intensifs Vacances Scolaires
+                    Stages Intensifs Vacances
                   </a>
                 </li>
               </ul>
@@ -1082,7 +1074,7 @@ export default function HomePage() {
             <div className="flex items-center gap-6">
               <span>Protection des données (Loi 18-07)</span>
               <span>Règlement Intérieur</span>
-              <span>Agrément Fédéral FAA</span>
+              <span>Agrément Sportif Officiel</span>
             </div>
           </div>
 

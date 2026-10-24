@@ -32,26 +32,26 @@ export const PROGRAMMES_CONFIG = {
   apprentissage: {
     id: "apprentissage",
     title: "Apprentissage",
-    ageRange: "6 - 10 ans",
+    ageRange: "5 - 7 ans",
     badge: "École de Natation",
     color: "from-cyan-500 to-blue-600",
-    description: "Acquérir l'aisance aquatique en toute confiance et maîtriser les fondamentaux techniques des 4 nages."
+    description: "Acquérir l'aisance aquatique en toute confiance, vaincre l'appréhension et maîtriser les bases techniques."
   },
   perfectionnement: {
     id: "perfectionnement",
     title: "Perfectionnement",
-    ageRange: "11 - 15 ans",
-    badge: "Le plus demandé · Pré-Compétition",
+    ageRange: "8 - 10 ans",
+    badge: "Le plus demandé · Technique 4 Nages",
     color: "from-blue-600 to-cyan-500",
-    description: "Affiner l'hydrodynamisme, développer l'endurance aérobie et s'initier aux virages et chronos officiels."
+    description: "Perfectionnement technique des 4 nages, virages culbutes, départs et développement de l'endurance."
   },
-  elite: {
-    id: "elite",
-    title: "Élite & Compétition",
-    ageRange: "16+ ans & Compétition",
-    badge: "Haute Performance",
+  competition: {
+    id: "competition",
+    title: "Compétition",
+    ageRange: "7 - 10 ans",
+    badge: "Pôle Compétition Jeunes",
     color: "from-purple-600 to-indigo-600",
-    description: "Entraînements intensifs, préparation physique à sec (PPG), analyse vidéo et qualification aux championnats."
+    description: "Filière sportive pour jeunes nageurs motivés : vitesse, plots de départ, chronométrage officiel et meetings."
   }
 };
 
@@ -60,18 +60,27 @@ export default function PublicRegistration() {
   const { isOpen: isRegistrationOpen, loading: settingsLoading } = useRegistrationSettings();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Détection du programme présélectionné depuis l'URL (?programme=apprentissage|perfectionnement|elite)
+  // Détection du programme présélectionné depuis l'URL (?programme=apprentissage|perfectionnement|competition|elite)
+  const resolveProgrammeKey = (raw) => {
+    if (!raw) return null;
+    const str = raw.toLowerCase();
+    if (str.includes("comp") || str.includes("elite")) return "competition";
+    if (str.includes("perf")) return "perfectionnement";
+    if (str.includes("appr")) return "apprentissage";
+    return Object.keys(PROGRAMMES_CONFIG).find(k => str.includes(k)) || null;
+  };
+
   const initialProgKey = (() => {
-    const raw = (searchParams.get("programme") || searchParams.get("groupe") || "").toLowerCase();
-    return Object.keys(PROGRAMMES_CONFIG).find(k => raw.includes(k)) || null;
+    const raw = searchParams.get("programme") || searchParams.get("groupe") || "";
+    return resolveProgrammeKey(raw);
   })();
 
   const [selectedProgramme, setSelectedProgramme] = useState(initialProgKey);
 
   // Synchronisation si l'URL change
   useEffect(() => {
-    const raw = (searchParams.get("programme") || searchParams.get("groupe") || "").toLowerCase();
-    const found = Object.keys(PROGRAMMES_CONFIG).find(k => raw.includes(k)) || null;
+    const raw = searchParams.get("programme") || searchParams.get("groupe") || "";
+    const found = resolveProgrammeKey(raw);
     if (found && found !== selectedProgramme) {
       setSelectedProgramme(found);
     }
