@@ -9,7 +9,6 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [spaceDropdownOpen, setSpaceDropdownOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState(0); // Premier accordéon ouvert par défaut
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -76,102 +75,33 @@ export default function HomePage() {
             <a href="#infos-pratiques" className="hover:text-cyan-500 transition-colors">Infos Pratiques</a>
           </nav>
 
-          {/* Actions & Sélecteur Thème */}
+          {/* Partie droite de la Navbar épurée */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Bouton Toggle Thème (Mode Clair / Sombre) */}
-            <button 
+            {/* Bouton Dark/Light Mode */}
+            <button
               type="button"
               onClick={toggleTheme}
-              className={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
-                isDark 
-                  ? 'bg-slate-900 border-slate-800 text-amber-400 hover:bg-slate-800 hover:border-slate-700 hover:scale-105' 
-                  : 'bg-white border-slate-300 text-amber-600 hover:bg-slate-100 hover:border-slate-400 shadow-sm hover:scale-105'
-              }`}
-              title={isDark ? "Passer en mode clair" : "Passer en mode sombre"}
-              aria-label="Changer de thème"
+              aria-label="Changer le thème"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 cursor-pointer"
             >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-slate-800" />}
+              {/* Icône Lune / Soleil */}
+              {isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-600" />}
             </button>
 
-            {/* UNIFICATION DU FLUX : Menu Déroulant Élégant "Mon Espace" */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSpaceDropdownOpen(!spaceDropdownOpen)}
-                onBlur={() => setTimeout(() => setSpaceDropdownOpen(false), 200)}
-                className={`px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all flex items-center gap-2 cursor-pointer ${
-                  isDark 
-                    ? 'bg-slate-900 border-slate-700 hover:border-cyan-500/50 text-slate-200' 
-                    : 'bg-white border-slate-300 hover:border-cyan-600 hover:bg-slate-50 text-slate-800 shadow-sm'
-                }`}
-                aria-expanded={spaceDropdownOpen}
-              >
-                <User className="w-4 h-4 text-cyan-500" />
-                <span>Mon Espace</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${spaceDropdownOpen ? 'rotate-180' : ''}`} />
-              </button>
+            {/* Accès unifié (Adhérent & Staff redirigés selon leur rôle après connexion) */}
+            <a
+              href="/login"
+              className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 transition hover:border-cyan-500 hover:text-cyan-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-cyan-400 dark:hover:text-cyan-400"
+            >
+              Espace Membre
+            </a>
 
-              {/* Panneau Déroulant Mon Espace */}
-              {spaceDropdownOpen && (
-                <div className={`absolute right-0 mt-2 w-64 rounded-2xl border shadow-2xl p-2 z-50 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150 ${
-                  isDark 
-                    ? 'bg-slate-900/95 border-slate-800 text-slate-100' 
-                    : 'bg-white/95 border-slate-200 text-slate-900 shadow-xl'
-                }`}>
-                  <a
-                    href="/adherent"
-                    className={`flex items-start gap-3 p-3 rounded-xl transition ${
-                      isDark ? 'hover:bg-slate-800/80' : 'hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-500 shrink-0 mt-0.5">
-                      <QrCode className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold flex items-center gap-1.5">
-                        Espace Adhérent
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-cyan-500/15 text-cyan-400 font-semibold">Famille</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
-                        Fiche athlète, QR Pass, chronos & cotisations
-                      </p>
-                    </div>
-                  </a>
-
-                  <div className={`my-1 border-t ${isDark ? 'border-slate-800' : 'border-slate-100'}`} />
-
-                  <a
-                    href="/login"
-                    className={`flex items-start gap-3 p-3 rounded-xl transition ${
-                      isDark ? 'hover:bg-slate-800/80' : 'hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500 shrink-0 mt-0.5">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold flex items-center gap-1.5">
-                        Espace Staff & Direction
-                        <span className="px-1.5 py-0.5 rounded text-[9px] bg-slate-700 text-slate-300 font-semibold">Restreint</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">
-                        Administration du club, entraîneurs & pointage
-                      </p>
-                    </div>
-                  </a>
-                </div>
-              )}
-            </div>
-
-            {/* Bouton CTA Principal (Navbar) */}
+            {/* CTA Principal avec texte blanc */}
             <a
               href="/inscription"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/25 transition-all duration-200 hover:-translate-y-0.5 hover:from-cyan-400 hover:to-blue-500 hover:shadow-cyan-500/40 active:translate-y-0"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-cyan-500/20 transition hover:brightness-110"
             >
-              <span>Rejoindre le club</span>
-              <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
+              S'inscrire →
             </a>
           </div>
 
@@ -234,25 +164,23 @@ export default function HomePage() {
 
             <div className={`pt-4 border-t flex flex-col gap-3 ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
               <a 
-                href="/adherent" 
+                href="/login" 
                 onClick={() => setMobileMenuOpen(false)} 
-                className={`w-full py-2.5 px-4 text-center rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
-                  isDark ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-900 border border-slate-200'
+                className={`w-full py-2.5 px-4 text-center rounded-full font-semibold transition flex items-center justify-center gap-2 border ${
+                  isDark 
+                    ? 'border-slate-700 bg-slate-800 text-slate-200' 
+                    : 'border-slate-200 bg-white text-slate-800 shadow-sm'
                 }`}
               >
-                <User className="w-4 h-4 text-cyan-400" />
-                <span>Mon Espace Adhérent</span>
+                Espace Membre
               </a>
 
               <a 
                 href="/inscription" 
                 onClick={() => setMobileMenuOpen(false)} 
-                className="group w-full py-3.5 text-center rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-md shadow-cyan-500/25 flex items-center justify-center gap-2 transition-all duration-200 hover:from-cyan-400 hover:to-blue-500"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-cyan-500/20 transition hover:brightness-110"
               >
-                <span>Rejoindre le club</span>
-                <svg className="h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
+                S'inscrire →
               </a>
             </div>
           </div>
