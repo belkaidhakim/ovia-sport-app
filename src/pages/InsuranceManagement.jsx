@@ -36,6 +36,7 @@ import InsuranceOcrModal from '../components/InsuranceOcrModal';
 import InsurancePartnersModal from '../components/InsurancePartnersModal';
 import InsuranceAuditModal from '../components/InsuranceAuditModal';
 import { logInsuranceAction } from '../utils/insuranceAudit';
+import { getSwimmingCategory } from '../utils/swimmingCategories';
 
 import {
   InsuranceKPIs,
@@ -186,19 +187,24 @@ export default function InsuranceManagement() {
     autoEnregistrer: false
   });
 
-  // Calcul automatique de la catégorie d'âge sportive fédérale (FAN)
+  // Calcul automatique de la catégorie d'âge sportive fédérale (FAN — unifié avec swimmingCategories)
   const getAthleteFederalCategory = (dateNaissance) => {
-    if (!dateNaissance) return { age: null, label: 'Seniors (18+ ans)', code: 'SENIORS' };
-    const birthYear = new Date(dateNaissance).getFullYear();
-    const currentYear = new Date().getFullYear();
-    const age = currentYear - birthYear;
-    if (age <= 7) return { age, label: 'École (<8 ans)', code: 'ECOLE' };
-    if (age <= 9) return { age, label: 'Poussins (9-10 ans)', code: 'POUSSINS' };
-    if (age <= 11) return { age, label: 'Benjamins (11-12 ans)', code: 'BENJAMINS' };
-    if (age <= 13) return { age, label: 'Minimes (13-14 ans)', code: 'MINIMES' };
-    if (age <= 15) return { age, label: 'Cadets (15-16 ans)', code: 'CADETS' };
-    if (age <= 17) return { age, label: 'Juniors (17-18 ans)', code: 'JUNIORS' };
-    return { age, label: 'Seniors (18+ ans)', code: 'SENIORS' };
+    if (!dateNaissance) return { age: null, label: 'Seniors (2007 et avant)', code: 'SENIORS' };
+    const cat = getSwimmingCategory(dateNaissance);
+    const codeMap = {
+      ECOLE: 'ECOLE',
+      POU: 'POUSSINS',
+      BEN: 'BENJAMINS',
+      MIN: 'MINIMES',
+      CAD: 'CADETS',
+      JUN: 'JUNIORS',
+      SEN: 'SENIORS',
+    };
+    return {
+      age: cat.age,
+      label: cat.label || 'Seniors (2007 et avant)',
+      code: codeMap[cat.code] || 'SENIORS',
+    };
   };
 
   // Fusionner chaque athlète ACTIF avec son assurance active & catégorie fédérale

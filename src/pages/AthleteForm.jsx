@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useGroupes } from "../hooks/useGroupes";
 import { compressImageFile } from "../utils/imageCompressor";
+import { getSwimmingCategory } from "../utils/swimmingCategories";
 
 export default function AthleteForm() {
   const navigate = useNavigate();
@@ -86,24 +87,17 @@ export default function AthleteForm() {
     }
   }, [id]);
 
-  // Calcul automatique de l'âge et de la catégorie sportive
+  // Calcul automatique de l'âge et de la catégorie sportive (unifié avec FANA)
   const getCategoryInfo = (dateString) => {
     if (!dateString) return null;
-    const birthYear = new Date(dateString).getFullYear();
-    if (isNaN(birthYear)) return null;
-    const currentYear = new Date().getFullYear();
-    const age = currentYear - birthYear;
+    const cat = getSwimmingCategory(dateString);
+    if (!cat || cat.code === "NA" || cat.age === null || cat.age < 3 || cat.age > 95) return null;
 
-    if (age < 3 || age > 95) return null;
-    let category = "Seniors (18+ ans)";
-    if (age <= 7) category = "École / Éveil Aquatique";
-    else if (age <= 9) category = "Poussins";
-    else if (age <= 11) category = "Benjamins";
-    else if (age <= 13) category = "Minimes";
-    else if (age <= 15) category = "Cadets";
-    else if (age <= 17) category = "Juniors";
-
-    return { age, category, isMinor: age < 18 };
+    return {
+      age: cat.age,
+      category: cat.name,
+      isMinor: cat.age < 18
+    };
   };
 
   const categoryInfo = getCategoryInfo(formData.date_naissance);
@@ -282,16 +276,15 @@ export default function AthleteForm() {
           throw error;
         }
 
-        // Création automatique de la carte d'accès initiale
+        // Création / activation automatique de la carte d'accès initiale (compatible trigger DB)
         if (newAthlete?.id) {
           try {
             await supabase
               .from("cartes_acces")
-              .insert([{
+              .upsert([{
                 athlete_id: newAthlete.id,
-                statut: "ACTIVE",
-                date_emission: new Date().toISOString()
-              }]);
+                statut: "ACTIVE"
+              }], { onConflict: "athlete_id" });
           } catch (cardErr) {
             console.warn("Card auto-create warning:", cardErr);
           }

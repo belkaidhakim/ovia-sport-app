@@ -12,6 +12,7 @@ import {
   parseTimeToSeconds,
   getAthleteStoredPerformances,
   saveAthleteStoredPerformances,
+  syncAllPerformancesFromCloud,
   PERFORMANCES_STORAGE_PREFIX,
   LEGACY_STORAGE_PREFIX
 } from '../utils/swimmingCategories';
@@ -25,6 +26,7 @@ export default function SportsTracking() {
 
   useEffect(() => {
     fetchAthletes();
+    syncAllPerformancesFromCloud();
   }, [fetchAthletes]);
 
   const [activeTab, setActiveTab] = useState('feuille_match'); // 'feuille_match' | 'records' | 'historique' | 'niveaux'

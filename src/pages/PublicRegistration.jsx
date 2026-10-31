@@ -18,14 +18,14 @@ import {
   Check, 
   Info, 
   Plus, 
-  X,
-  Sparkles
+  X
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { useRegistrationSettings } from "../hooks/useRegistrationSettings";
 import { useTheme } from "../contexts/ThemeContext";
 import { generateOfficialRegistrationFormPdf } from "../utils/registrationFormPdfGenerator";
 import { compressImageFile } from "../utils/imageCompressor";
+import { getSwimmingCategory } from "../utils/swimmingCategories";
 import toast from "react-hot-toast";
 
 export const PROGRAMMES_CONFIG = {
@@ -122,28 +122,17 @@ export default function PublicRegistration() {
   const [submitted, setSubmitted] = useState(false);
   const [dossierNumber, setDossierNumber] = useState("");
 
-  // Calcul automatique de la catégorie selon l'âge
+  // Calcul automatique de la catégorie selon l'âge (unifié avec FANA)
   const getCategoryInfo = (dateString) => {
     if (!dateString) return null;
-    const birthDateObj = new Date(dateString);
-    if (isNaN(birthDateObj.getTime())) return null;
-    const today = new Date();
-    let age = today.getFullYear() - birthDateObj.getFullYear();
-    const m = today.getMonth() - birthDateObj.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDateObj.getDate())) {
-      age--;
-    }
+    const cat = getSwimmingCategory(dateString);
+    if (!cat || cat.code === "NA" || cat.age === null || cat.age < 3 || cat.age > 95) return null;
 
-    if (age < 3 || age > 95) return null;
-    let category = "Seniors (18+ ans)";
-    if (age <= 7) category = "École / Éveil Aquatique";
-    else if (age <= 9) category = "Poussins (9-10 ans)";
-    else if (age <= 11) category = "Benjamins (11-12 ans)";
-    else if (age <= 13) category = "Minimes (13-14 ans)";
-    else if (age <= 15) category = "Cadets (15-16 ans)";
-    else if (age <= 17) category = "Juniors (17-18 ans)";
-
-    return { age, category, isMinor: age < 18 };
+    return {
+      age: cat.age,
+      category: cat.label,
+      isMinor: cat.age < 18
+    };
   };
 
   const categoryInfo = getCategoryInfo(birthDate);

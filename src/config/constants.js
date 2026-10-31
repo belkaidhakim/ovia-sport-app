@@ -49,7 +49,7 @@ export const INSCRIPTION_STATUS_META = {
 };
 
 // ─── Modes de paiement ────────────────────────────────────
-export const PAYMENT_MODES = ['Espèces', 'Virement', 'Chèque'];
+export const PAYMENT_MODES = ['Espèces', 'Virement', 'Virement CCP', 'BaridiMob', 'Chèque'];
 
 // ─── Paramètres sportifs ──────────────────────────────────
 /** Nombre de séances par défaut dans un forfait mensuel */

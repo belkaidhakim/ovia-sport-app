@@ -76,14 +76,18 @@ CREATE POLICY "Public can read club_settings"
   FOR SELECT
   USING (true);
 
--- Seuls les administrateurs et secrétaires peuvent modifier les paramètres
+-- Seuls les administrateurs, secrétaires et entraîneurs autorisés (ou staff d'écriture) peuvent modifier les paramètres
 DROP POLICY IF EXISTS "Admins can update club_settings" ON public.club_settings;
 CREATE POLICY "Admins can update club_settings"
   ON public.club_settings
   FOR ALL
   TO authenticated
-  USING (true)
-  WITH CHECK (true);
+  USING (
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'secretaire', 'entraineur')
+  )
+  WITH CHECK (
+    (SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'secretaire', 'entraineur')
+  );
 
 -- 6. Extension de la table athletes pour le contact d'urgence, nom du parent et les observations médicales
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS contact_urgence TEXT;

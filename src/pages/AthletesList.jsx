@@ -248,12 +248,11 @@ export default function AthletesList() {
             if (!error && newAthlete?.id) {
               importedCount++;
               try {
-                await supabase.from('cartes_acces').insert([{
+                await supabase.from('cartes_acces').upsert([{
                   athlete_id: newAthlete.id,
-                  statut: 'ACTIVE',
-                  date_emission: new Date().toISOString()
-                }]);
-              } catch (_) {}
+                  statut: 'ACTIVE'
+                }], { onConflict: 'athlete_id' });
+              } catch {}
             }
           } catch (err) {
             console.error("Erreur import", err);

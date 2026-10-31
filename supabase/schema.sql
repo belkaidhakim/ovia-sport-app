@@ -21,7 +21,7 @@ CREATE TABLE public.cotisations (
   athlete_id UUID REFERENCES public.athletes(id) ON DELETE CASCADE,
   montant_paye NUMERIC(10, 2) NOT NULL,
   date_paiement TIMESTAMPTZ DEFAULT NOW(),
-  mode_paiement TEXT CHECK (mode_paiement IN ('Espèces', 'Virement', 'Chèque')),
+  mode_paiement TEXT CHECK (mode_paiement IN ('Espèces', 'Virement', 'Virement CCP', 'BaridiMob', 'Chèque')),
   periode_couverte_fin DATE NOT NULL
 );
 

@@ -43,7 +43,18 @@ export function useAthletes() {
   // ── Helpers ─────────────────────────────────────────────────────────
   const cacheAthletes = (data) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.CACHED_ATHLETES, JSON.stringify(data || []));
+      // Alléger les données mises en cache dans localStorage (exclure les justificatifs Base64 lourds)
+      const lightweight = (data || []).map((a) => {
+        if (!a || typeof a !== 'object') return a;
+        const {
+          certificat_medical: _cm,
+          autorisation_parentale: _ap,
+          extrait_naissance: _en,
+          ...rest
+        } = a;
+        return rest;
+      });
+      localStorage.setItem(STORAGE_KEYS.CACHED_ATHLETES, JSON.stringify(lightweight));
     } catch {
       // Ignorer les erreurs de quota storage
     }

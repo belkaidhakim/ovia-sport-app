@@ -83,7 +83,7 @@ export default function Scanner() {
       try {
         const { error } = await supabase
           .from('presences')
-          .insert([{ athlete_id: item.athlete_id, created_at: item.date }]);
+          .insert([{ athlete_id: item.athlete_id, date_scan: item.date }]);
 
         if (!error || error.code === '23505') {
           successCount++;

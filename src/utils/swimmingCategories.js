@@ -4,6 +4,7 @@
  */
 
 import { calculateAge } from './formatters';
+import { supabase } from '../supabaseClient';
 
 /**
  * Liste officielle des catégories d'âge FANA (Fédération Algérienne de Natation)
@@ -358,7 +359,8 @@ export const getAthleteStoredPerformances = (athleteId) => {
 };
 
 /**
- * Enregistre les performances d'un athlète dans le localStorage et émet l'événement de mise à jour
+ * Enregistre les performances d'un athlète dans le localStorage, synchronise avec Supabase (club_settings)
+ * et émet l'événement de mise à jour.
  */
 export const saveAthleteStoredPerformances = (athleteId, performancesList) => {
   if (!athleteId) return;
@@ -369,8 +371,99 @@ export const saveAthleteStoredPerformances = (athleteId, performancesList) => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ovia_performances_updated', { detail: { athleteId } }));
     }
+
+    // Synchronisation asynchrone vers Supabase pour partage multi-appareils & Portail Adhérent
+    supabase
+      .from('club_settings')
+      .upsert({
+        key: `athlete_perfs_${athleteId}`,
+        value: performancesList,
+        updated_at: new Date().toISOString()
+      })
+      .then(() => {})
+      .catch(() => {});
   } catch (e) {
     console.warn('Erreur sauvegarde localStorage performances:', e);
+  }
+};
+
+/**
+ * Fusionne deux listes de performances sans doublons
+ */
+const mergePerformancesLists = (localList = [], remoteList = []) => {
+  const map = new Map();
+  [...remoteList, ...localList].forEach((p) => {
+    if (!p || typeof p !== 'object') return;
+    const key = p.id || `${p.event_id}_${p.seconds}_${p.date_perf}`;
+    if (!map.has(key)) {
+      const display = p.chrono_str || p.time_str || (p.seconds ? formatSecondsToChrono(p.seconds) : '-');
+      map.set(key, {
+        ...p,
+        chrono_str: display,
+        time_str: display
+      });
+    }
+  });
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.date_perf || b.created_at || 0) - new Date(a.date_perf || a.created_at || 0)
+  );
+};
+
+/**
+ * Récupère et synchronise les performances d'un athlète depuis Supabase vers localStorage
+ */
+export const fetchAthleteCloudPerformances = async (athleteId) => {
+  if (!athleteId) return [];
+  const localPerfs = getAthleteStoredPerformances(athleteId);
+  try {
+    const { data, error } = await supabase
+      .from('club_settings')
+      .select('value')
+      .eq('key', `athlete_perfs_${athleteId}`)
+      .maybeSingle();
+
+    if (!error && data && Array.isArray(data.value)) {
+      const merged = mergePerformancesLists(localPerfs, data.value);
+      const serialized = JSON.stringify(merged);
+      localStorage.setItem(`${PERFORMANCES_STORAGE_PREFIX}${athleteId}`, serialized);
+      localStorage.setItem(`${LEGACY_STORAGE_PREFIX}${athleteId}`, serialized);
+      return merged;
+    }
+  } catch {
+    // Fallback local silencieux
+  }
+  return localPerfs;
+};
+
+/**
+ * Synchronise l'ensemble des performances de tous les athlètes depuis Supabase vers localStorage
+ */
+export const syncAllPerformancesFromCloud = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('club_settings')
+      .select('key, value')
+      .like('key', 'athlete_perfs_%');
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      let updatedAny = false;
+      data.forEach((row) => {
+        const athleteId = row.key.replace('athlete_perfs_', '');
+        if (athleteId && Array.isArray(row.value)) {
+          const localPerfs = getAthleteStoredPerformances(athleteId);
+          const merged = mergePerformancesLists(localPerfs, row.value);
+          const serialized = JSON.stringify(merged);
+          localStorage.setItem(`${PERFORMANCES_STORAGE_PREFIX}${athleteId}`, serialized);
+          localStorage.setItem(`${LEGACY_STORAGE_PREFIX}${athleteId}`, serialized);
+          updatedAny = true;
+        }
+      });
+      if (updatedAny && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ovia_performances_updated'));
+      }
+    }
+  } catch {
+    // Ignorer hors-ligne
   }
 };
 

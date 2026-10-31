@@ -16,7 +16,8 @@ import {
   formatSecondsToChrono,
   parseTimeToSeconds,
   getAthleteStoredPerformances,
-  saveAthleteStoredPerformances
+  saveAthleteStoredPerformances,
+  fetchAthleteCloudPerformances
 } from '../utils/swimmingCategories';
 import { formatName, formatWhatsAppPhone } from '../utils/formatters';
 import { generateSwimmingReportPDF } from '../utils/swimmingReportPdfGenerator';
@@ -95,6 +96,9 @@ export default function AthletePerformancesModal({ athlete, onClose }) {
     if (!athlete?.id) return;
     const list = getAthleteStoredPerformances(athlete.id);
     setPerformances(list);
+    fetchAthleteCloudPerformances(athlete.id).then((cloudList) => {
+      if (cloudList) setPerformances(cloudList);
+    });
     const savedTarget = localStorage.getItem(`${TARGETS_STORAGE_PREFIX}${athlete.id}_${selectedEventId}`);
     setTargetGoalTime(savedTarget || '');
   }, [athlete, selectedEventId]);

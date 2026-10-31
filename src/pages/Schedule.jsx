@@ -4,7 +4,7 @@ import { useSchedule } from '../hooks/useSchedule';
 import { useGroupes } from '../hooks/useGroupes';
 import { 
   Calendar as CalendarIcon, Plus, Clock, User, MapPin, 
-  Edit2, Trash2, X, RefreshCw, Zap, Info
+  Edit2, Trash2, X, Zap, Info
 } from 'lucide-react';
 import { Button } from '../components/ui';
 import { supabase } from '../supabaseClient';

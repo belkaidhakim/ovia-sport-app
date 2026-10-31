@@ -55,7 +55,9 @@ FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Modification par le staff et admin" ON public.assurances;
 CREATE POLICY "Modification par le staff et admin" ON public.assurances 
-FOR ALL TO authenticated USING (true) WITH CHECK (true);
+FOR ALL TO authenticated
+USING ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'secretaire'))
+WITH CHECK ((SELECT role FROM public.profiles WHERE id = auth.uid()) IN ('admin', 'secretaire'));
 
 -- Colonnes lieu_naissance pour le bordereau officiel
 ALTER TABLE public.athletes ADD COLUMN IF NOT EXISTS lieu_naissance TEXT;

@@ -14,7 +14,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
 import jsPDF from 'jspdf';
-import { getSwimmingCategory, getAthleteStoredPerformances } from '../utils/swimmingCategories';
+import { getSwimmingCategory, getAthleteStoredPerformances, fetchAthleteCloudPerformances } from '../utils/swimmingCategories';
 import { formatDA } from '../utils/formatters';
 import { loadClubLogoBase64 } from '../utils/pdfHelpers';
 import { generateBadgeSheetPDF } from '../utils/badgeSheetPdfGenerator';
@@ -108,10 +108,12 @@ export default function MemberPortal() {
     }
   };
 
-  const loadPerformances = (athleteId) => {
+  const loadPerformances = async (athleteId) => {
     try {
-      const perfs = getAthleteStoredPerformances(athleteId);
-      setPerformances(perfs);
+      const localPerfs = getAthleteStoredPerformances(athleteId);
+      setPerformances(localPerfs);
+      const syncedPerfs = await fetchAthleteCloudPerformances(athleteId);
+      if (syncedPerfs) setPerformances(syncedPerfs);
     } catch {
       setPerformances([]);
     }

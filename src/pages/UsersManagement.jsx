@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase, createNonPersistingClient } from '../supabaseClient';
 import { Card, Badge, Skeleton, Button } from '../components/ui';
 import { Shield, ShieldAlert, User, UserPlus, Search, Filter, Loader, X, AlertTriangle, CheckCircle2, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -154,7 +154,9 @@ export default function UsersManagement() {
 
     try {
       setCreateLoading(true);
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Utiliser un client sans persistance pour ne pas écraser la session de l'administrateur
+      const tempClient = createNonPersistingClient();
+      const { data: authData, error: authError } = await tempClient.auth.signUp({
         email: cleanEmail,
         password: newPassword,
       });
@@ -187,7 +189,7 @@ export default function UsersManagement() {
       if (!isConfirmed) {
         toast.success(`Le compte ${cleanEmail} a été créé !`, { duration: 5000 });
         toast(
-          (t) => (
+          () => (
             <div style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
               💡 <b>Important :</b> Si la confirmation email est activée sur Supabase, validez le compte dans <b>Supabase &gt; Authentication &gt; Users &gt; Confirm email</b> pour que l'entraîneur puisse se connecter immédiatement.
             </div>

@@ -1,6 +1,7 @@
 /**
  * Utilitaires partagés pour la génération de documents PDF officiels (jsPDF)
  */
+import { jsPDF } from 'jspdf';
 
 let cachedLogoBase64 = null;
 
@@ -51,8 +52,6 @@ export const loadClubLogoBase64 = () => {
  * Génère le rapport financier mensuel en PDF (Clôture du mois)
  */
 export const generateMonthlyReportPDF = async (stats, filterMonth, filterYear) => {
-  const { jsPDF } = await import('jspdf');
-  
   let logoBase64 = null;
   try {
     logoBase64 = await loadClubLogoBase64();

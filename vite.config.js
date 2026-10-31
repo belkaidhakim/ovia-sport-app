@@ -11,7 +11,7 @@ export default defineConfig({
   },
   plugins: [
     react(), 
-    ...(process.env.VITE_DISABLE_SSL ? [] : [basicSsl()]),
+    ...(globalThis.process?.env?.VITE_DISABLE_SSL ? [] : [basicSsl()]),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.jpg'],
@@ -42,16 +42,16 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/(club_settings|groupes|athletes|presences|cotisations|cartes_acces).*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-cache',
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
+                maxEntries: 80,
+                maxAgeSeconds: 60 * 60 * 24 * 3 // 3 days
               },
               cacheableResponse: {
-                statuses: [0, 200]
+                statuses: [200]
               }
             }
           }

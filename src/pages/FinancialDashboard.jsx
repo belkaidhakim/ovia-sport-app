@@ -27,7 +27,7 @@ import DeleteConfirmModal from '../components/finances/DeleteConfirmModal';
 const paymentSchema = z.object({
   athlete_id: z.string().min(1, 'Veuillez sélectionner un athlète'),
   montant_paye: z.preprocess((val) => Number(val), z.number().positive('Le montant doit être supérieur à 0')),
-  mode_paiement: z.enum(['Espèces', 'Virement CCP', 'BaridiMob', 'Chèque']),
+  mode_paiement: z.enum(['Espèces', 'Virement', 'Virement CCP', 'BaridiMob', 'Chèque']),
   periode_couverte_fin: z.string().min(1, 'Veuillez sélectionner une date de fin'),
 });
 

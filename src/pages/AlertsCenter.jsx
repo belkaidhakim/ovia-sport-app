@@ -9,8 +9,6 @@ import {
   RefreshCw, 
   MessageCircle, 
   ChevronRight, 
-  Filter,
-  FileCheck,
   CreditCard,
   UserCheck
 } from 'lucide-react';
@@ -34,7 +32,7 @@ export default function AlertsCenter() {
           .from('inscriptions')
           .select('*')
           .eq('statut', 'EN_ATTENTE')
-          .order('created_at', { ascending: false })
+          .order('date_demande', { ascending: false })
       ]);
 
       if (athletesRes.data) setAthletes(athletesRes.data);
@@ -136,19 +134,24 @@ export default function AlertsCenter() {
     });
 
     // 3. Inscriptions en attente
-    const insc = (inscriptions || []).map(ins => ({
-      id: `insc-${ins.id}`,
-      inscriptionId: ins.id,
-      nom: ins.nom,
-      prenom: ins.prenom,
-      telephone: ins.telephone,
-      groupe: ins.groupe_souhaite || 'Non précisé',
-      type: 'pending_inscription',
-      priority: 'info',
-      title: 'Demande d\'inscription en ligne',
-      details: `Reçue le ${new Date(ins.created_at).toLocaleDateString('fr-FR')}`,
-      date: new Date(ins.created_at)
-    }));
+    const insc = (inscriptions || []).map(ins => {
+      const rawDate = ins.date_demande || ins.created_at || new Date().toISOString();
+      const parsedDate = new Date(rawDate);
+      const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+      return {
+        id: `insc-${ins.id}`,
+        inscriptionId: ins.id,
+        nom: ins.nom,
+        prenom: ins.prenom,
+        telephone: ins.telephone,
+        groupe: ins.groupe_nom || ins.categorie || ins.groupe_souhaite || 'Non précisé',
+        type: 'pending_inscription',
+        priority: 'info',
+        title: 'Demande d\'inscription en ligne',
+        details: `Reçue le ${validDate.toLocaleDateString('fr-FR')}`,
+        date: validDate
+      };
+    });
 
     return {
       cotisationsAlerts: cotis,

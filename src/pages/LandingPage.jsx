@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { 
   Trophy, Users, Activity, QrCode, ArrowRight, CheckCircle2, 
   Calendar, ShieldCheck, Timer, ChevronRight, Menu, X, Sun, Moon,
-  MapPin, Phone, Clock, Mail, ChevronDown, Check, Sparkles, User,
-  HelpCircle, Waves, Award, Shield, Lock, MessageCircle, ExternalLink
+  MapPin, Phone, Clock, ChevronDown, Sparkles, User,
+  Waves, Lock, MessageCircle, ExternalLink
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 

@@ -70,8 +70,6 @@ export async function getDashboardOverview() {
       }
 
       // Analyse des dates de cotisations
-      const rawGroup = athlete.groupes;
-      const grpObj = Array.isArray(rawGroup) ? rawGroup[0] : rawGroup;
       // Montant par défaut (la colonne `tarif` n'existe pas dans la table groupes)
       const tarifToUse = 3000;
 

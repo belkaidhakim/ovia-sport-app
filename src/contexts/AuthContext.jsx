@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { ROLES } from '../config/constants';
+import { ROLES, STORAGE_KEYS } from '../config/constants';
 
 const AuthContext = createContext({});
 
@@ -79,6 +79,14 @@ export const AuthProvider = ({ children }) => {
     setRole(null);
     setUser(null);
     setSession(null);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.CACHED_ATHLETES);
+      if (typeof window !== 'undefined' && 'caches' in window) {
+        caches.delete('supabase-cache').catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
     await supabase.auth.signOut();
   };
 
