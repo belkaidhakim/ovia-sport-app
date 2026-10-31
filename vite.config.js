@@ -9,6 +9,9 @@ export default defineConfig({
     port: 5190,
     host: true,
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+  },
   plugins: [
     react(), 
     ...(globalThis.process?.env?.VITE_DISABLE_SSL ? [] : [basicSsl()]),

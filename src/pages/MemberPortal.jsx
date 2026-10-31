@@ -55,6 +55,7 @@ export default function MemberPortal() {
   const [performances, setPerformances] = useState([]);
   const [presences, setPresences] = useState([]);
   const [showFullscreenQR, setShowFullscreenQR] = useState(false);
+  const [selectedPerfEvent, setSelectedPerfEvent] = useState('');
   const [copiedMatricule, setCopiedMatricule] = useState(false);
   const [isDownloadingBadge, setIsDownloadingBadge] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -376,18 +377,30 @@ export default function MemberPortal() {
     }).length;
   }, [presences]);
 
-  const chartData = useMemo(() => {
+  const availablePerfEvents = useMemo(() => {
     if (!Array.isArray(performances) || performances.length === 0) return [];
-    const eventCounts = {};
+    const map = new Map();
     performances.forEach(p => {
-      if (p?.event_id) eventCounts[p.event_id] = (eventCounts[p.event_id] || 0) + 1;
+      if (p?.event_id) {
+        const existing = map.get(p.event_id);
+        map.set(p.event_id, {
+          id: p.event_id,
+          label: p.event_label || p.event_id,
+          count: (existing?.count || 0) + 1
+        });
+      }
     });
-    const keys = Object.keys(eventCounts);
-    if (keys.length === 0) return [];
-    const topEventId = keys.sort((a, b) => eventCounts[b] - eventCounts[a])[0];
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [performances]);
+
+  const chartData = useMemo(() => {
+    if (availablePerfEvents.length === 0) return [];
+    const targetEventId = selectedPerfEvent && availablePerfEvents.some(e => e.id === selectedPerfEvent)
+      ? selectedPerfEvent
+      : availablePerfEvents[0].id;
 
     const perfs = performances
-      .filter(p => p?.event_id === topEventId)
+      .filter(p => p?.event_id === targetEventId)
       .sort((a, b) => new Date(a.date_perf || 0) - new Date(b.date_perf || 0));
 
     return perfs.map(p => {
@@ -400,10 +413,10 @@ export default function MemberPortal() {
         date: dStr,
         temps: Number(p.seconds) || 0,
         chrono: String(p.chrono_str || '-'),
-        label: String(p.event_label || topEventId)
+        label: String(p.event_label || targetEventId)
       };
     });
-  }, [performances]);
+  }, [performances, availablePerfEvents, selectedPerfEvent]);
 
   const whatsappRenewalLink = useMemo(() => {
     const clubPhone = '213770719868';
@@ -1158,12 +1171,36 @@ export default function MemberPortal() {
               </div>
             </div>
 
-            {/* Graphique de Progression */}
+            {/* Graphique de Progression avec sélecteur d'épreuve */}
             <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800">
-              <h3 className="text-base font-extrabold text-white mb-4 flex items-center gap-2">
-                <TrendingUp size={18} className="text-sky-400" />
-                {t.chartTitle}
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2 mb-0">
+                  <TrendingUp size={18} className="text-sky-400" />
+                  {t.chartTitle}
+                </h3>
+
+                {availablePerfEvents.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {availablePerfEvents.map((ev) => {
+                      const isCurrent = (selectedPerfEvent || availablePerfEvents[0]?.id) === ev.id;
+                      return (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => setSelectedPerfEvent(ev.id)}
+                          className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            isCurrent
+                              ? 'bg-sky-500 text-white shadow-sm'
+                              : 'bg-white/5 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {ev.label} ({ev.count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {chartData.length > 0 ? (
                 <div>
@@ -1381,67 +1418,76 @@ export default function MemberPortal() {
       </main>
 
       {/* ========================================================= */}
-      {/* MODALE QR CODE GÉANT (MODE SCANNER BORNES D'ACCÈS)        */}
+      {/* MODALE QR CODE GÉANT (MODE PASS WALLET HAUTE LUMINOSITÉ)  */}
       {/* ========================================================= */}
       {showFullscreenQR && (
         <div 
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.92)',
+            backgroundColor: '#ffffff',
             zIndex: 100,
             display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
-            backdropFilter: 'blur(10px)'
+            padding: '1.25rem',
+            color: '#0f172a'
           }}
         >
-          <div 
-            className="w-full max-w-sm p-8 rounded-3xl text-center relative border border-white/20 shadow-2xl"
-            style={{
-              backgroundColor: '#ffffff',
-              color: '#0f172a'
-            }}
-          >
+          <div className="w-full max-w-sm rounded-3xl text-center relative border-2 border-slate-200 shadow-2xl p-6 sm:p-8 bg-white">
             <button
               onClick={() => setShowFullscreenQR(false)}
-              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-900 bg-slate-100 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-2 rounded-full text-slate-500 hover:text-slate-900 bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Fermer"
             >
               <X size={20} />
             </button>
 
-            <span className="text-[11px] font-black text-sky-600 uppercase tracking-widest block mb-1">
-              OVIA SPORT PASS
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black uppercase tracking-wider mb-3">
+              <Sparkles size={12} /> Mode Tourniquet · Contraste Maximal
+            </div>
+
+            <span className="text-[11px] font-black text-sky-600 uppercase tracking-widest block mb-0.5">
+              OVIA SPORT · WALLET PASS
             </span>
-            <h3 className="text-xl font-black text-slate-900 mb-1">
+            <h3 className="text-xl font-black text-slate-900 mb-0.5">
               {session.prenom} {session.nom?.toUpperCase()}
             </h3>
-            <p className="text-xs text-slate-500 mb-6 font-semibold">
-              Présentez ce QR Code devant le scanner du club
+            <p className="text-xs text-slate-500 mb-5 font-semibold">
+              {groupInfo.nom} {categoryInfo ? `· ${categoryInfo.label}` : ''}
             </p>
 
             {/* QR CODE HAUTE DÉFINITION SUR FOND BLANC PUR */}
-            <div className="p-4 rounded-2xl bg-white border-2 border-slate-200 inline-block mb-4 shadow-sm">
+            <div className="p-5 rounded-3xl bg-white border-2 border-slate-900 inline-block mb-4 shadow-md">
               <QRCodeSVG 
                 value={String(session.token_qr || session.id || 'OVS-PASS')} 
-                size={220} 
+                size={240} 
                 level="H" 
                 includeMargin={false} 
                 fgColor="#000000" 
               />
             </div>
 
-            <div className="font-mono text-xs font-black text-slate-700 bg-slate-100 py-2 px-3 rounded-xl mb-4">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <span
+                className="px-3 py-1 rounded-full text-xs font-extrabold"
+                style={{ backgroundColor: subscriptionStatus.bg, color: subscriptionStatus.color, border: `1px solid ${subscriptionStatus.border}` }}
+              >
+                {subscriptionStatus.label} ({subscriptionStatus.daysText})
+              </span>
+            </div>
+
+            <div className="font-mono text-xs font-black text-slate-700 bg-slate-100 py-2 px-3 rounded-xl mb-5">
               {session.token_qr || session.id}
             </div>
 
             <button
               type="button"
               onClick={() => setShowFullscreenQR(false)}
-              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer"
             >
-              Fermer
+              Quitter le mode plein écran
             </button>
           </div>
         </div>

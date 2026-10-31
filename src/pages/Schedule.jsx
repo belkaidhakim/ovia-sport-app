@@ -4,7 +4,7 @@ import { useSchedule } from '../hooks/useSchedule';
 import { useGroupes } from '../hooks/useGroupes';
 import { 
   Calendar as CalendarIcon, Plus, Clock, User, MapPin, 
-  Edit2, Trash2, X, Zap, Info
+  Edit2, Trash2, X, Zap, Info, Waves, LayoutGrid
 } from 'lucide-react';
 import { Button, PageHeader } from '../components/ui';
 import { supabase } from '../supabaseClient';
@@ -29,6 +29,8 @@ export default function Schedule() {
   const [editingSession, setEditingSession] = useState(null);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [viewMode, setViewMode] = useState('weekly'); // 'weekly' | 'pool'
+  const [selectedPoolDay, setSelectedPoolDay] = useState(() => new Date().getDay());
   
   const [formData, setFormData] = useState({
     dayOfWeek: 0,
@@ -188,86 +190,291 @@ export default function Schedule() {
         }
       />
 
-      {/* Bannière explicative professionnelle */}
-      <div className="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 flex items-start gap-3">
-        <Info className="w-5 h-5 text-sky-500 shrink-0 mt-0.5" />
-        <div className="text-xs text-sky-950 dark:text-sky-200 leading-relaxed">
-          <span className="font-bold">Grille globale du club :</span> Les séances définies ici structurent la répartition des lignes d'eau et des coachs. Cliquez sur <span className="font-semibold underline">Synchroniser avec le Dashboard</span> à tout moment pour que les athlètes de chaque groupe soient automatiquement attendus lors de leurs séances du jour.
+      {/* Barre de commutation : Grille Hebdomadaire vs Plan de Bassin (Couloirs 1 à 6) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs">
+        <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200/70 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={() => setViewMode('weekly')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              viewMode === 'weekly'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            <span>Grille Hebdomadaire (7 Jours)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('pool')}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer ${
+              viewMode === 'pool'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Waves className="w-4 h-4" />
+            <span>Plan de Bassin & Couloirs (Lignes 1–6)</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <Info className="w-4 h-4 text-sky-500 shrink-0" />
+          <span>
+            <strong className="text-slate-800 dark:text-slate-200">{schedule.length} créneau(x)</strong> programmés sur la semaine
+          </span>
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-[1200px]">
-          {scheduleByDay.map((day) => (
-            <div key={day.id} className="flex-1 min-w-[200px] flex flex-col gap-4">
-              {/* En-tête du jour */}
-              <div className="sticky top-0 z-10 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-4 text-center shadow-sm">
-                <h3 className="font-extrabold text-lg text-[var(--text-primary)]">{day.label}</h3>
-                <span className="text-xs font-bold text-muted bg-[var(--bg-tertiary)] px-2 py-1 rounded-md mt-2 inline-block">
-                  {day.sessions.length} séance(s)
-                </span>
-              </div>
+      {viewMode === 'weekly' ? (
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-[1200px]">
+            {scheduleByDay.map((day) => (
+              <div key={day.id} className="flex-1 min-w-[200px] flex flex-col gap-4">
+                {/* En-tête du jour */}
+                <div className="sticky top-0 z-10 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-4 text-center shadow-sm">
+                  <h3 className="font-extrabold text-lg text-[var(--text-primary)]">{day.label}</h3>
+                  <span className="text-xs font-bold text-muted bg-[var(--bg-tertiary)] px-2 py-1 rounded-md mt-2 inline-block">
+                    {day.sessions.length} séance(s)
+                  </span>
+                </div>
 
-              {/* Liste des séances */}
-              <div className="flex flex-col gap-3">
-                {day.sessions.length === 0 ? (
-                  <div className="text-center p-6 border-2 border-dashed border-[var(--border-color)] rounded-xl text-muted text-sm font-medium">
-                    Aucun créneau
-                  </div>
-                ) : (
-                  day.sessions.map(session => (
-                    <div 
-                      key={session.id} 
-                      className="rounded-xl border shadow-sm p-4 relative group transition-all hover:-translate-y-1 hover:shadow-md"
-                      style={{ 
-                        backgroundColor: 'var(--bg-card)', 
-                        borderColor: 'var(--border-color)',
-                        borderLeftWidth: '6px',
-                        borderLeftColor: session.color || '#38bdf8'
-                      }}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="font-bold text-[var(--text-primary)] leading-tight pr-6">
-                          {session.groupName || session.groupId || 'Séance'}
+                {/* Liste des séances */}
+                <div className="flex flex-col gap-3">
+                  {day.sessions.length === 0 ? (
+                    <div className="text-center p-6 border-2 border-dashed border-[var(--border-color)] rounded-xl text-muted text-sm font-medium">
+                      Aucun créneau
+                    </div>
+                  ) : (
+                    day.sessions.map(session => (
+                      <div 
+                        key={session.id} 
+                        className="rounded-xl border shadow-sm p-4 relative group transition-all hover:-translate-y-1 hover:shadow-md"
+                        style={{ 
+                          backgroundColor: 'var(--bg-card)', 
+                          borderColor: 'var(--border-color)',
+                          borderLeftWidth: '6px',
+                          borderLeftColor: session.color || '#38bdf8'
+                        }}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="font-bold text-[var(--text-primary)] leading-tight pr-6">
+                            {session.groupName || session.groupId || 'Séance'}
+                          </div>
+                          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-[var(--bg-card)] rounded-md shadow-sm border border-[var(--border-color)] p-1 z-10">
+                            <button onClick={() => handleOpenModal(session)} className="p-1 hover:bg-sky-500/10 hover:text-sky-500 rounded transition-colors" title="Modifier">
+                              <Edit2 size={14} />
+                            </button>
+                            <button onClick={() => handleDelete(session.id)} className="p-1 hover:bg-rose-500/10 hover:text-rose-500 rounded transition-colors" title="Supprimer">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-[var(--bg-card)] rounded-md shadow-sm border border-[var(--border-color)] p-1 z-10">
-                          <button onClick={() => handleOpenModal(session)} className="p-1 hover:bg-sky-500/10 hover:text-sky-500 rounded transition-colors" title="Modifier">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => handleDelete(session.id)} className="p-1 hover:bg-rose-500/10 hover:text-rose-500 rounded transition-colors" title="Supprimer">
-                            <Trash2 size={14} />
-                          </button>
+
+                        <div className="space-y-1.5 mt-3">
+                          <div className="flex items-center gap-2 text-xs font-medium text-muted">
+                            <Clock size={14} className="text-sky-500" />
+                            <span>{session.startTime} - {session.endTime}</span>
+                          </div>
+                          
+                          {session.coachName && (
+                            <div className="flex items-center gap-2 text-xs font-medium text-muted">
+                              <User size={14} className="text-emerald-500" />
+                              <span className="truncate">{session.coachName}</span>
+                            </div>
+                          )}
+                          
+                          {session.poolLanes && (
+                            <div className="flex items-center gap-2 text-xs font-medium text-muted">
+                              <MapPin size={14} className="text-rose-500" />
+                              <span className="truncate">{session.poolLanes}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* VUE INTERACTIVE PLAN DE BASSIN & COULOIRS 1 À 6 */
+        <div className="space-y-5">
+          {/* Sélecteur de jour */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DAYS.map((d) => {
+                const isToday = d.id === new Date().getDay();
+                const isSelected = d.id === selectedPoolDay;
+                const count = scheduleByDay.find(s => s.id === d.id)?.sessions.length || 0;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setSelectedPoolDay(d.id)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                      isSelected
+                        ? 'bg-sky-600 text-white shadow-sm shadow-sky-600/30'
+                        : 'bg-slate-100 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <span>{d.label}</span>
+                    {isToday && (
+                      <span className={`px-1.5 py-0.5 text-[9px] rounded-full uppercase font-black ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-emerald-500/20 text-emerald-500'
+                      }`}>
+                        Auj.
+                      </span>
+                    )}
+                    <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${
+                      isSelected ? 'bg-sky-800 text-sky-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-                      <div className="space-y-1.5 mt-3">
-                        <div className="flex items-center gap-2 text-xs font-medium text-muted">
-                          <Clock size={14} className="text-sky-500" />
-                          <span>{session.startTime} - {session.endTime}</span>
+          {/* Maquette Visuelle du Bassin Olympique / Semi-Olympique (Couloirs 1 à 6) */}
+          <div className="rounded-3xl border-2 border-sky-500/30 bg-gradient-to-b from-sky-950/90 via-slate-900 to-sky-950/90 p-5 sm:p-6 shadow-xl relative overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-sky-400/20">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300">
+                  <Waves className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white mb-0">
+                     Occupation des Lignes d'Eau — {DAYS.find(d => d.id === selectedPoolDay)?.label}
+                  </h3>
+                  <p className="text-xs text-sky-300/80 mb-0">
+                    Répartition des groupes par couloir de nage · Cliquez sur un créneau pour le modifier
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingSession(null);
+                  setFormData({
+                    dayOfWeek: selectedPoolDay,
+                    startTime: '17:00',
+                    endTime: '18:30',
+                    groupId: groupes[0]?.id || '',
+                    groupName: groupes[0]?.nom || '',
+                    coachName: '',
+                    poolLanes: 'Couloir 1',
+                    color: '#38bdf8'
+                  });
+                  setIsModalOpen(true);
+                }}
+                className="text-xs"
+              >
+                <Plus size={15} /> Affecter un couloir ce jour
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5, 6].map((laneNum) => {
+                const daySessions = scheduleByDay.find(d => d.id === selectedPoolDay)?.sessions || [];
+                // Identifier les séances qui mentionnent ce couloir (ex: "Lignes 1-2", "Couloir 1", "1", ou répartition par index si non précisé)
+                const laneSessions = daySessions.filter((sess, idx) => {
+                  const text = String(sess.poolLanes || '').toLowerCase();
+                  const rangeMatch = text.match(/(\d+)\s*[-àa]\s*(\d+)/);
+                  if (rangeMatch) {
+                    const start = parseInt(rangeMatch[1], 10);
+                    const end = parseInt(rangeMatch[2], 10);
+                    return laneNum >= start && laneNum <= end;
+                  }
+                  const digits = text.match(/\d+/g);
+                  if (digits && digits.some(n => parseInt(n, 10) === laneNum)) {
+                    return true;
+                  }
+                  // Si aucun numéro de ligne n'est mentionné dans poolLanes, afficher sur le couloir correspondant au modulo
+                  if (!digits) {
+                    return (idx % 6) + 1 === laneNum;
+                  }
+                  return false;
+                });
+
+                return (
+                  <div
+                    key={laneNum}
+                    className="rounded-2xl border border-sky-400/20 bg-sky-900/20 backdrop-blur-xs p-3.5 flex flex-col md:flex-row md:items-center gap-4 relative"
+                  >
+                    {/* Plot de départ (Numéro de Couloir) */}
+                    <div className="flex items-center gap-3 md:w-44 shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/40 flex flex-col items-center justify-center text-white shrink-0 shadow-inner">
+                        <span className="text-[9px] uppercase font-bold text-sky-300 leading-none">Ligne</span>
+                        <span className="text-sm font-black leading-tight">#{laneNum}</span>
+                      </div>
+                      <div>
+                        <div className="text-xs font-extrabold text-white">Couloir {laneNum}</div>
+                        <div className="text-[11px] text-sky-300/75">
+                          {laneSessions.length > 0 ? `${laneSessions.length} créneau(x)` : 'Couloir libre'}
                         </div>
-                        
-                        {session.coachName && (
-                          <div className="flex items-center gap-2 text-xs font-medium text-muted">
-                            <User size={14} className="text-emerald-500" />
-                            <span className="truncate">{session.coachName}</span>
-                          </div>
-                        )}
-                        
-                        {session.poolLanes && (
-                          <div className="flex items-center gap-2 text-xs font-medium text-muted">
-                            <MapPin size={14} className="text-rose-500" />
-                            <span className="truncate">{session.poolLanes}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+
+                    {/* Créneaux affectés sur la ligne d'eau */}
+                    <div className="flex-1 flex flex-wrap items-center gap-3">
+                      {laneSessions.length === 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingSession(null);
+                            setFormData({
+                              dayOfWeek: selectedPoolDay,
+                              startTime: '17:00',
+                              endTime: '18:30',
+                              groupId: groupes[0]?.id || '',
+                              groupName: groupes[0]?.nom || '',
+                              coachName: '',
+                              poolLanes: `Couloir ${laneNum}`,
+                              color: '#38bdf8'
+                            });
+                            setIsModalOpen(true);
+                          }}
+                          className="px-3.5 py-2 rounded-xl border border-dashed border-sky-400/25 text-xs text-sky-300/70 hover:text-white hover:border-sky-400/60 hover:bg-sky-500/10 transition cursor-pointer"
+                        >
+                          + Programmer une séance sur le Couloir {laneNum}
+                        </button>
+                      ) : (
+                        laneSessions.map((sess) => (
+                          <div
+                            key={`${laneNum}-${sess.id}`}
+                            onClick={() => handleOpenModal(sess)}
+                            className="px-4 py-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-900 border border-white/15 cursor-pointer transition shadow-md flex items-center gap-3 group"
+                            style={{ borderLeftWidth: '5px', borderLeftColor: sess.color || '#38bdf8' }}
+                          >
+                            <div>
+                              <div className="text-xs font-extrabold text-white group-hover:text-sky-300 transition-colors">
+                                {sess.groupName || 'Séance Club'}
+                              </div>
+                              <div className="text-[11px] text-slate-300 flex items-center gap-2 mt-0.5">
+                                <span className="inline-flex items-center gap-1 text-sky-400 font-semibold">
+                                  <Clock size={11} /> {sess.startTime} – {sess.endTime}
+                                </span>
+                                {sess.coachName && (
+                                  <span className="text-slate-400">· Coach {sess.coachName}</span>
+                                )}
+                              </div>
+                            </div>
+                            <Edit2 size={13} className="text-slate-500 group-hover:text-sky-400 transition-colors" />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* MODAL AJOUT/EDITION */}
       {isModalOpen && (
