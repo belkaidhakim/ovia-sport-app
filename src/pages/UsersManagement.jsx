@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, createNonPersistingClient } from '../supabaseClient';
-import { Card, Badge, Skeleton, Button } from '../components/ui';
+import { Card, Badge, Skeleton, Button, PageHeader } from '../components/ui';
 import { Shield, ShieldAlert, User, UserPlus, Search, Filter, Loader, X, AlertTriangle, CheckCircle2, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -219,17 +219,65 @@ export default function UsersManagement() {
     return matchesSearch && matchesRole;
   });
 
+  const totalAdmins = users.filter(u => u.role === 'admin').length;
+  const totalCoaches = users.filter(u => u.role === 'entraineur' || u.role === 'secretaire').length;
+  const totalActiveAccounts = users.filter(u => u.is_active !== false && u.role !== 'inactif' && u.statut !== 'SUSPENDUE').length;
+
   return (
-    <div>
-      {/* Header avec CTA Ajouter un membre */}
-      <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-        <div>
-          <h1>Gestion de l'Équipe</h1>
-          <p style={{ marginBottom: 0 }}>Gérez les accès, la sécurité et les rôles des membres de l'administration.</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        eyebrow="Administration & Contrôle d'Accès"
+        eyebrowIcon={Shield}
+        title="Gestion de l'Équipe & Rôles"
+        subtitle="Supervisez les habilitations, la sécurité des sessions et les comptes du staff administratif et sportif."
+        actions={
+          <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+            <UserPlus size={18} /> Ajouter un membre
+          </Button>
+        }
+      />
+
+      {/* Cartes KPI d'Équipe */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+            <User className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{users.length}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Comptes Staff enregistrés</div>
+          </div>
         </div>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
-          <UserPlus size={18} /> + Ajouter un membre
-        </Button>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <ShieldAlert className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{totalAdmins}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Administrateurs Direction</div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{totalCoaches}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Entraîneurs & Secrétariat</div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">{totalActiveAccounts}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Accès actifs autorisés</div>
+          </div>
+        </div>
       </div>
 
       <Card>

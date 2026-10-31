@@ -415,10 +415,14 @@ export default function AthletesList() {
       {/* =========================================================
           1. EN-TÊTE EXÉCUTIF
       ========================================================= */}
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80">
         <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-[11px] font-bold tracking-wider uppercase mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+            <span>Académie & Effectifs</span>
+          </div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-0">
               Gestion des Membres
             </h1>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -426,7 +430,7 @@ export default function AthletesList() {
               {totalActifs} Actifs
             </span>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-0 font-normal">
             Annuaire sportif, suivi médical, cotisations et contrôle d'accès en bassin.
           </p>
         </div>

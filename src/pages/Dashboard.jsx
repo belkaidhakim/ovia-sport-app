@@ -75,12 +75,16 @@ export default function Dashboard() {
   };
 
   return (
-    <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* 1. EN-TÊTE EXÉCUTIF */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80">
         <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 text-[11px] font-bold tracking-wider uppercase mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse" />
+            <span>Direction Générale & Supervision</span>
+          </div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white mb-0">
               Tableau de bord de Gestion
             </h1>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -168,6 +172,6 @@ export default function Dashboard() {
           </motion.div>
         </motion.div>
       )}
-    </main>
+    </div>
   );
 }

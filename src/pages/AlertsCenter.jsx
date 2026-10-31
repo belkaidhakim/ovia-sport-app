@@ -197,9 +197,9 @@ export default function AlertsCenter() {
   const totalCount = cotisationsAlerts.length + medicalAlerts.length + inscriptionsAlerts.length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold uppercase tracking-wider mb-2">
             <Bell className="w-3.5 h-3.5" />

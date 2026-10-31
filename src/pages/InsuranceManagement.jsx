@@ -16,7 +16,7 @@ import {
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
-import { Button } from '../components/ui';
+import { Button, PageHeader } from '../components/ui';
 import { supabase } from '../supabaseClient';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
@@ -753,122 +753,107 @@ export default function InsuranceManagement() {
   };
 
   return (
-    <div>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* EN-TÊTE PRINCIPAL */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              backgroundColor: 'rgba(99, 102, 241, 0.15)',
-              color: '#818cf8',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <ShieldCheck size={22} />
-            </div>
-            <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>Gestion des Assurances</h1>
+      <PageHeader
+        eyebrow="Conformité Fédérale & Assurances"
+        eyebrowIcon={ShieldCheck}
+        title="Gestion des Assurances"
+        subtitle="Supervision de la couverture d'assurance, conformité légale des athlètes, bordereaux collectifs FANA et attestations."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Relances Automatisées WhatsApp */}
+            <button 
+              type="button"
+              onClick={() => handleOpenWhatsAppModal()}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition cursor-pointer"
+              title="Ouvrir le centre de relances automatisées par WhatsApp pour les non-assurés"
+            >
+              <Send size={14} />
+              Relances WhatsApp ({stats.nonAssure})
+            </button>
+
+            {/* Scanner OCR */}
+            <button 
+              type="button"
+              onClick={() => setShowOcrModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition cursor-pointer"
+              title="Glisser-déposer une attestation papier ou PDF pour reconnaissance OCR instantanée"
+            >
+              <Sparkles size={14} />
+              Scanner OCR
+            </button>
+
+            {/* Accords Cadres */}
+            <button 
+              type="button"
+              onClick={() => setShowPartnersModal(true)}
+              className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-sky-600/20 transition cursor-pointer"
+              title="Gérer les conventions et tarifs négociés avec la SAA, CAAT, Macir Vie..."
+            >
+              <Building2 size={14} />
+              Accords Cadres
+            </button>
+
+            {/* Bordereau Fédéral FAN */}
+            <button 
+              type="button"
+              onClick={handleGenerateBordereauFederalFan}
+              className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer border border-slate-700"
+              title="Générer le bordereau officiel pour la Fédération Algérienne de Natation (FAN) et la DJS"
+            >
+              <Award size={15} className="text-amber-400" />
+              Bordereau FAN (PDF)
+            </button>
+
+            {/* Journal d'Audit */}
+            <button 
+              type="button"
+              onClick={() => setShowAuditModal(true)}
+              className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-200 dark:border-slate-700"
+              title="Consulter l'historique de traçabilité des modifications d'assurance"
+            >
+              <History size={14} className="text-purple-500" />
+              Audit
+            </button>
+
+            {/* Actualiser */}
+            <Button 
+              variant="secondary"
+              onClick={() => {
+                fetchAthletes(false);
+                fetchAssurances();
+                toast.success('Liste des athlètes et assurances actualisée !');
+              }}
+              title="Recharger la liste des athlètes et des assurances"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}
+            >
+              <RefreshCw size={13} className={loadingAthletes || loadingAssurances ? 'animate-spin' : ''} />
+            </Button>
+
+            {/* Bouton Ajouter à la Liste */}
+            <Button 
+              variant="primary"
+              onClick={handleOpenAddAthletesModal}
+              style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px',
+                backgroundColor: '#10b981',
+                borderColor: '#10b981',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                padding: '0.45rem 0.85rem',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)'
+              }}
+              title="Ajouter des athlètes à la liste d'assurance du club"
+            >
+              <UserPlus size={14} /> + Ajouter à la Liste
+            </Button>
           </div>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Supervision de la couverture d'assurance, conformité légale des athlètes, bordereaux collectifs et attestations.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Relances Automatisées WhatsApp */}
-          <button 
-            type="button"
-            onClick={() => handleOpenWhatsAppModal()}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition cursor-pointer"
-            title="Ouvrir le centre de relances automatisées par WhatsApp pour les non-assurés"
-          >
-            <Send size={14} />
-            Relances WhatsApp ({stats.nonAssure})
-          </button>
-
-          {/* Scanner OCR */}
-          <button 
-            type="button"
-            onClick={() => setShowOcrModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-indigo-600/20 transition cursor-pointer"
-            title="Glisser-déposer une attestation papier ou PDF pour reconnaissance OCR instantanée"
-          >
-            <Sparkles size={14} />
-            Scanner OCR
-          </button>
-
-          {/* Accords Cadres */}
-          <button 
-            type="button"
-            onClick={() => setShowPartnersModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-sky-600/20 transition cursor-pointer"
-            title="Gérer les conventions et tarifs négociés avec la SAA, CAAT, Macir Vie..."
-          >
-            <Building2 size={14} />
-            Accords Cadres
-          </button>
-
-          {/* Bordereau Fédéral FAN */}
-          <button 
-            type="button"
-            onClick={handleGenerateBordereauFederalFan}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer border border-slate-700"
-            title="Générer le bordereau officiel pour la Fédération Algérienne de Natation (FAN) et la DJS"
-          >
-            <Award size={15} className="text-amber-400" />
-            Bordereau FAN (PDF)
-          </button>
-
-          {/* Journal d'Audit */}
-          <button 
-            type="button"
-            onClick={() => setShowAuditModal(true)}
-            className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer border border-slate-200 dark:border-slate-700"
-            title="Consulter l'historique de traçabilité des modifications d'assurance"
-          >
-            <History size={14} className="text-purple-500" />
-            Audit
-          </button>
-
-          {/* Actualiser */}
-          <Button 
-            variant="secondary"
-            onClick={() => {
-              fetchAthletes(false);
-              fetchAssurances();
-              toast.success('Liste des athlètes et assurances actualisée !');
-            }}
-            title="Recharger la liste des athlètes et des assurances"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '0.45rem 0.75rem', fontSize: '0.78rem' }}
-          >
-            <RefreshCw size={13} className={loadingAthletes || loadingAssurances ? 'animate-spin' : ''} />
-          </Button>
-
-          {/* Bouton Ajouter à la Liste */}
-          <Button 
-            variant="primary"
-            onClick={handleOpenAddAthletesModal}
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '6px',
-              backgroundColor: '#10b981',
-              borderColor: '#10b981',
-              color: '#ffffff',
-              fontWeight: 700,
-              fontSize: '0.78rem',
-              padding: '0.45rem 0.85rem',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)'
-            }}
-            title="Ajouter des athlètes à la liste d'assurance du club"
-          >
-            <UserPlus size={14} /> + Ajouter à la Liste
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* BANNIÈRE D'ALERTE DE SÉCURITÉ SI DES MEMBRES NE SONT PAS ASSURÉS */}
       {stats.nonAssure > 0 && (

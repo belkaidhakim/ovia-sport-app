@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Timer, Trophy, Users, Award, CheckCircle2, Waves, Search, ArrowUpRight, History, Calendar
 } from 'lucide-react';
-import { Card, Button, Badge, Skeleton } from '../components/ui';
+import { Card, Button, Badge, Skeleton, PageHeader } from '../components/ui';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
 import { 
@@ -232,51 +232,51 @@ export default function SportsTracking() {
   };
 
   return (
-    <div>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* HEADER DU MODULE SPORTIF */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
-        <div>
-          <h1>Performances & Chronos</h1>
-          <p style={{ marginBottom: 0 }}>Suivi chronométrique, feuilles de match collectives et passage de paliers.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge status="ACTIVE" style={{ fontSize: '0.8rem', padding: '4px 10px' }}>
-            <Waves size={14} style={{ marginRight: '5px' }} /> Saison Sportive Active
+      <PageHeader
+        eyebrow="Pôle Performance & Natation"
+        eyebrowIcon={Timer}
+        title="Performances & Chronos"
+        subtitle="Suivi chronométrique synchronisé dans le Cloud, feuilles de match collectives et passage de paliers FANA."
+        actions={
+          <Badge status="ACTIVE" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+            <Waves size={14} style={{ marginRight: '6px' }} /> Saison Sportive Active
           </Badge>
-        </div>
-      </div>
+        }
+      />
 
       {/* STATS RAPIDES */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4 flex items-center gap-3">
-          <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'rgba(56, 189, 248, 0.12)', color: '#38bdf8' }}>
-            <Timer size={24} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+            <Timer className="w-5 h-5" />
           </div>
           <div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>{allPerformances.length}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Chronos enregistrés</div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{allPerformances.length}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Chronos officiels enregistrés</div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-4 flex items-center gap-3">
-          <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10b981' }}>
-            <Trophy size={24} />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <Trophy className="w-5 h-5" />
           </div>
           <div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#10b981' }}>{personalBests.length}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Records Personnels (PB)</div>
+            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">{personalBests.length}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Records Personnels (PB)</div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-4 flex items-center gap-3">
-          <div style={{ padding: '10px', borderRadius: '12px', backgroundColor: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
-            <Award size={24} />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Award className="w-5 h-5" />
           </div>
           <div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f59e0b' }}>{groupes.length}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Paliers & Groupes encadrés</div>
+            <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 leading-tight">{groupes.length}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Paliers & Groupes encadrés</div>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* SYSTÈME D'ONGLETS DU MODULE SPORTIF */}

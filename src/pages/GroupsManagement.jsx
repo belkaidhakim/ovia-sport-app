@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Card, Button, Skeleton } from '../components/ui';
+import { Card, Button, Skeleton, PageHeader } from '../components/ui';
 import { Users, Edit2, Plus, CalendarDays, Clock, Trash2, AlertTriangle, ScanLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -189,16 +189,72 @@ export default function GroupsManagement() {
     }
   };
 
+  const totalInscritsGlobal = groupes.reduce((acc, g) => acc + (g.athletes ? g.athletes.length : 0), 0);
+  const totalCapaciteGlobal = groupes.reduce((acc, g) => acc + (g.capacite_max || 20), 0);
+  const tauxOccupationGlobal = totalCapaciteGlobal > 0 ? Math.min(100, Math.round((totalInscritsGlobal / totalCapaciteGlobal) * 100)) : 0;
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1>Gestion des Groupes</h1>
-          <p style={{ marginBottom: 0 }}>Configurez les catégories, entraîneurs et les créneaux d'entraînement.</p>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      <PageHeader
+        eyebrow="Encadrement & Pédagogie"
+        eyebrowIcon={Users}
+        title="Gestion des Groupes"
+        subtitle="Configurez les catégories d'âge, les entraîneurs référents, les jauges de bassin et les créneaux hebdomadaires."
+        actions={
+          <div className="flex items-center gap-2.5">
+            <Link to="/planning" className="no-underline">
+              <Button variant="secondary">
+                <CalendarDays size={16} /> Voir l'emploi du temps
+              </Button>
+            </Link>
+            <Button variant="primary" onClick={() => handleOpenModal()}>
+              <Plus size={16} /> Nouveau Groupe
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Cartes KPI d'Occupation des Bassins */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{groupes.length}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Groupes & Sections actifs</div>
+          </div>
         </div>
-        <Button variant="primary" onClick={() => handleOpenModal()}>
-          <Plus size={16} /> Nouveau Groupe
-        </Button>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <ScanLine className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{totalInscritsGlobal}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Nageurs affectés</div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{totalCapaciteGlobal}</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Capacité totale d'accueil</div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex items-center gap-3.5 shadow-xs">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <CalendarDays className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-slate-900 dark:text-white leading-tight">{tauxOccupationGlobal}%</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Taux de remplissage global</div>
+          </div>
+        </div>
       </div>
 
       {loading ? (

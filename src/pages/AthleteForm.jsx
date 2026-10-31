@@ -303,10 +303,10 @@ export default function AthleteForm() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 p-6 lg:p-8 transition-colors">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 text-slate-900 dark:text-slate-100 transition-colors">
       
       {/* EN-TÊTE DE LA PAGE (100% lisible en Clair comme en Sombre) */}
-      <div className="max-w-5xl mx-auto mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="pb-5 border-b border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-1">
             <Link to="/athletes" className="hover:underline text-inherit no-underline">Académie & Membres</Link>
@@ -333,7 +333,7 @@ export default function AthleteForm() {
       </div>
 
       {/* FORMULAIRE PRINCIPAL */}
-      <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         
         {/* BLOC 1 : INFORMATIONS PERSONNELLES & PHOTO */}
         <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-8 shadow-xs">

@@ -6,7 +6,7 @@ import {
   Calendar as CalendarIcon, Plus, Clock, User, MapPin, 
   Edit2, Trash2, X, Zap, Info
 } from 'lucide-react';
-import { Button } from '../components/ui';
+import { Button, PageHeader } from '../components/ui';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -162,32 +162,31 @@ export default function Schedule() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* En-tête */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold flex items-center gap-3">
-            <CalendarIcon className="text-primary" size={32} />
-            Planning Hebdomadaire
-          </h1>
-          <p className="text-muted mt-1">Organisez les créneaux d'entraînement, les groupes et les lignes d'eau.</p>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button 
-            variant="outline" 
-            onClick={handleSyncToGroups}
-            disabled={syncing}
-            className="flex items-center gap-2 border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10"
-            title="Met à jour les créneaux des groupes pour les afficher sur le Dashboard"
-          >
-            <Zap className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Synchronisation...' : 'Synchroniser avec le Dashboard'}
-          </Button>
-          <Button onClick={() => handleOpenModal()} className="flex items-center gap-2">
-            <Plus size={18} /> Ajouter un créneau
-          </Button>
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      {/* En-tête Exécutif */}
+      <PageHeader
+        eyebrow="Organisation & Bassins"
+        eyebrowIcon={CalendarIcon}
+        title="Planning Hebdomadaire"
+        subtitle="Organisez les créneaux d'entraînement, l'affectation des groupes et les lignes d'eau."
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Button 
+              variant="secondary" 
+              onClick={handleSyncToGroups}
+              disabled={syncing}
+              className="flex items-center gap-2 border-sky-500/30 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10"
+              title="Met à jour les créneaux des groupes pour les afficher sur le Dashboard"
+            >
+              <Zap className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Synchronisation...' : 'Synchroniser avec le Dashboard'}
+            </Button>
+            <Button onClick={() => handleOpenModal()} className="flex items-center gap-2">
+              <Plus size={18} /> Ajouter un créneau
+            </Button>
+          </div>
+        }
+      />
 
       {/* Bannière explicative professionnelle */}
       <div className="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 flex items-start gap-3">

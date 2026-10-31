@@ -7,7 +7,7 @@ import { useCotisations } from '../hooks/useCotisations';
 import { useDepenses } from '../hooks/useDepenses';
 import { useClubPricing } from '../hooks/useClubPricing';
 import { useAuth } from '../contexts/AuthContext';
-import { Card, Button } from '../components/ui';
+import { Card, Button, PageHeader } from '../components/ui';
 import { generateMonthlyReportPDF } from '../utils/pdfHelpers';
 import { generatePDFReceipt } from '../utils/receiptGenerator';
 import { detectSiblingGroups } from '../utils/swimmingCategories';
@@ -371,35 +371,33 @@ export default function FinancialDashboard() {
   };
 
   return (
-    <div className="pb-20 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="pb-20 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
       {/* 1. EN-TÊTE FINANCIER & ACTIONS */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-0">
-            Gestion Financière
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-0">
-            Revenus, Dépenses et Clôture Mensuelle · Club Ovia Sport
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setShowPricingModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Paramètres des tarifs">
-            <Settings size={16} /> Tarifs
-          </Button>
-          <Button variant="secondary" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Exporter la liste actuelle en fichier CSV">
-            <Download size={16} /> Exporter CSV
-          </Button>
-          <Button variant="secondary" onClick={handleMonthlyReport} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FileOutput size={16} /> Clôturer le mois (PDF)
-          </Button>
-          <Button variant="danger" onClick={() => { setActiveTab('depenses'); setShowDepenseForm(true); setEditingDepenseId(null); setDepenseData(initialDepenseState); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <TrendingDown size={16} /> + Dépense
-          </Button>
-          <Button variant="primary" onClick={() => { setActiveTab('revenus'); setShowPaymentForm(true); setEditingPaymentId(null); setFormData(initialFormState); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <TrendingUp size={16} /> + Encaisser
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Trésorerie & Comptabilité"
+        eyebrowIcon={TrendingUp}
+        title="Gestion Financière"
+        subtitle="Suivi des encaissements, dépenses d'exploitation, réductions fratrie et clôture mensuelle."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setShowPricingModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Paramètres des tarifs">
+              <Settings size={16} /> Tarifs
+            </Button>
+            <Button variant="secondary" onClick={exportToCSV} style={{ display: 'flex', alignItems: 'center', gap: '6px' }} title="Exporter la liste actuelle en fichier CSV">
+              <Download size={16} /> Exporter CSV
+            </Button>
+            <Button variant="secondary" onClick={handleMonthlyReport} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FileOutput size={16} /> Clôturer le mois (PDF)
+            </Button>
+            <Button variant="danger" onClick={() => { setActiveTab('depenses'); setShowDepenseForm(true); setEditingDepenseId(null); setDepenseData(initialDepenseState); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingDown size={16} /> + Dépense
+            </Button>
+            <Button variant="primary" onClick={() => { setActiveTab('revenus'); setShowPaymentForm(true); setEditingPaymentId(null); setFormData(initialFormState); }} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingUp size={16} /> + Encaisser
+            </Button>
+          </div>
+        }
+      />
 
       {/* 2. FILTRES GLOBAUX */}
       <Card className="p-4 mb-6">

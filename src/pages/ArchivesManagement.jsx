@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
-import { Card, StatCard, Button, Skeleton } from '../components/ui';
+import { Card, StatCard, Button, Skeleton, PageHeader } from '../components/ui';
 import { useAthletes } from '../hooks/useAthletes';
 import { useGroupes } from '../hooks/useGroupes';
 import { formatName, calculateAge, formatWhatsAppPhone } from '../utils/formatters';
@@ -228,61 +228,43 @@ export default function ArchivesManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div 
+      <PageHeader
+        eyebrow="Conservation & Historique"
+        eyebrowIcon={Archive}
+        title="Archives & Anciens Membres"
+        subtitle="Consultez, réactivez en un clic ou gérez la rétention des athlètes et adhérents inactifs du club."
+        actions={
+          <div className="flex items-center gap-2.5">
+            <Button 
+              variant="secondary"
+              onClick={() => fetchArchivedAthletes()}
+              disabled={loadingArchived}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+            >
+              <RefreshCw size={16} className={loadingArchived ? 'animate-spin' : ''} />
+              <span>Actualiser</span>
+            </Button>
+
+            <Button 
+              variant="primary"
+              onClick={handleExportCSV}
+              disabled={filteredAthletes.length === 0}
               style={{ 
-                padding: '10px', 
-                borderRadius: '14px', 
-                backgroundColor: 'rgba(245, 158, 11, 0.15)', 
-                color: '#f59e0b',
-                display: 'inline-flex'
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                backgroundColor: '#059669',
+                borderColor: '#059669'
               }}
             >
-              <Archive size={26} />
-            </div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                Module Archives & Anciens Membres
-              </h1>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Consultez, réactivez en un clic ou gérez la rétention des athlètes et adhérents inactifs du club
-              </p>
-            </div>
+              <Download size={16} />
+              <span>Exporter CSV</span>
+            </Button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="secondary"
-            onClick={() => fetchArchivedAthletes()}
-            disabled={loadingArchived}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-          >
-            <RefreshCw size={16} className={loadingArchived ? 'animate-spin' : ''} />
-            <span>Actualiser</span>
-          </Button>
-
-          <Button 
-            variant="primary"
-            onClick={handleExportCSV}
-            disabled={filteredAthletes.length === 0}
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              backgroundColor: '#059669',
-              borderColor: '#059669'
-            }}
-          >
-            <Download size={16} />
-            <span>Exporter CSV</span>
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* STATS CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
